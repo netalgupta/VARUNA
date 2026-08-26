@@ -115,7 +115,12 @@ async def execute_sql_task(
 
     # Execute against database pool
     t_db = _time.perf_counter()
-    rows = run_sql(clean_sql, limit=200)
+    if clean_sql:
+        rows = run_sql(clean_sql, limit=200)
+    else:
+        log.warning("No valid SQL generated for task: %s", task_desc[:80])
+        rows = []
+        clean_sql = ""
     latency["db_execute_ms"] = round((_time.perf_counter() - t_db) * 1000.0, 1)
 
     # If DB returns no rows, report it honestly — do NOT inject fabricated data
