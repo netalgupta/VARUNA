@@ -63,12 +63,12 @@ try:
     import torch
     import torch.nn as nn
     _HAS_TORCH = True
-    _NN_MODULE = nn.Module
+    _NN_MODULE: Any = nn.Module
 except ImportError:
-    torch = None  # type: ignore
-    nn = None     # type: ignore
+    torch: Any = None
+    nn: Any = None
     _HAS_TORCH = False
-    _NN_MODULE = object  # type: ignore
+    _NN_MODULE: Any = object
 
 from pydantic import BaseModel, Field
 
@@ -183,7 +183,7 @@ def _spatial_smooth(field: np.ndarray, passes: int = 2) -> np.ndarray:
         p = np.pad(f, ((1, 1), (0, 0)), mode="edge")
         rows = sum(k[i] * p[i : i + f.shape[0], :] for i in range(3))
         p = np.pad(rows, ((0, 0), (1, 1)), mode="edge")
-        return sum(k[i] * p[:, i : i + f.shape[1]] for i in range(3))
+        return np.asarray(sum(k[i] * p[:, i : i + f.shape[1]] for i in range(3)))
 
     out = field
     for _ in range(passes):
@@ -198,12 +198,12 @@ def _sample_event_params(basin: str, rng: np.random.Generator) -> Dict[str, Any]
     """Sample MHW lifecycle parameters: Gaussian epicenter, rise/decay timescales."""
     win = BASIN_WINDOWS[basin]
     return {
-        "lat": float(rng.uniform(win[0] + 3.0, win[1] - 3.0)),
-        "lon": float(rng.uniform(win[2] + 3.0, win[3] - 3.0)),
-        "peak": float(rng.uniform(2.0, 3.5)),
-        "radius": float(rng.uniform(6.0, 10.0)),
-        "tau_rise": float(rng.uniform(3.0, 5.0)),
-        "tau_decay": float(rng.uniform(5.0, 9.0)),
+        "lat": rng.uniform(win[0] + 3.0, win[1] - 3.0),
+        "lon": rng.uniform(win[2] + 3.0, win[3] - 3.0),
+        "peak": rng.uniform(2.0, 3.5),
+        "radius": rng.uniform(6.0, 10.0),
+        "tau_rise": rng.uniform(3.0, 5.0),
+        "tau_decay": rng.uniform(5.0, 9.0),
         "duration": int(rng.integers(8, 21)),
         "start": 0,
     }
@@ -216,8 +216,8 @@ def _event_envelope(ev: Dict[str, Any], t: int) -> float:
         return 0.0
     rise = 1.0 - np.exp(-x / ev["tau_rise"])
     if x <= ev["duration"]:
-        return ev["peak"] * rise
-    return ev["peak"] * rise * np.exp(-(x - ev["duration"]) / ev["tau_decay"])
+        return float(ev["peak"] * rise)
+    return float(ev["peak"] * rise * np.exp(-(x - ev["duration"]) / ev["tau_decay"]))
 
 
 def generate_synthetic_sample(
@@ -243,6 +243,7 @@ def generate_synthetic_sample(
     dates = [end_date - timedelta(days=total_days - 1 - t) for t in range(total_days)]
 
     ev = _sample_event_params(basin, rng) if inject_mhw else None
+    kernel: np.ndarray = np.zeros_like(lat_m)
     if ev is not None:
         if active_at_end:
             # Established event: visible ramp >= 9 days old and still alive past horizon

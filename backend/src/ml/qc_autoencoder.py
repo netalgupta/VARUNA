@@ -64,12 +64,12 @@ try:
     import torch
     import torch.nn as nn
     _HAS_TORCH = True
-    _NN_MODULE = nn.Module
+    _NN_MODULE: Any = nn.Module
 except ImportError:
-    torch = None  # type: ignore
-    nn = None     # type: ignore
+    torch: Any = None
+    nn: Any = None
     _HAS_TORCH = False
-    _NN_MODULE = object  # type: ignore
+    _NN_MODULE: Any = object
 
 from pydantic import BaseModel, Field
 
@@ -623,8 +623,8 @@ def evaluate_profile(request: ProfileQCRequest) -> ProfileQCResponse:
     assert _MODEL is not None and _META and _THRESHOLDS
     t_start = time.perf_counter()
 
-    ti = np.interp(P_GRID, p, t)
-    si = np.interp(P_GRID, p, s)
+    ti = np.asarray(np.interp(P_GRID, p, t), dtype=np.float64)
+    si = np.asarray(np.interp(P_GRID, p, s), dtype=np.float64)
 
     scores, fired, issue, z_local, z_global = _analyze(
         _MODEL, _META, _THRESHOLDS, _RESID_STD_GLOBAL, ti, si
@@ -644,13 +644,11 @@ def evaluate_profile(request: ProfileQCRequest) -> ProfileQCResponse:
 
     return ProfileQCResponse(
         platform_number=request.platform_number,
-        is_anomalous=bool(is_anomalous),
-        reconstruction_mse=float(round(scores["mse"], 6)),
-        flagged_depth_levels=[float(f) for f in flagged],
+        is_anomalous=is_anomalous,
+        reconstruction_mse=round(scores["mse"], 6),
+        flagged_depth_levels=flagged,
         detected_issue=issue,
-        recommended_qc_flag=int(
-            _recommend_flag(is_anomalous, fired["spike"], scores["mse"], issue)
-        ),
+        recommended_qc_flag=_recommend_flag(is_anomalous, fired["spike"], scores["mse"], issue),
     )
 
 
