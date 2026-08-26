@@ -591,7 +591,7 @@ def score_cast(
     th = thresholds if thresholds is not None else _THRESHOLDS
     assert m is not None and mt and th
     scores, fired, issue, _, _ = _analyze(m, mt, th, resid_std_global, temps, salinities)
-    return bool(any(fired.values())), issue, scores["mse"]
+    return any(fired.values()), issue, scores["mse"]
 
 
 def evaluate_profile(request: ProfileQCRequest) -> ProfileQCResponse:
