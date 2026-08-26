@@ -11,15 +11,18 @@ interface GlobalHeaderProps {
 
 export function GlobalHeader({ onOpenSearch }: GlobalHeaderProps) {
   const { systemHealth, setCopilotOpen, copilotOpen } = useOperationalState();
-  const [timeStr, setTimeStr] = useState<string>("14:32:08 UTC");
+  const [timeStr, setTimeStr] = useState<string>("00:00:00 IST");
 
   useEffect(() => {
     const updateTime = () => {
-      const now = new Date();
-      const hours = String(now.getUTCHours()).padStart(2, "0");
-      const minutes = String(now.getUTCMinutes()).padStart(2, "0");
-      const seconds = String(now.getUTCSeconds()).padStart(2, "0");
-      setTimeStr(`${hours}:${minutes}:${seconds} UTC`);
+      const time = new Intl.DateTimeFormat("en-IN", {
+        timeZone: "Asia/Kolkata",
+        hour: "2-digit",
+        minute: "2-digit",
+        second: "2-digit",
+        hour12: false,
+      }).format(new Date());
+      setTimeStr(`${time} IST`);
     };
     updateTime();
     const interval = setInterval(updateTime, 1000);
@@ -71,7 +74,7 @@ export function GlobalHeader({ onOpenSearch }: GlobalHeaderProps) {
 
       {/* ── Right Telemetry & Status ──────────────────────────────────────── */}
       <div className="flex items-center gap-4">
-        {/* UTC Clock */}
+        {/* IST Clock */}
         <div className="text-xs font-mono font-medium text-slate-200 tracking-wider">
           {timeStr}
         </div>
