@@ -170,15 +170,24 @@ def _coerce_row(row: Dict[str, Any]):
     )
 
 
-# ── Main Async Loader ─────────────────────────────────────────────────────────
+# ── Main Loader ───────────────────────────────────────────────────────────────
 
-async def load_occurrences(csv_path: Path = OCCURRENCES_CSV_PATH) -> None:
+def load_occurrences_sync(csv_path: Path = OCCURRENCES_CSV_PATH) -> None:
+    """
+    Synchronous loader using psycopg (already in the VARUNA stack).
+    Connects to Supabase DB1 (historical shard) via settings.pg_dsn_db1.
+    """
     try:
         import pandas as pd  # type: ignore
     except ImportError:
         raise RuntimeError("pandas required: pip install pandas")
 
-    import asyncpg  # type: ignore
+    try:
+        import psycopg  # type: ignore
+        import psycopg.rows  # type: ignore
+    except ImportError:
+        raise RuntimeError("psycopg required: pip install psycopg[binary]")
+
     from src.config import settings
 
     if not csv_path.exists():
@@ -186,20 +195,22 @@ async def load_occurrences(csv_path: Path = OCCURRENCES_CSV_PATH) -> None:
         return
 
     print(f"🌊 Loading occurrence CSV: {csv_path}")
-    print(f"   (This may take 30–60s for 100k rows...)")
+    print(f"   (This may take 30–60s for ~100k rows...)")
 
-    # Connect to the primary Supabase DB (Shard 1 — historical)
-    dsn = str(settings.database_url).replace("postgresql+asyncpg://", "postgresql://").replace("postgresql+psycopg2://", "postgresql://")
+    # Use pg_dsn_db1 — the historical shard where marine_biodiversity will live
+    dsn = settings.pg_dsn_db1
 
     try:
-        conn = await asyncpg.connect(dsn, timeout=30)
+        conn = psycopg.connect(dsn, row_factory=psycopg.rows.dict_row, connect_timeout=30)
     except Exception as e:
-        log.error("Failed to connect to PostgreSQL: %s", e)
+        log.error("Failed to connect to PostgreSQL (DB1): %s", e)
         return
 
     try:
-        # Ensure table + indexes exist
-        await conn.execute(CREATE_TABLE_SQL)
+        # Ensure table + indexes exist (idempotent DDL)
+        with conn.cursor() as cur:
+            cur.execute(CREATE_TABLE_SQL)
+        conn.commit()
         print("✅ Table public.marine_biodiversity ready")
 
         total_inserted = 0
@@ -229,16 +240,16 @@ async def load_occurrences(csv_path: Path = OCCURRENCES_CSV_PATH) -> None:
                 continue
 
             try:
-                result = await conn.executemany(INSERT_SQL, tuples)
-                # executemany returns None; count via affected rows string
-                inserted = len(tuples)  # ON CONFLICT DO NOTHING still counts as attempted
-                total_inserted += inserted
+                with conn.cursor() as cur:
+                    cur.executemany(INSERT_SQL, tuples)
+                conn.commit()
+                total_inserted += len(tuples)
             except Exception as e:
+                conn.rollback()
                 log.warning("Chunk %d insert failed: %s", chunk_num, e)
                 total_skipped += len(tuples)
                 continue
 
-            pct = min(100, int(total_inserted / max(1, total_inserted + total_skipped + total_invalid) * 100))
             print(
                 f"\r  ✅ Chunk {chunk_num:>4} | Inserted: {total_inserted:>7} | "
                 f"Invalid: {total_invalid:>5} | Skipped: {total_skipped:>5}",
@@ -247,13 +258,20 @@ async def load_occurrences(csv_path: Path = OCCURRENCES_CSV_PATH) -> None:
 
         print()
         print(f"\n🎉 Ingestion complete!")
-        print(f"   Rows attempted  : {total_inserted + total_invalid + total_skipped:>7}")
-        print(f"   Rows inserted   : {total_inserted:>7}")
-        print(f"   Invalid (bad coords/ID): {total_invalid:>7}")
-        print(f"   Failed batches  : {total_skipped:>7}")
+        print(f"   Rows attempted       : {total_inserted + total_invalid + total_skipped:>7}")
+        print(f"   Rows inserted        : {total_inserted:>7}")
+        print(f"   Invalid (bad coords) : {total_invalid:>7}")
+        print(f"   Failed batches       : {total_skipped:>7}")
 
     finally:
-        await conn.close()
+        conn.close()
+
+
+# Keep async wrapper for compatibility if called from async context
+async def load_occurrences(csv_path: Path = OCCURRENCES_CSV_PATH) -> None:
+    """Async-compatible wrapper — runs the sync loader in a thread."""
+    import asyncio
+    await asyncio.get_event_loop().run_in_executor(None, load_occurrences_sync, csv_path)
 
 
 if __name__ == "__main__":
@@ -266,4 +284,4 @@ if __name__ == "__main__":
         level=logging.INFO,
         format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
     )
-    asyncio.run(load_occurrences())
+    load_occurrences_sync()

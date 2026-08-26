@@ -133,8 +133,8 @@ async def execute_biodiversity_task(
     rows: List[Dict[str, Any]] = []
     t_sql = _time.perf_counter()
     try:
-        from src.database.postgres import execute_query
-        rows = await execute_query(sql)
+        from src.database.postgres import run_sql
+        rows = run_sql(sql, limit=20)
     except Exception as e:
         log.warning("Biodiversity SQL query failed: %s", e)
         # Soft-fail — Qdrant context alone is still useful
