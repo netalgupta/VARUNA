@@ -1,17 +1,21 @@
 "use client";
 
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useMemo } from "react";
 import Image from "next/image";
 import {
   Fish,
   Search,
   Radio,
-  AlertTriangle,
   Sparkles,
   ChevronRight,
   TrendingUp,
   Activity,
   Layers,
+  ChevronLeft,
+  Compass,
+  Droplets,
+  MapPin,
+  Thermometer,
 } from "lucide-react";
 import { useOperationalState } from "@/providers/OperationalProvider";
 
@@ -94,90 +98,85 @@ const FEATURED_SPECIES: FeaturedSpecies[] = [
 export function BiodiversityView() {
   const { biodiversity, selectedSpecies, setSelectedSpecies, setActiveNav, flyToCoordinates } = useOperationalState();
   const [searchQuery, setSearchQuery] = useState("");
-  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const [speciesFilter, setSpeciesFilter] = useState("");
 
-  // ── Render SST Environmental Envelope vs Observed Chart ──────────────────
-  useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return;
+  const speciesCatalog = useMemo(() => {
+    const source = biodiversity.length > 0 ? biodiversity : FEATURED_SPECIES.map((species, index) => ({
+      id: index,
+      scientific_name: species.scientificName,
+      common_name: species.commonName,
+      aphia_id: 0,
+      kingdom: "Animalia",
+      phylum: "Chordata",
+      family: species.taxonomy.split(" / ")[1] || "Marine Taxa",
+      latitude: 10 + index * 3,
+      longitude: 72 + index * 5,
+      depth_m: 200,
+      event_date: "2026-08-20",
+      thermal_range_min_c: Number(species.optimalSst.split("°")[0]),
+      thermal_range_max_c: Number(species.optimalSst.split("–")[1]?.split("°")[0] || 28),
+      salinity_min_psu: 34,
+      salinity_max_psu: 36,
+      hypoxia_avoidance_threshold_umol_kg: 60,
+      institution_code: "CMLRE",
+    })) as typeof biodiversity;
 
-    canvas.width = canvas.parentElement?.clientWidth || 800;
-    canvas.height = 180;
-    const w = canvas.width;
-    const h = canvas.height;
+    return Array.from(
+      new Map(source.map((record) => [record.scientific_name, record])).values()
+    );
+  }, [biodiversity]);
 
-    ctx.clearRect(0, 0, w, h);
+  const activeSpecies = useMemo(() => {
+    return speciesCatalog.find((species) => species.scientific_name === selectedSpecies) || speciesCatalog[0];
+  }, [selectedSpecies, speciesCatalog]);
 
-    // Background Grid
-    ctx.strokeStyle = "rgba(255, 255, 255, 0.06)";
-    ctx.lineWidth = 1;
-    for (let y = 20; y < h - 20; y += 30) {
-      ctx.beginPath();
-      ctx.moveTo(40, y);
-      ctx.lineTo(w - 20, y);
-      ctx.stroke();
+  const visibleSpecies = useMemo(() => {
+    const query = speciesFilter.trim().toLowerCase();
+    if (!query) return speciesCatalog.slice(0, 12);
+    return speciesCatalog.filter((species) =>
+      species.scientific_name.toLowerCase().includes(query) ||
+      species.common_name.toLowerCase().includes(query) ||
+      species.family.toLowerCase().includes(query)
+    ).slice(0, 12);
+  }, [speciesCatalog, speciesFilter]);
 
-      const tempVal = Math.round(34 - ((y - 20) / (h - 40)) * 16);
-      ctx.fillStyle = "#84948F";
-      ctx.font = '10px "JetBrains Mono", monospace';
-      ctx.fillText(`${tempVal}°C`, 10, y + 4);
-    }
+  const activeSpeciesRecords = useMemo(() => {
+    if (!activeSpecies) return [];
+    return biodiversity.filter((record) => record.scientific_name === activeSpecies.scientific_name);
+  }, [activeSpecies, biodiversity]);
 
-    // Months axis
-    const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug"];
-    const stepX = (w - 70) / (months.length - 1);
-    months.forEach((m, idx) => {
-      const x = 50 + idx * stepX;
-      ctx.fillStyle = "#84948F";
-      ctx.font = '10px "JetBrains Mono", monospace';
-      ctx.fillText(m, x - 10, h - 6);
+  const availableGraphs = useMemo(() => ({
+    thermal: activeSpeciesRecords.some((record) => record.thermal_range_min_c != null && record.thermal_range_max_c != null),
+    depth: activeSpeciesRecords.some((record) => record.depth_m != null),
+    salinity: activeSpeciesRecords.some((record) => record.salinity_min_psu != null || record.salinity_max_psu != null),
+    hypoxia: activeSpeciesRecords.some((record) => record.hypoxia_avoidance_threshold_umol_kg != null),
+  }), [activeSpeciesRecords]);
+
+  const featuredSpecies = useMemo<FeaturedSpecies[]>(() => {
+    if (!biodiversity.length) return FEATURED_SPECIES;
+    const images = ["/assets/sardine_marine.png", "/assets/tuna_marine.png", "/assets/grouper_marine.png"];
+    return speciesCatalog.slice(0, 6).map((species, index) => {
+      const stressed = species.thermal_range_max_c > 29;
+      return {
+        category: `${species.family || "MARINE"} SPECIES`.toUpperCase(),
+        categoryBadgeClass: stressed ? "bg-[#FB923C]/20 text-[#FB923C]" : "bg-[#2EE6C6]/20 text-[#2EE6C6]",
+        badgeBg: stressed ? "rgba(251,146,60,0.2)" : "rgba(46,230,198,0.2)",
+        badgeText: stressed ? "#fb923c" : "#2ee6c6",
+        image: images[index % images.length],
+        scientificName: species.scientific_name,
+        commonName: species.common_name || "CMLRE marine record",
+        taxonomy: `${species.phylum || "Chordata"} / ${species.family || "Marine Taxa"}`,
+        optimalSst: `${species.thermal_range_min_c}°C – ${species.thermal_range_max_c}°C`,
+        observedSst: `${biodiversity.filter((record) => record.scientific_name === species.scientific_name).length.toLocaleString()} occurrence records`,
+        isAlert: stressed,
+        statusText: stressed ? "Thermal range flagged" : "Cataloged species",
+        statusColor: stressed ? "#fb923c" : "#2ee6c6",
+        aiDiagnosis: `${species.aphia_id ? `AphiaID #${species.aphia_id}` : "CMLRE occurrence"} · ${species.latitude.toFixed(2)}°N, ${species.longitude.toFixed(2)}°E`,
+        aiBoxClass: stressed ? "bg-amber-500/10 border-amber-500/30 text-amber-300" : "bg-emerald-500/10 border-emerald-500/30 text-emerald-300",
+        aiTextClass: stressed ? "text-amber-300" : "text-emerald-300",
+      };
     });
-
-    // 1. Optimal SST Band (Green shaded zone 22°C - 26°C)
-    const yOptMin = 20 + ((34 - 26) / 16) * (h - 40);
-    const yOptMax = 20 + ((34 - 22) / 16) * (h - 40);
-    ctx.fillStyle = "rgba(46, 230, 198, 0.12)";
-    ctx.fillRect(50, yOptMin, w - 70, yOptMax - yOptMin);
-    ctx.strokeStyle = "rgba(46, 230, 198, 0.4)";
-    ctx.strokeRect(50, yOptMin, w - 70, yOptMax - yOptMin);
-
-    // 2. Observed SST Curve (Red Anomaly Line Jan-Aug 2026)
-    const sstPoints = [26.4, 27.1, 28.0, 29.5, 30.8, 31.4, 30.2, 29.2];
-    ctx.beginPath();
-    ctx.strokeStyle = "#EF4444";
-    ctx.lineWidth = 3;
-
-    sstPoints.forEach((val, idx) => {
-      const x = 50 + idx * stepX;
-      const y = 20 + ((34 - val) / 16) * (h - 40);
-      if (idx === 0) ctx.moveTo(x, y);
-      else ctx.lineTo(x, y);
-    });
-    ctx.stroke();
-
-    // Data points & tooltip markers
-    sstPoints.forEach((val, idx) => {
-      const x = 50 + idx * stepX;
-      const y = 20 + ((34 - val) / 16) * (h - 40);
-      ctx.fillStyle = val > 28 ? "#EF4444" : "#2EE6C6";
-      ctx.beginPath();
-      ctx.arc(x, y, 4, 0, Math.PI * 2);
-      ctx.fill();
-    });
-
-    // Legend
-    ctx.fillStyle = "#2EE6C6";
-    ctx.fillRect(w - 240, 8, 10, 10);
-    ctx.fillStyle = "#D5E4F7";
-    ctx.font = '11px "Plus Jakarta Sans", sans-serif';
-    ctx.fillText("Optimal Habitat Band (22–26°C)", w - 224, 17);
-
-    ctx.fillStyle = "#EF4444";
-    ctx.fillRect(w - 240, 24, 10, 2);
-    ctx.fillText("Observed Arabian Sea SST (2026)", w - 224, 28);
-  }, []);
+  }, [biodiversity, speciesCatalog]);
 
   const filteredDB = biodiversity.filter(
     (b) =>
@@ -212,9 +211,162 @@ export function BiodiversityView() {
         </button>
       </div>
 
+      <div className="p-4 rounded-2xl bg-[#0B1D2C]/90 border border-white/10 shadow-xl flex flex-wrap items-center justify-between gap-4">
+        <div className="flex items-center gap-3 min-w-[280px] flex-1">
+          <div className="w-10 h-10 rounded-xl bg-[#2EE6C6]/15 border border-[#2EE6C6]/45 flex items-center justify-center">
+            <Fish size={20} className="text-[#00FFC6]" />
+          </div>
+          <div className="flex-1">
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-mono text-[#00FFC6] font-bold uppercase tracking-wider">
+                Species Analytics &amp; Habitat Profile
+              </span>
+              <span className="px-2 py-0.5 rounded text-[9px] font-mono font-bold bg-emerald-500/15 text-emerald-300 border border-emerald-500/30">
+                CMLRE LIVE
+              </span>
+            </div>
+            <div className="flex items-center gap-2 mt-1.5">
+              <button
+                type="button"
+                onClick={() => {
+                  const index = Math.max(0, speciesCatalog.findIndex((species) => species.scientific_name === activeSpecies?.scientific_name) - 1);
+                  if (speciesCatalog[index]) setSelectedSpecies(speciesCatalog[index].scientific_name);
+                }}
+                className="p-1.5 rounded-lg bg-white/5 hover:bg-white/15 text-zinc-400 hover:text-white cursor-pointer"
+                title="Previous species"
+              >
+                <ChevronLeft size={15} />
+              </button>
+              <div className="relative flex-1 max-w-md">
+                <Search size={12} className="absolute left-2.5 top-2.5 text-zinc-500" />
+                <input
+                  type="search"
+                  value={speciesFilter}
+                  onChange={(event) => setSpeciesFilter(event.target.value)}
+                  placeholder="Search species, common name, or family..."
+                  aria-label="Search species, common name, or family"
+                  className="w-full h-8 pl-7 pr-2 rounded-lg bg-[#071A2D] border border-white/10 text-xs font-mono text-white placeholder-zinc-500 outline-none focus:border-[#2EE6C6]"
+                />
+                {speciesFilter && (
+                  <div className="absolute left-0 right-0 top-9 z-20 max-h-40 overflow-y-auto rounded-lg bg-[#071A2D] border border-[#2EE6C6]/40 p-1 shadow-2xl">
+                    {visibleSpecies.map((species) => (
+                      <button
+                        type="button"
+                        key={species.id}
+                        onClick={() => {
+                          setSelectedSpecies(species.scientific_name);
+                          setSpeciesFilter("");
+                        }}
+                        className="w-full text-left px-2 py-1.5 rounded hover:bg-[#2EE6C6]/15 text-[10px] font-mono text-slate-200"
+                      >
+                        <span className="block italic font-bold">{species.scientific_name}</span>
+                        <span className="text-zinc-500">{species.common_name} · {species.family}</span>
+                      </button>
+                    ))}
+                    {visibleSpecies.length === 0 && <div className="p-2 text-[10px] text-zinc-500">No matching species</div>}
+                  </div>
+                )}
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  const index = speciesCatalog.findIndex((species) => species.scientific_name === activeSpecies?.scientific_name);
+                  const next = speciesCatalog[(index + 1) % speciesCatalog.length];
+                  if (next) setSelectedSpecies(next.scientific_name);
+                }}
+                className="p-1.5 rounded-lg bg-white/5 hover:bg-white/15 text-zinc-400 hover:text-white cursor-pointer"
+                title="Next species"
+              >
+                <ChevronRight size={15} />
+              </button>
+            </div>
+          </div>
+        </div>
+        <button
+          type="button"
+          onClick={() => activeSpecies && flyToCoordinates?.(activeSpecies.latitude, activeSpecies.longitude, 5)}
+          className="px-3.5 py-2 rounded-xl bg-[#12212E] hover:bg-[#2EE6C6]/20 border border-[#2EE6C6]/40 text-[#83FFE3] font-mono text-xs font-bold flex items-center gap-1.5 cursor-pointer"
+        >
+          <MapPin size={14} /> Locate Species
+        </button>
+      </div>
+
+      {activeSpecies && (
+        <>
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 font-mono text-xs">
+            {[
+              ["Scientific Name", activeSpecies.scientific_name, "text-[#83FFE3]"],
+              ["Occurrence Records", biodiversity.length.toLocaleString(), "text-white"],
+              ["Depth Range", `${activeSpecies.depth_m || 20} m`, "text-white"],
+              ["Thermal Envelope", `${activeSpecies.thermal_range_min_c}–${activeSpecies.thermal_range_max_c} °C`, "text-[#4ADE80]"],
+              ["Salinity Range", `${activeSpecies.salinity_min_psu || 34}–${activeSpecies.salinity_max_psu || 36} PSU`, "text-[#60A5FA]"],
+              ["Hypoxia Threshold", `${activeSpecies.hypoxia_avoidance_threshold_umol_kg || 60} µmol/kg`, "text-[#FFA500]"],
+            ].map(([label, value, color]) => (
+              <div key={label} className="p-3.5 rounded-2xl bg-[#0B1D2C]/90 border border-white/10 shadow-lg min-w-0">
+                <span className="text-[10px] text-[#809AAB] block uppercase">{label}</span>
+                <span className={`text-sm font-bold mt-1 block truncate ${color}`}>{value}</span>
+                <span className="text-[9px] text-zinc-500">CMLRE biodiversity record</span>
+              </div>
+            ))}
+          </div>
+
+          <div className="p-3 rounded-xl bg-[#071A2D]/80 border border-white/5 flex flex-wrap items-center gap-2 font-mono text-[10px]">
+            <span className="text-[#809AAB] font-bold flex items-center gap-1.5 mr-2"><Layers size={13} className="text-[#2EE6C6]" /> Data Channels:</span>
+            <span className="px-2 py-0.5 rounded border bg-cyan-500/20 text-cyan-300 border-cyan-500/40 font-bold">✓ OCCURRENCES</span>
+            <span className="px-2 py-0.5 rounded border bg-emerald-500/20 text-emerald-300 border-emerald-500/40 font-bold">✓ HABITAT</span>
+            <span className="px-2 py-0.5 rounded border bg-blue-500/20 text-blue-300 border-blue-500/40 font-bold">✓ ARGO JOIN</span>
+            <span className="px-2 py-0.5 rounded border bg-amber-500/20 text-amber-300 border-amber-500/40 font-bold">✓ THERMAL RANGE</span>
+            <span className="px-2 py-0.5 rounded border bg-purple-500/20 text-purple-300 border-purple-500/40 font-bold">✓ TAXONOMY</span>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 font-mono">
+            {availableGraphs.thermal && (
+              <div className="p-4 rounded-2xl bg-[#0B1D2C]/90 border border-white/10 shadow-xl">
+                <div className="flex items-center justify-between border-b border-white/10 pb-2 mb-2"><span className="text-xs font-bold text-[#2EE6C6] flex items-center gap-1.5"><Thermometer size={13} /> Thermal Range</span><span className="text-[10px] text-zinc-400">°C</span></div>
+                <div className="h-44 bg-[#071A2D]/60 rounded-xl p-3 border border-white/5 space-y-2 overflow-hidden">
+                  {activeSpeciesRecords.slice(0, 8).map((record) => <div key={record.id} className="flex items-center gap-2"><span className="w-10 text-[9px] text-zinc-500">#{record.id}</span><div className="h-3 flex-1 rounded bg-[#2EE6C6]/15 relative"><span className="absolute h-full rounded bg-[#2EE6C6]" style={{ left: `${Math.max(0, ((record.thermal_range_min_c - 10) / 30) * 100)}%`, width: `${Math.max(4, ((record.thermal_range_max_c - record.thermal_range_min_c) / 30) * 100)}%` }} /></div></div>)}
+                </div>
+                <div className="text-[10px] text-zinc-400 mt-2">Observed range from {activeSpeciesRecords.length.toLocaleString()} records</div>
+              </div>
+            )}
+            {availableGraphs.depth && (
+              <div className="p-4 rounded-2xl bg-[#0B1D2C]/90 border border-white/10 shadow-xl">
+                <div className="flex items-center justify-between border-b border-white/10 pb-2 mb-2"><span className="text-xs font-bold text-[#38BDF8] flex items-center gap-1.5"><TrendingUp size={13} /> Depth Distribution</span><span className="text-[10px] text-zinc-400">metres</span></div>
+                <div className="h-44 bg-[#071A2D]/60 rounded-xl p-3 border border-white/5 flex items-end gap-1">{activeSpeciesRecords.slice(0, 16).map((record, index) => <div key={record.id} className="flex-1 min-w-[3px] rounded-t bg-[#38BDF8]" style={{ height: `${Math.max(6, 100 - Math.min(90, (record.depth_m || 0) / 20))}%`, opacity: 0.45 + (index % 4) * 0.12 }} title={`${record.depth_m}m`} />)}</div>
+                <div className="flex justify-between text-[10px] text-zinc-400 mt-2"><span>Shallow</span><span className="text-[#38BDF8] font-bold">Max {Math.max(...activeSpeciesRecords.map((record) => record.depth_m || 0))}m</span><span>Deep</span></div>
+              </div>
+            )}
+            {availableGraphs.salinity && (
+              <div className="p-4 rounded-2xl bg-[#0B1D2C]/90 border border-white/10 shadow-xl">
+                <div className="flex items-center justify-between border-b border-white/10 pb-2 mb-2"><span className="text-xs font-bold text-[#60A5FA] flex items-center gap-1.5"><Droplets size={13} /> Salinity Tolerance</span><span className="text-[10px] text-zinc-400">PSU</span></div>
+                <div className="h-44 bg-[#071A2D]/60 rounded-xl p-3 border border-white/5 space-y-2 overflow-hidden">{activeSpeciesRecords.slice(0, 8).map((record) => <div key={record.id} className="flex items-center gap-2"><span className="w-10 text-[9px] text-zinc-500">#{record.id}</span><div className="h-3 flex-1 rounded bg-[#60A5FA]/15 relative"><span className="absolute h-full rounded bg-[#60A5FA]" style={{ left: `${((record.salinity_min_psu || 30) - 30) * 12.5}%`, width: `${Math.max(4, ((record.salinity_max_psu || 38) - (record.salinity_min_psu || 30)) * 12.5)}%` }} /></div></div>)}</div>
+                <div className="text-[10px] text-zinc-400 mt-2">Measured tolerance bounds in CMLRE records</div>
+              </div>
+            )}
+            {availableGraphs.hypoxia && (
+              <div className="p-4 rounded-2xl bg-[#0B1D2C]/90 border border-white/10 shadow-xl">
+                <div className="flex items-center justify-between border-b border-white/10 pb-2 mb-2"><span className="text-xs font-bold text-[#FFA500] flex items-center gap-1.5"><Activity size={13} /> Hypoxia Threshold</span><span className="text-[10px] text-zinc-400">µmol/kg</span></div>
+                <div className="h-44 bg-[#071A2D]/60 rounded-xl p-3 border border-white/5 flex items-end gap-1">{activeSpeciesRecords.slice(0, 16).map((record, index) => <div key={record.id} className="flex-1 min-w-[3px] rounded-t bg-[#FFA500]" style={{ height: `${Math.min(100, ((record.hypoxia_avoidance_threshold_umol_kg || 0) / 150) * 100)}%`, opacity: 0.5 + (index % 3) * 0.15 }} title={`${record.hypoxia_avoidance_threshold_umol_kg} µmol/kg`} />)}</div>
+                <div className="flex justify-between text-[10px] text-zinc-400 mt-2"><span>Critical</span><span className="text-[#FFA500] font-bold">Threshold by record</span><span>Stable</span></div>
+              </div>
+            )}
+            <div className="p-4 rounded-2xl bg-[#0B1D2C]/90 border border-white/10 shadow-xl">
+              <div className="flex items-center justify-between border-b border-white/10 pb-2 mb-2"><span className="text-xs font-bold text-[#38BDF8] flex items-center gap-1.5"><Compass size={13} /> Habitat Coordinates</span><span className="text-[10px] text-cyan-400">Spatial Join</span></div>
+              <div className="h-44 bg-[#071A2D]/60 rounded-xl border border-white/5 relative overflow-hidden"><div className="absolute inset-0 opacity-30 bg-[radial-gradient(circle_at_center,#2EE6C6_1px,transparent_1px)] [background-size:16px_16px]" />{activeSpeciesRecords.slice(0, 40).map((record) => <span key={record.id} className="absolute w-1.5 h-1.5 rounded-full bg-[#00FFC6] shadow-[0_0_7px_#00FFC6]" style={{ left: `${Math.min(95, Math.max(5, ((record.longitude + 180) / 360) * 100))}%`, top: `${Math.min(95, Math.max(5, ((90 - record.latitude) / 180) * 100))}%` }} />)}</div>
+              <div className="flex justify-between text-[10px] text-zinc-400 mt-2"><span>{activeSpeciesRecords.length} plotted</span><span className="text-[#83FFE3] font-bold">{activeSpecies.latitude.toFixed(2)}°N · {activeSpecies.longitude.toFixed(2)}°E</span></div>
+            </div>
+            <div className="p-4 rounded-2xl bg-[#0B1D2C]/90 border border-white/10 shadow-xl">
+              <div className="flex items-center justify-between border-b border-white/10 pb-2 mb-2"><span className="text-xs font-bold text-[#FBBF24] flex items-center gap-1.5"><TrendingUp size={13} /> Occurrence Timeline</span><span className="text-[10px] text-zinc-400">event_date</span></div>
+              <div className="h-44 bg-[#071A2D]/60 rounded-xl p-3 border border-white/5 flex items-end gap-1">{activeSpeciesRecords.slice(0, 16).map((record, index) => <div key={record.id} className="flex-1 min-w-[3px] rounded-t bg-gradient-to-t from-[#2EE6C6]/30 to-[#00FFC6]" style={{ height: `${35 + ((new Date(record.event_date).getUTCMonth() + index) % 8) * 8}%` }} />)}</div>
+              <div className="flex justify-between text-[10px] text-zinc-400 mt-2"><span>Historical</span><span className="text-[#FBBF24] font-bold">{activeSpeciesRecords.length.toLocaleString()} records</span><span>Latest</span></div>
+            </div>
+          </div>
+        </>
+      )}
+
       {/* ── Netal 3-Card Featured Species Bento Grid ──────────────────────── */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-        {FEATURED_SPECIES.map((spec, idx) => (
+        {featuredSpecies.map((spec, idx) => (
           <div
             key={idx}
             onClick={() => setSelectedSpecies(spec.scientificName)}
@@ -272,30 +424,6 @@ export function BiodiversityView() {
             </div>
           </div>
         ))}
-      </div>
-
-      {/* ── SST Environmental Envelope Chart ──────────────────────────────── */}
-      <div className="p-5 rounded-2xl bg-[#0B1D2C]/90 border border-white/10 shadow-xl space-y-3">
-        <div className="flex items-center justify-between">
-          <h4 className="text-sm font-bold font-mono text-white tracking-wider flex items-center gap-2">
-            <TrendingUp size={16} className="text-[#00FFC6]" />
-            SST ENVIRONMENTAL ENVELOPE vs OBSERVED (Jan–Aug 2026)
-          </h4>
-          <span className="text-[10px] font-mono text-[#2EE6C6] bg-[#2EE6C6]/10 px-2 py-0.5 rounded border border-[#2EE6C6]/30">
-            INCOIS BGC Telemetry
-          </span>
-        </div>
-
-        <div className="w-full bg-[#071A2D]/60 rounded-xl p-2 border border-white/5">
-          <canvas ref={canvasRef} className="w-full h-44 rounded" />
-        </div>
-
-        <p className="font-mono text-xs text-[#F87171] font-semibold flex items-center gap-1.5 pt-1">
-          <AlertTriangle size={14} className="text-[#F87171] shrink-0" />
-          <span>
-            ⚠ AI Diagnosis: 3 out of 6 key commercial species are experiencing thermal stress above optimal SST bands — habitat compression and northward range shift predicted for Q3 2026.
-          </span>
-        </p>
       </div>
 
       {/* ── Complete CMLRE Species Database Catalog Table ─────────────────── */}
