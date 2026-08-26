@@ -657,19 +657,18 @@ def get_cmlre_biodiversity_dataset() -> List[Dict[str, Any]]:
     try:
         root_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", ".."))
         csv_candidates = [
-            os.path.join(root_dir, "cmlre_occurrence_clean-dataset1.csv"),
-            os.path.join(root_dir, "cmlre_occurrence_clean.csv"),
-            os.path.join(root_dir, "dataset1_fixed.csv"),
-            "cmlre_occurrence_clean-dataset1.csv",
+            os.path.join(root_dir, "data", "cmlre_occurrence_master.csv"),
+            os.path.join(root_dir, "cmlre_occurrence_master_final--dataset1final.csv"),
+            "data/cmlre_occurrence_master.csv",
         ]
-        json_candidates = [
-            os.path.join(root_dir, "species_ecological_profiles.json"),
-            os.path.join(root_dir, "ingestion", "species_ecological_profiles.json"),
-            "species_ecological_profiles.json",
+        d2_candidates = [
+            os.path.join(root_dir, "data", "species_ecological_profiles_master.csv"),
+            os.path.join(root_dir, "species_ecological_profiles_master----dataset2final.csv"),
+            "data/species_ecological_profiles_master.csv",
         ]
 
         csv_path = next((p for p in csv_candidates if os.path.exists(p)), None)
-        json_path = next((p for p in json_candidates if os.path.exists(p)), None)
+        d2_path = next((p for p in d2_candidates if os.path.exists(p)), None)
 
         if not csv_path:
             log.warning("CMLRE CSV dataset not found; falling back to mock dataset")
@@ -677,44 +676,13 @@ def get_cmlre_biodiversity_dataset() -> List[Dict[str, Any]]:
             return _cmlre_bio_dataset
 
         import pandas as pd
-        df = pd.read_csv(csv_path)
-
-        # Merge key commercial and ecological species from master dataset if present
-        master_csv = os.path.join(root_dir, "cmlre_occurrence_master_final--dataset1final.csv")
-        if os.path.exists(master_csv):
-            try:
-                df_master = pd.read_csv(master_csv, low_memory=False)
-                key_targets = {
-                    "sardinella longiceps", "rastrelliger kanagurta", "thunnus albacares",
-                    "acropora millepora", "epinephelus tauvina", "harpadon nehereus",
-                    "katsuwonus pelamis", "penaeus monodon", "portunus pelagicus"
-                }
-                existing_names = set(df["scientific_name"].dropna().astype(str).str.strip().str.lower())
-                missing_targets = key_targets - existing_names
-                if missing_targets:
-                    mask = df_master["scientific_name"].dropna().astype(str).str.strip().str.lower().isin(missing_targets)
-                    extra_rows = df_master[mask]
-                    if not extra_rows.empty:
-                        df = pd.concat([df, extra_rows], ignore_index=True)
-                        log.info("Appended %d key species occurrence records from master dataset", len(extra_rows))
-            except Exception as e_master:
-                log.warning("Could not merge master occurrences: %s", str(e_master))
+        # Load canonical master occurrences (limit to top 15k high-confidence rows for fast in-memory REST caching)
+        df = pd.read_csv(csv_path, nrows=15000, low_memory=False)
 
         profiles_by_name: Dict[str, Dict[str, Any]] = {}
-        if json_path and os.path.exists(json_path):
-            with open(json_path, "r", encoding="utf-8") as f:
-                profiles = json.load(f)
-                profiles_by_name = {
-                    str(p.get("scientific_name", "")).strip().lower(): p
-                    for p in profiles
-                    if isinstance(p, dict) and p.get("scientific_name")
-                }
-
-        # Also load master ecological profiles CSV if available to cover all 20k+ species
-        d2_master_csv = os.path.join(root_dir, "species_ecological_profiles_master----dataset2final.csv")
-        if os.path.exists(d2_master_csv):
+        if d2_path and os.path.exists(d2_path):
             try:
-                df_d2 = pd.read_csv(d2_master_csv, low_memory=False)
+                df_d2 = pd.read_csv(d2_path, low_memory=False)
                 for _, p_row in df_d2.iterrows():
                     p_name = str(p_row.get("scientific_name", "")).strip().lower()
                     if p_name and p_name not in profiles_by_name:
@@ -733,6 +701,7 @@ def get_cmlre_biodiversity_dataset() -> List[Dict[str, Any]]:
                             "aphia_id": p_row.get("aphia_id"),
                         }
             except Exception as e_d2:
+                log.warning("Could not load master profiles: %s", str(e_d2))
                 log.warning("Could not merge master profiles: %s", str(e_d2))
 
         import math

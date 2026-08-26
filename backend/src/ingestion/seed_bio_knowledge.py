@@ -23,8 +23,13 @@ log = logging.getLogger("varuna.ingestion.bio_knowledge")
 
 # ── Canonical Dataset Paths ──────────────────────────────────────────────────
 _REPO_ROOT = Path(__file__).resolve().parents[3]  # backend/src/ingestion → floatchatai-main
-SPECIES_CSV_PATH = _REPO_ROOT / "species_ecological_profiles_master----dataset2final.csv"
-SPECIES_JSON_PATH = _REPO_ROOT / "species_ecological_profiles.json"
+_DATA_DIR = _REPO_ROOT / "data"
+SPECIES_CSV_PATH = (
+    _DATA_DIR / "species_ecological_profiles_master.csv"
+    if (_DATA_DIR / "species_ecological_profiles_master.csv").exists()
+    else _REPO_ROOT / "species_ecological_profiles_master----dataset2final.csv"
+)
+SPECIES_JSON_PATH = _DATA_DIR / "species_ecological_profiles.json"
 
 QDRANT_COLLECTION = "bio_knowledge"
 EMBED_BATCH_SIZE = 64    # rows per embedding call

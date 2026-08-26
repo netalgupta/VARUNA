@@ -19,7 +19,12 @@ log = logging.getLogger("varuna.ingestion.cmlre_occurrences")
 
 # ── Canonical Dataset Paths ───────────────────────────────────────────────────
 _REPO_ROOT = Path(__file__).resolve().parents[3]  # backend/src/ingestion → floatchatai-main
-OCCURRENCES_CSV_PATH = _REPO_ROOT / "cmlre_occurrence_master_final--dataset1final.csv"
+_DATA_DIR = _REPO_ROOT / "data"
+OCCURRENCES_CSV_PATH = (
+    _DATA_DIR / "cmlre_occurrence_master.csv"
+    if (_DATA_DIR / "cmlre_occurrence_master.csv").exists()
+    else _REPO_ROOT / "cmlre_occurrence_master_final--dataset1final.csv"
+)
 
 CHUNK_SIZE = 5_000  # rows per INSERT batch
 
@@ -77,11 +82,11 @@ INSERT INTO public.marine_biodiversity (
     minimum_depth_m, maximum_depth_m, individual_count,
     occurrence_status, basis_of_record, source_dataset_id, source_dataset_name
 ) VALUES (
-    $1, $2, $3, $4,
-    $5, $6, $7, $8, $9, $10, $11,
-    $12, $13, ST_SetSRID(ST_MakePoint($13, $12), 4326)::geography, $14,
-    $15, $16, $17,
-    $18, $19, $20, $21
+    %s, %s, %s, %s,
+    %s, %s, %s, %s, %s, %s, %s,
+    %s, %s, ST_SetSRID(ST_MakePoint(%s, %s), 4326)::geography, %s,
+    %s, %s, %s,
+    %s, %s, %s, %s
 )
 ON CONFLICT (occurrence_id) DO NOTHING;
 """
@@ -146,27 +151,29 @@ def _coerce_row(row: Dict[str, Any]):
         return None
 
     return (
-        occ_id,                                          # $1  occurrence_id
-        _s(row.get("event_id"), 255),                    # $2  event_id
-        sci_name,                                        # $3  scientific_name
-        _s(row.get("scientific_name_id"), 255),          # $4  scientific_name_id
-        _s(row.get("kingdom"), 50),                      # $5  kingdom
-        _s(row.get("phylum"), 50),                       # $6  phylum
-        _s(row.get("class"), 50),                        # $7  class
-        _s(row.get("order"), 50),                        # $8  order
-        _s(row.get("family"), 100),                      # $9  family
-        _s(row.get("genus"), 100),                       # $10 genus
-        _s(row.get("species"), 100),                     # $11 species
-        lat,                                             # $12 decimal_latitude
-        lon,                                             # $13 decimal_longitude
-        event_date,                                      # $14 event_date
-        _f(row.get("minimum_depth_m")) or 0.0,           # $15 minimum_depth_m
-        _f(row.get("maximum_depth_m")) or 10.0,          # $16 maximum_depth_m
-        _i(row.get("individual_count")) or 1,            # $17 individual_count
-        _s(row.get("occurrence_status"), 50) or "present",  # $18 occurrence_status
-        _s(row.get("basis_of_record"), 100) or "PreservedSpecimen",  # $19
-        _s(row.get("source_dataset_id"), 255) or "CMLRE",   # $20
-        _s(row.get("source_dataset_name")) or "CMLRE IndOBIS Dataset",  # $21
+        occ_id,                                          # %s  occurrence_id
+        _s(row.get("event_id"), 255),                    # %s  event_id
+        sci_name,                                        # %s  scientific_name
+        _s(row.get("scientific_name_id"), 255),          # %s  scientific_name_id
+        _s(row.get("kingdom"), 50),                      # %s  kingdom
+        _s(row.get("phylum"), 50),                       # %s  phylum
+        _s(row.get("class"), 50),                        # %s  class
+        _s(row.get("order"), 50),                        # %s  order
+        _s(row.get("family"), 100),                      # %s  family
+        _s(row.get("genus"), 100),                       # %s  genus
+        _s(row.get("species"), 100),                     # %s  species
+        lat,                                             # %s  decimal_latitude
+        lon,                                             # %s  decimal_longitude
+        lon,                                             # %s  ST_MakePoint(lon, ...)
+        lat,                                             # %s  ST_MakePoint(..., lat)
+        event_date,                                      # %s  event_date
+        _f(row.get("minimum_depth_m")) or 0.0,           # %s  minimum_depth_m
+        _f(row.get("maximum_depth_m")) or 10.0,          # %s  maximum_depth_m
+        _i(row.get("individual_count")) or 1,            # %s  individual_count
+        _s(row.get("occurrence_status"), 50) or "present",  # %s  occurrence_status
+        _s(row.get("basis_of_record"), 100) or "PreservedSpecimen",  # %s
+        _s(row.get("source_dataset_id"), 255) or "CMLRE",   # %s
+        _s(row.get("source_dataset_name")) or "CMLRE IndOBIS Dataset",  # %s
     )
 
 
@@ -186,7 +193,7 @@ def load_occurrences_sync(csv_path: Path = OCCURRENCES_CSV_PATH) -> None:
         import psycopg  # type: ignore
         import psycopg.rows  # type: ignore
     except ImportError:
-        raise RuntimeError("psycopg required: pip install psycopg[binary]")
+        raise RuntimeError("psycopg required: pip install 'psycopg[binary]'")
 
     from src.config import settings
 
@@ -197,7 +204,6 @@ def load_occurrences_sync(csv_path: Path = OCCURRENCES_CSV_PATH) -> None:
     print(f"🌊 Loading occurrence CSV: {csv_path}")
     print(f"   (This may take 30–60s for ~100k rows...)")
 
-    # Use pg_dsn_db1 — the historical shard where marine_biodiversity will live
     dsn = settings.pg_dsn_db1
 
     try:
@@ -207,7 +213,6 @@ def load_occurrences_sync(csv_path: Path = OCCURRENCES_CSV_PATH) -> None:
         return
 
     try:
-        # Ensure table + indexes exist (idempotent DDL)
         with conn.cursor() as cur:
             cur.execute(CREATE_TABLE_SQL)
         conn.commit()
