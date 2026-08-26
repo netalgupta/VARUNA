@@ -53,18 +53,29 @@ export function floatsToGeoJSON(floats: ActiveFloatSummary[], selectedFloatId: s
 export function biodiversityToGeoJSON(biodiversity: BiodiversityRecord[]) {
   const validFeatures = (biodiversity || [])
     .map((b: any) => {
-      const lon = Number(b.longitude ?? b.lon);
-      const lat = Number(b.latitude ?? b.lat);
+      const lon = Number(b.longitude ?? b.lon ?? b.decimal_longitude);
+      const lat = Number(b.latitude ?? b.lat ?? b.decimal_latitude);
 
       if (isNaN(lon) || isNaN(lat)) return null;
 
       return {
         type: "Feature" as const,
         properties: {
-          id: b.id,
+          id: b.id ?? b.occurrence_id,
+          occurrence_id: b.occurrence_id || `CMLRE_${b.id}`,
           name: b.scientific_name,
-          common_name: b.common_name,
+          scientific_name: b.scientific_name,
+          common_name: b.common_name || b.scientific_name,
+          family: b.family || "Marine Taxa",
+          genus: b.genus || b.scientific_name.split(" ")[0],
+          dataset_type: b.dataset_type || "voucher",
           depth_m: b.depth_m ?? 20,
+          event_date: b.event_date || "2024-01-01",
+          thermal_min: b.thermal_range_min_c || 22.0,
+          thermal_max: b.thermal_range_max_c || 28.0,
+          salinity_min: b.salinity_min_psu || 34.0,
+          salinity_max: b.salinity_max_psu || 36.5,
+          hypoxia_threshold: b.hypoxia_avoidance_threshold_umol_kg || 45.0,
         },
         geometry: {
           type: "Point" as const,

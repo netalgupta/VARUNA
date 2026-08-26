@@ -7,20 +7,18 @@ import {
   Radio,
   AlertTriangle,
   Fish,
-  Satellite,
   Activity,
   BarChart3,
   TrendingUp,
   Database,
   Bot,
-  Settings,
   ChevronRight,
   User,
 } from "lucide-react";
 import { useOperationalState, NavItem } from "@/providers/OperationalProvider";
 
 interface NavConfigItem {
-  id: NavItem | "EVENTS" | "SATELLITES" | "SETTINGS";
+  id: NavItem | "EVENTS" | "SATELLITES";
   label: string;
   icon: React.ElementType;
   badge?: number | string;
@@ -50,7 +48,6 @@ export function LeftNav() {
       title: "OBSERVE",
       items: [
         { id: "BIODIVERSITY", label: "Biodiversity", icon: Fish },
-        { id: "OCEAN", label: "Satellites", icon: Satellite },
         { id: "ALERTS", label: "Events", icon: Activity },
       ],
     },
@@ -66,12 +63,6 @@ export function LeftNav() {
       title: "AI",
       items: [
         { id: "COPILOT", label: "Varuna AI", icon: Bot, badge: "Beta", badgeType: "blue" },
-      ],
-    },
-    {
-      title: "ADMIN",
-      items: [
-        { id: "COMMAND_CENTER", label: "Settings", icon: Settings },
       ],
     },
   ];
@@ -90,7 +81,7 @@ export function LeftNav() {
               const Icon = item.icon;
               const isActive =
                 (item.id === "COMMAND_CENTER" && activeNav === "COMMAND_CENTER" && section.title === "COMMAND") ||
-                (item.id === activeNav && item.label !== "Settings");
+                item.id === activeNav;
 
               return (
                 <button
@@ -98,8 +89,8 @@ export function LeftNav() {
                   onClick={() => {
                     if (item.id === "COPILOT") {
                       setActiveNav("COPILOT");
-                      setCopilotOpen(true);
-                    } else if (item.id !== "EVENTS" && item.id !== "SATELLITES" && item.id !== "SETTINGS") {
+                      setCopilotOpen(false);
+                    } else if (item.id !== "EVENTS" && item.id !== "SATELLITES") {
                       setActiveNav(item.id as NavItem);
                     }
                   }}

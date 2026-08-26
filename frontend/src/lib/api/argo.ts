@@ -11,7 +11,7 @@ import type {
   RegionalStatsResponse,
 } from "@/types/argo";
 
-const profileCache = new Map<string, DepthProfileResponse>();
+
 const trajectoryCache = new Map<string, FloatTrajectoryResponse>();
 const statsCache = new Map<string, RegionalStatsResponse>();
 let floatsCache: { data: ActiveFloatSummary[]; timestamp: number } | null = null;
@@ -59,18 +59,13 @@ export async function getDepthProfile(
   platformNumber: number | string,
   cycle?: number
 ): Promise<DepthProfileResponse> {
-  const cacheKey = `${platformNumber}_${cycle ?? "all"}`;
-  if (profileCache.has(cacheKey)) {
-    return profileCache.get(cacheKey)!;
-  }
-
   try {
     const res = await apiClient<any>(ENDPOINTS.PROFILE(platformNumber), {
-      params: { cycle },
-      timeout: 6000,
+      params: cycle != null ? { cycle } : {},
+      timeout: 8000,
     });
 
-    // Normalize: backend returns `depth_m` (aliased from `pres`), frontend expects `depth`
+    // Normalize: backend returns `pres`, `depth_m`, `depth` — ensure `depth` is always present
     const normalizeMeasurements = (measurements: any[]): any[] => {
       if (!Array.isArray(measurements)) return [];
       return measurements.map((m: any) => ({
@@ -101,12 +96,10 @@ export async function getDepthProfile(
       result = { platform_number: Number(platformNumber), measurements: [] };
     }
 
-    profileCache.set(cacheKey, result);
     return result;
   } catch {
-    const emptyResult: DepthProfileResponse = { platform_number: Number(platformNumber), measurements: [] };
-    profileCache.set(cacheKey, emptyResult);
-    return emptyResult;
+    // Do NOT cache errors — let the user retry
+    return { platform_number: Number(platformNumber), measurements: [] };
   }
 }
 

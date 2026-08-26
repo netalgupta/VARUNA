@@ -67,7 +67,7 @@ function OperationsCommandCenter() {
       <CommandPalette isOpen={paletteOpen} onClose={() => setPaletteOpen(false)} />
 
       {/* ── 5. AI Copilot Drawer ──────────────────────────────────────────── */}
-      <CopilotDrawer />
+      {activeNav !== "COPILOT" && <CopilotDrawer />}
     </div>
   );
 }

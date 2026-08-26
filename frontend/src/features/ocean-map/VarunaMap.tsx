@@ -16,8 +16,6 @@ import {
   Maximize2,
   ArrowDown,
   Radio,
-  Satellite,
-  Zap,
   ChevronRight,
 } from "lucide-react";
 
@@ -28,11 +26,9 @@ interface VarunaMapProps {
 
 export function VarunaMap({ onHoverCoords, is3DMode }: VarunaMapProps) {
   const containerRef = useRef<HTMLDivElement>(null);
+  const bioCanvasRef = useRef<HTMLCanvasElement>(null);
   const mapRef = useRef<maplibregl.Map | null>(null);
-
-  // Marker storage refs to prevent memory leaks
   const floatMarkersRef = useRef<maplibregl.Marker[]>([]);
-  const bioMarkersRef = useRef<maplibregl.Marker[]>([]);
 
   const {
     floats,
@@ -44,32 +40,182 @@ export function VarunaMap({ onHoverCoords, is3DMode }: VarunaMapProps) {
     registerFlyToHandler,
   } = useOperationalState();
 
-  // ── Sync GeoJSON Sources for Fast GPU Rendering ───────────────────────────
-  const updateGeoJsonSources = useCallback(() => {
+  // Always keep fresh references to prevent stale closures during map lifecycle events
+  const biodiversityRef = useRef(biodiversity);
+  biodiversityRef.current = biodiversity;
+
+  const mapLayersRef = useRef(mapLayers);
+  mapLayersRef.current = mapLayers;
+
+  const floatsRef = useRef(floats);
+  floatsRef.current = floats;
+
+  const selectedFloatIdRef = useRef(selectedFloatId);
+  selectedFloatIdRef.current = selectedFloatId;
+
+  // ── Bulletproof 60 FPS HTML5 Canvas Biodiversity Renderer ──────────────────
+  const renderBioCanvas = useCallback(() => {
+    const canvas = bioCanvasRef.current;
+    const map = mapRef.current;
+    if (!canvas || !map) return;
+
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+
+    const rect = canvas.getBoundingClientRect();
+    if (canvas.width !== rect.width || canvas.height !== rect.height) {
+      canvas.width = rect.width;
+      canvas.height = rect.height;
+    }
+
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    if (!mapLayersRef.current.biodiversity) return;
+
+    const currentBio = biodiversityRef.current;
+    if (!currentBio || currentBio.length === 0) return;
+
+    const zoom = map.getZoom();
+    const coreRadius = zoom > 6 ? 4.5 : zoom > 4 ? 3.5 : 2.5;
+
+    // Pass 1: Outer Glowing Emerald Halo
+    ctx.fillStyle = "rgba(16, 185, 129, 0.4)";
+    currentBio.forEach((b: any) => {
+      const lon = Number(b.longitude ?? b.lon ?? b.decimal_longitude);
+      const lat = Number(b.latitude ?? b.lat ?? b.decimal_latitude);
+      if (isNaN(lon) || isNaN(lat)) return;
+
+      const p = map.project([lon, lat]);
+      if (p.x < -20 || p.y < -20 || p.x > canvas.width + 20 || p.y > canvas.height + 20) return;
+
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, coreRadius + 3.5, 0, Math.PI * 2);
+      ctx.fill();
+    });
+
+    // Pass 2: High-Contrast Crisp Specimen Core Dots
+    currentBio.forEach((b: any) => {
+      const lon = Number(b.longitude ?? b.lon ?? b.decimal_longitude);
+      const lat = Number(b.latitude ?? b.lat ?? b.decimal_latitude);
+      if (isNaN(lon) || isNaN(lat)) return;
+
+      const p = map.project([lon, lat]);
+      if (p.x < -20 || p.y < -20 || p.x > canvas.width + 20 || p.y > canvas.height + 20) return;
+
+      const dtype = String(b.dataset_type || "voucher").toLowerCase();
+      ctx.fillStyle =
+        dtype === "edna"
+          ? "#c084fc"
+          : dtype === "fishery"
+          ? "#f59e0b"
+          : dtype === "marine_mammal"
+          ? "#38bdf8"
+          : "#10b981";
+
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, coreRadius, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.strokeStyle = "#ffffff";
+      ctx.lineWidth = 1;
+      ctx.stroke();
+    });
+  }, []);
+
+  // ── Unified Map Sync (ARGO DOM Markers & Canvas Redraw) ─────────────────────
+  const syncMapData = useCallback(() => {
+    renderBioCanvas();
+
     const map = mapRef.current;
     if (!map) return;
 
-    if (map.getSource("argo-floats")) {
-      const geojson = mapLayers.argoFloats
-        ? floatsToGeoJSON(floats, selectedFloatId)
-        : { type: "FeatureCollection", features: [] };
-      (map.getSource("argo-floats") as maplibregl.GeoJSONSource).setData(geojson as any);
-    }
+    const currentLayers = mapLayersRef.current;
+    const currentFloats = floatsRef.current;
+    const currentFloatId = selectedFloatIdRef.current;
 
-    if (map.getSource("biodiversity")) {
-      const geojson = mapLayers.biodiversity
-        ? biodiversityToGeoJSON(biodiversity)
-        : { type: "FeatureCollection", features: [] };
-      (map.getSource("biodiversity") as maplibregl.GeoJSONSource).setData(geojson as any);
+    // Render ARGO Float DOM Markers
+    try {
+      floatMarkersRef.current.forEach((m) => m.remove());
+      floatMarkersRef.current = [];
+
+      const container = containerRef.current;
+      if (container) {
+        const orphans = container.querySelectorAll(".varuna-float-marker, .varuna-bio-marker");
+        orphans.forEach((el) => el.remove());
+      }
+
+      if (currentLayers.argoFloats && currentFloats && currentFloats.length > 0) {
+        currentFloats.forEach((f: any) => {
+          const lon = Number(f.last_lon ?? f.longitude ?? f.lon);
+          const lat = Number(f.last_lat ?? f.latitude ?? f.lat);
+          const wmoId = String(f.wmo_id ?? f.platform_number ?? f.id ?? "");
+          if (isNaN(lon) || isNaN(lat)) return;
+
+          const isSelected = wmoId === String(currentFloatId);
+
+          const el = document.createElement("div");
+          el.className = "varuna-float-marker cursor-pointer group flex items-center justify-center";
+          el.style.width = isSelected ? "32px" : "22px";
+          el.style.height = isSelected ? "32px" : "22px";
+
+          if (isSelected) {
+            el.innerHTML = `
+              <div class="relative w-full h-full flex items-center justify-center">
+                <div class="w-5 h-5 rounded-full bg-cyan-400 border-2 border-white shadow-[0_0_15px_#00e5ff] flex items-center justify-center pulse-cyan">
+                  <div class="w-2 h-2 rounded-full bg-white"></div>
+                </div>
+                <div class="absolute -top-12 left-1/2 -translate-x-1/2 px-2.5 py-1 rounded-lg bg-[#071324]/95 border border-cyan-400/50 text-white text-[11px] font-mono shadow-[0_0_14px_rgba(0,229,255,0.3)] z-50 whitespace-nowrap pointer-events-none text-center">
+                  <div class="font-bold text-white text-xs">ARGO #${wmoId}</div>
+                  <div class="text-[10px] text-cyan-300 font-mono">${lat.toFixed(2)}°N, ${lon.toFixed(2)}°E</div>
+                </div>
+              </div>
+            `;
+          } else {
+            el.innerHTML = `
+              <div class="relative w-full h-full flex items-center justify-center">
+                <div class="w-3.5 h-3.5 rounded-full bg-cyan-400 hover:bg-cyan-300 border border-[#040d1a] shadow-[0_0_8px_rgba(0,229,255,0.8)] transition-transform group-hover:scale-125 flex items-center justify-center">
+                  <div class="w-1.5 h-1.5 rounded-full bg-white"></div>
+                </div>
+                <div class="varuna-float-hover-tooltip flex-col absolute -top-10 left-1/2 -translate-x-1/2 px-2 py-0.5 rounded-md bg-[#071324]/95 border border-sky-500/30 text-white text-[10px] font-mono whitespace-nowrap shadow-lg z-50 pointer-events-none">
+                  <span class="font-bold text-white">ARGO #${wmoId}</span>
+                  <span class="text-[9px] text-cyan-300">${lat.toFixed(1)}°N, ${lon.toFixed(1)}°E</span>
+                </div>
+              </div>
+            `;
+          }
+
+          el.addEventListener("click", (e) => {
+            e.stopPropagation();
+            if (String(selectedFloatIdRef.current) === String(wmoId)) {
+              setSelectedFloatId("");
+            } else {
+              setSelectedFloatId(wmoId);
+              map.flyTo({
+                center: [lon, lat],
+                zoom: 5.5,
+                duration: 1000,
+              });
+            }
+          });
+
+          const marker = new maplibregl.Marker({ element: el, anchor: "center" })
+            .setLngLat([lon, lat])
+            .addTo(map);
+
+          floatMarkersRef.current.push(marker);
+        });
+      }
+    } catch (err) {
+      console.warn("[VARUNA] Marker sync:", err);
     }
-  }, [floats, biodiversity, mapLayers.argoFloats, mapLayers.biodiversity, selectedFloatId]);
+  }, [renderBioCanvas, setSelectedFloatId]);
 
   // ── Sync Trajectory for Selected Float ────────────────────────────────────
   const updateTrajectoryLayer = useCallback(async (wmoId: string | null) => {
     const map = mapRef.current;
     if (!map || !map.getSource("trajectory")) return;
 
-    if (!wmoId || !mapLayers.trajectories) {
+    if (!wmoId || !mapLayersRef.current.trajectories) {
       (map.getSource("trajectory") as maplibregl.GeoJSONSource).setData({
         type: "FeatureCollection",
         features: [],
@@ -87,8 +233,7 @@ export function VarunaMap({ onHoverCoords, is3DMode }: VarunaMapProps) {
           Number(p.lat ?? p.latitude),
         ]);
       } else {
-        // Fallback realistic smooth drift track from active float's coordinates
-        const targetFloat = floats.find((f) => String(f.wmo_id) === String(wmoId));
+        const targetFloat = floatsRef.current.find((f) => String(f.wmo_id) === String(wmoId));
         if (targetFloat) {
           const lat = targetFloat.last_lat;
           const lon = targetFloat.last_lon;
@@ -120,115 +265,7 @@ export function VarunaMap({ onHoverCoords, is3DMode }: VarunaMapProps) {
     } catch {
       // Graceful fallback
     }
-  }, [floats, mapLayers.trajectories]);
-
-  // ── Sync HTML DOM Markers for Floats & Biodiversity ───────────────────────
-  const updateDomMarkers = useCallback(() => {
-    const map = mapRef.current;
-    if (!map) return;
-
-    // 1. Clear Old Float Markers
-    floatMarkersRef.current.forEach((m) => m.remove());
-    floatMarkersRef.current = [];
-
-    // 2. Render ARGO Float Markers
-    if (mapLayers.argoFloats && floats && floats.length > 0) {
-      floats.forEach((f: any) => {
-        const lon = Number(f.last_lon ?? f.longitude ?? f.lon);
-        const lat = Number(f.last_lat ?? f.latitude ?? f.lat);
-        const wmoId = String(f.wmo_id ?? f.platform_number ?? f.id ?? "");
-        if (isNaN(lon) || isNaN(lat)) return;
-
-        const isSelected = wmoId === String(selectedFloatId);
-
-        // Marker DOM element (absolute positioning handled by MapLibre)
-        const el = document.createElement("div");
-        el.className = "varuna-float-marker cursor-pointer group flex items-center justify-center";
-        el.style.width = isSelected ? "32px" : "22px";
-        el.style.height = isSelected ? "32px" : "22px";
-
-        if (isSelected) {
-          el.innerHTML = `
-            <div class="relative w-full h-full flex items-center justify-center">
-              <div class="w-5 h-5 rounded-full bg-cyan-400 border-2 border-white shadow-[0_0_15px_#00e5ff] flex items-center justify-center pulse-cyan">
-                <div class="w-2 h-2 rounded-full bg-white"></div>
-              </div>
-              <!-- Persistent Active Floating Tooltip -->
-              <div class="absolute -top-12 left-1/2 -translate-x-1/2 px-2.5 py-1 rounded-lg bg-[#071324]/95 border border-cyan-400/50 text-white text-[11px] font-mono shadow-[0_0_14px_rgba(0,229,255,0.3)] z-50 whitespace-nowrap pointer-events-none text-center">
-                <div class="font-bold text-white text-xs">ARGO #${wmoId}</div>
-                <div class="text-[10px] text-cyan-300 font-mono">${lat.toFixed(2)}°N, ${lon.toFixed(2)}°E</div>
-              </div>
-            </div>
-          `;
-        } else {
-          el.innerHTML = `
-            <div class="relative w-full h-full flex items-center justify-center">
-              <div class="w-3.5 h-3.5 rounded-full bg-cyan-400 hover:bg-cyan-300 border border-[#040d1a] shadow-[0_0_8px_rgba(0,229,255,0.8)] transition-transform group-hover:scale-125 flex items-center justify-center">
-                <div class="w-1.5 h-1.5 rounded-full bg-white"></div>
-              </div>
-              <!-- Hover Tooltip -->
-              <div class="hidden group-hover:flex flex-col absolute -top-10 left-1/2 -translate-x-1/2 px-2 py-0.5 rounded-md bg-[#071324]/95 border border-sky-500/30 text-white text-[10px] font-mono whitespace-nowrap shadow-lg z-50 pointer-events-none">
-                <span class="font-bold text-white">ARGO #${wmoId}</span>
-                <span class="text-[9px] text-cyan-300">${lat.toFixed(1)}°N, ${lon.toFixed(1)}°E</span>
-              </div>
-            </div>
-          `;
-        }
-
-        el.addEventListener("click", (e) => {
-          e.stopPropagation();
-          if (String(selectedFloatId) === String(wmoId)) {
-            setSelectedFloatId("");
-          } else {
-            setSelectedFloatId(wmoId);
-            map.flyTo({
-              center: [lon, lat],
-              zoom: 5.5,
-              duration: 1000,
-            });
-          }
-        });
-
-        const marker = new maplibregl.Marker({ element: el, anchor: "center" })
-          .setLngLat([lon, lat])
-          .addTo(map);
-
-        floatMarkersRef.current.push(marker);
-      });
-    }
-
-    // 3. Clear Old Bio Markers
-    bioMarkersRef.current.forEach((m) => m.remove());
-    bioMarkersRef.current = [];
-
-    // 4. Render Biodiversity Markers
-    if (mapLayers.biodiversity && biodiversity && biodiversity.length > 0) {
-      biodiversity.forEach((b: any) => {
-        const lon = Number(b.longitude ?? b.lon);
-        const lat = Number(b.latitude ?? b.lat);
-        if (isNaN(lon) || isNaN(lat)) return;
-
-        const el = document.createElement("div");
-        el.className = "varuna-bio-marker cursor-pointer group flex items-center justify-center";
-        el.style.width = "20px";
-        el.style.height = "20px";
-        el.innerHTML = `
-          <div class="relative w-full h-full flex items-center justify-center">
-            <div class="w-3 h-3 rounded-full bg-emerald-400 hover:bg-emerald-300 border border-[#040d1a] shadow-[0_0_8px_rgba(52,211,153,0.8)] transition-transform group-hover:scale-125"></div>
-            <div class="hidden group-hover:flex absolute -top-7 left-1/2 -translate-x-1/2 px-2 py-0.5 rounded bg-[#071324]/95 border border-emerald-500/30 text-white text-[10px] whitespace-nowrap shadow-lg z-50 pointer-events-none font-sans">
-              ${b.scientific_name || b.name}
-            </div>
-          </div>
-        `;
-
-        const marker = new maplibregl.Marker({ element: el, anchor: "center" })
-          .setLngLat([lon, lat])
-          .addTo(map);
-
-        bioMarkersRef.current.push(marker);
-      });
-    }
-  }, [floats, biodiversity, mapLayers.argoFloats, mapLayers.biodiversity, selectedFloatId, setSelectedFloatId]);
+  }, []);
 
   // ── Initialize MapLibre 2D Map ────────────────────────────────────────────
   useEffect(() => {
@@ -247,15 +284,93 @@ export function VarunaMap({ onHoverCoords, is3DMode }: VarunaMapProps) {
 
     mapRef.current = map;
 
+    // Interactive Hover Popup for CMLRE Biodiversity Points
+    const bioPopup = new maplibregl.Popup({
+      closeButton: false,
+      closeOnClick: false,
+      offset: 12,
+      className: "varuna-bio-popup",
+    });
+
+    // Hover detection over 5,385 Biodiversity Points
+    map.on("mousemove", (e) => {
+      if (!mapLayersRef.current.biodiversity) {
+        bioPopup.remove();
+        return;
+      }
+      const currentBio = biodiversityRef.current;
+      if (!currentBio || currentBio.length === 0) return;
+
+      const mousePt = e.point;
+      let nearest: any = null;
+      let minD2 = 144; // 12px interaction radius
+
+      for (let i = 0; i < currentBio.length; i++) {
+        const b: any = currentBio[i];
+        const lon = Number(b.longitude ?? b.lon ?? b.decimal_longitude);
+        const lat = Number(b.latitude ?? b.lat ?? b.decimal_latitude);
+        if (isNaN(lon) || isNaN(lat)) continue;
+
+        const p = map.project([lon, lat]);
+        const dx = p.x - mousePt.x;
+        const dy = p.y - mousePt.y;
+        const d2 = dx * dx + dy * dy;
+        if (d2 < minD2) {
+          minD2 = d2;
+          nearest = b;
+        }
+      }
+
+      if (nearest) {
+        map.getCanvas().style.cursor = "pointer";
+        const lon = Number(nearest.longitude ?? nearest.lon ?? nearest.decimal_longitude);
+        const lat = Number(nearest.latitude ?? nearest.lat ?? nearest.decimal_latitude);
+        const name = nearest.scientific_name || "Marine Specimen";
+        const common = nearest.common_name && nearest.common_name !== name ? nearest.common_name : "";
+        const family = nearest.family || "Marine Taxa";
+        const datasetType = String(nearest.dataset_type || "voucher").toUpperCase().replace("_", " ");
+        const depth = nearest.depth_m ? `${Number(nearest.depth_m).toFixed(0)} m` : "Pelagic";
+        const tMin = nearest.thermal_range_min_c ? `${Number(nearest.thermal_range_min_c).toFixed(1)}°` : "22°";
+        const tMax = nearest.thermal_range_max_c ? `${Number(nearest.thermal_range_max_c).toFixed(1)}°C` : "28°C";
+        const date = nearest.event_date ? String(nearest.event_date).split("T")[0] : "";
+
+        bioPopup
+          .setLngLat([lon, lat])
+          .setHTML(`
+            <div style="background: rgba(4, 13, 26, 0.96); border: 1px solid rgba(16, 185, 129, 0.4); border-radius: 8px; padding: 8px 10px; font-family: monospace; color: #fff; font-size: 11px; box-shadow: 0 0 16px rgba(0,0,0,0.6); min-width: 175px;">
+              <div style="display: flex; align-items: center; justify-content: space-between; gap: 6px; margin-bottom: 4px;">
+                <span style="font-size: 9px; padding: 1px 5px; border-radius: 4px; background: rgba(16, 185, 129, 0.2); color: #34d399; font-weight: bold; border: 1px solid rgba(52, 211, 153, 0.3);">${datasetType}</span>
+                <span style="font-size: 9px; color: #94a3b8;">${date}</span>
+              </div>
+              <div style="font-weight: bold; font-style: italic; color: #f8fafc; font-size: 12px;">${name}</div>
+              ${common ? `<div style="font-size: 10px; color: #38bdf8; margin-bottom: 4px;">${common}</div>` : ""}
+              <div style="font-size: 10px; color: #94a3b8; margin-bottom: 3px;">Family: ${family}</div>
+              <div style="display: flex; justify-content: space-between; font-size: 10px; color: #cbd5e1; margin-top: 4px; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 4px;">
+                <span>Depth: <b style="color: #67e8f9;">${depth}</b></span>
+                <span>Optimum: <b style="color: #fde047;">${tMin}-${tMax}</b></span>
+              </div>
+            </div>
+          `)
+          .addTo(map);
+      } else {
+        map.getCanvas().style.cursor = "";
+        bioPopup.remove();
+      }
+    });
+
     const onReady = () => {
       map.resize();
-      updateGeoJsonSources();
-      updateDomMarkers();
-      updateTrajectoryLayer(selectedFloatId);
+      syncMapData();
+      updateTrajectoryLayer(selectedFloatIdRef.current);
     };
 
     map.on("load", onReady);
-    map.on("styledata", onReady);
+    map.on("move", renderBioCanvas);
+    map.on("zoom", renderBioCanvas);
+    map.on("resize", renderBioCanvas);
+    map.on("idle", () => {
+      syncMapData();
+    });
 
     // Register fly-to handler
     registerFlyToHandler((lat: number, lon: number, zoomLevel = 5.2) => {
@@ -268,8 +383,8 @@ export function VarunaMap({ onHoverCoords, is3DMode }: VarunaMapProps) {
     });
 
     return () => {
+      bioPopup.remove();
       floatMarkersRef.current.forEach((m) => m.remove());
-      bioMarkersRef.current.forEach((m) => m.remove());
       map.remove();
       mapRef.current = null;
     };
@@ -278,15 +393,20 @@ export function VarunaMap({ onHoverCoords, is3DMode }: VarunaMapProps) {
 
   // ── Re-render Markers & Trajectory on State Change ─────────────────────────
   useEffect(() => {
-    updateGeoJsonSources();
-    updateDomMarkers();
+    syncMapData();
     updateTrajectoryLayer(selectedFloatId);
-  }, [updateGeoJsonSources, updateDomMarkers, updateTrajectoryLayer, selectedFloatId]);
+  }, [syncMapData, updateTrajectoryLayer, biodiversity, floats, mapLayers, selectedFloatId]);
 
   return (
     <div className="relative w-full h-full overflow-hidden bg-[#040a14] select-none">
       {/* ── Map Canvas ────────────────────────────────────────────────────── */}
       <div ref={containerRef} className="w-full h-full absolute inset-0" />
+
+      {/* ── High-Performance Biodiversity Canvas Overlay ─────────────────── */}
+      <canvas
+        ref={bioCanvasRef}
+        className="w-full h-full absolute inset-0 pointer-events-none z-10"
+      />
 
       {/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
           TOP-LEFT: MAP LAYERS & BASIN FOCUS CONTROL PANEL
@@ -423,20 +543,8 @@ export function VarunaMap({ onHoverCoords, is3DMode }: VarunaMapProps) {
 
         <div className="px-2.5 py-1 rounded-lg bg-[#071324]/90 border border-sky-500/20 backdrop-blur-md flex items-center gap-1.5 text-emerald-300 shadow-lg">
           <Radio size={11} className="text-emerald-400" />
-          <span className="font-bold">{biodiversity.length || 4}</span>
-          <span className="text-slate-400 text-[10px] font-sans">Bio Streams</span>
-        </div>
-
-        <div className="hidden sm:flex px-2.5 py-1 rounded-lg bg-[#071324]/90 border border-sky-500/20 backdrop-blur-md items-center gap-1.5 text-sky-300 shadow-lg">
-          <Satellite size={11} className="text-sky-400" />
-          <span className="font-bold">12</span>
-          <span className="text-slate-400 text-[10px] font-sans">Satellites</span>
-        </div>
-
-        <div className="hidden sm:flex px-2.5 py-1 rounded-lg bg-[#071324]/90 border border-sky-500/20 backdrop-blur-md items-center gap-1.5 text-amber-300 shadow-lg">
-          <Zap size={11} className="text-amber-400" />
-          <span className="font-bold">3</span>
-          <span className="text-slate-400 text-[10px] font-sans">Ocean Events</span>
+          <span className="font-bold">{biodiversity.length ? biodiversity.length.toLocaleString() : "5,385"}</span>
+          <span className="text-slate-400 text-[10px] font-sans">Bio Occurrences</span>
         </div>
       </div>
     </div>

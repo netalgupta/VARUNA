@@ -9,7 +9,6 @@ import {
   Loader2,
 } from "lucide-react";
 import { useOperationalState } from "@/providers/OperationalProvider";
-import { getDepthProfile } from "@/lib/api/argo";
 import type { DepthProfileMeasurement } from "@/types/argo";
 
 interface DeepDiveModePanelProps {
@@ -38,48 +37,35 @@ export function DeepDiveModePanel({
     return floats.find((f) => String(f.wmo_id) === String(selectedFloatId)) || floats[0] || null;
   }, [floats, selectedFloatId]);
 
-  // Load live depth profile directly from backend for the selected float
+  // Sync local state from the provider's selectedFloatProfile (single source of truth)
+  // The OperationalProvider handles all fetching — no duplicate API calls here
   useEffect(() => {
-    if (!selectedFloatId) return;
-
-    if (
-      selectedFloatProfile?.platform_number === Number(selectedFloatId) &&
-      selectedFloatProfile?.measurements &&
-      selectedFloatProfile.measurements.length > 0
-    ) {
-      setLiveMeasurements(selectedFloatProfile.measurements);
-      if (selectedFloatProfile.deepest_record) {
-        setDeepestRecord(selectedFloatProfile.deepest_record);
-      }
+    if (!selectedFloatId) {
+      setLiveMeasurements([]);
+      setDeepestRecord(null);
       setLoadingProfile(false);
       return;
     }
 
-    let isMounted = true;
-    setLoadingProfile(true);
+    // If the provider hasn't loaded this float's data yet, show loading
+    if (
+      !selectedFloatProfile ||
+      selectedFloatProfile.platform_number !== Number(selectedFloatId)
+    ) {
+      setLiveMeasurements([]);
+      setDeepestRecord(null);
+      setLoadingProfile(true);
+      return;
+    }
 
-    getDepthProfile(selectedFloatId)
-      .then((res) => {
-        if (!isMounted) return;
-        if (res) {
-          if (res.measurements && res.measurements.length > 0) {
-            setLiveMeasurements(res.measurements);
-          }
-          if (res.deepest_record) {
-            setDeepestRecord(res.deepest_record);
-          }
-        }
-      })
-      .catch(() => {
-        // Handled gracefully
-      })
-      .finally(() => {
-        if (isMounted) setLoadingProfile(false);
-      });
-
-    return () => {
-      isMounted = false;
-    };
+    // Profile matches the selected float — populate local state from DB data
+    if (selectedFloatProfile.measurements && selectedFloatProfile.measurements.length > 0) {
+      setLiveMeasurements(selectedFloatProfile.measurements);
+    } else {
+      setLiveMeasurements([]);
+    }
+    setDeepestRecord(selectedFloatProfile.deepest_record || null);
+    setLoadingProfile(false);
   }, [selectedFloatId, selectedFloatProfile]);
 
   // Compute the DEEPEST (Maximum Depth) physical telemetry of the selected float
@@ -128,21 +114,9 @@ export function DeepDiveModePanel({
       }
     }
 
-    // 3. Unique float-specific physical measurements derived from its platform ID & coordinates
-    const floatSeed = activeFloat ? (Number(activeFloat.wmo_id) % 100) : 45;
-    const derivedDepth = 1960 + ((floatSeed * 7) % 65);
-    const derivedTemp = 2.45 + ((floatSeed * 0.013) % 0.65);
-    const derivedSal = 34.72 + ((floatSeed * 0.003) % 0.16);
-    const derivedOxy = 21.5 + ((floatSeed * 0.15) % 12.0);
-
-    return {
-      depth: Math.round(derivedDepth),
-      pressure: Number((derivedDepth / 10).toFixed(1)),
-      temperature: Number(derivedTemp.toFixed(2)),
-      doxy: Number(derivedOxy.toFixed(1)),
-      salinity: Number(derivedSal.toFixed(2)),
-      phase: "ABYSSAL MAX CAST",
-    };
+    // 3. No real data available yet — return null so the UI shows a loading state
+    //    NEVER fabricate numbers. Only display values that came from the database.
+    return null;
   }, [deepestRecord, liveMeasurements, activeFloat, selectedFloatId]);
 
   // Generate real-time dynamic CTD waveform path from surface down to max depth
@@ -239,56 +213,65 @@ export function DeepDiveModePanel({
           <div className="absolute inset-0 bg-gradient-to-r from-[#040914]/95 via-[#040914]/60 to-[#040914]/85" />
         </div>
 
-        {/* Left Telemetry Key-Value Pairs */}
-        <div className="relative z-10 flex-1 space-y-2">
-          <div>
-            <span className="text-[10px] text-cyan-400 uppercase tracking-wider font-mono font-bold block">
-              Max Cast Depth
-            </span>
-            <div className="text-3xl font-bold text-white font-sans tracking-tight">
-              {telemetry.depth} <span className="text-sm font-normal text-cyan-300 font-mono">m</span>
-            </div>
-          </div>
+        {telemetry ? (
+          <>
+            {/* Left Telemetry Key-Value Pairs */}
+            <div className="relative z-10 flex-1 space-y-2">
+              <div>
+                <span className="text-[10px] text-cyan-400 uppercase tracking-wider font-mono font-bold block">
+                  Max Cast Depth
+                </span>
+                <div className="text-3xl font-bold text-white font-sans tracking-tight">
+                  {telemetry.depth} <span className="text-sm font-normal text-cyan-300 font-mono">m</span>
+                </div>
+              </div>
 
-          <div className="grid grid-cols-2 gap-x-3 gap-y-1.5 pt-2 border-t border-sky-500/20 text-xs">
-            <div>
-              <span className="text-slate-400 text-[10px] uppercase font-mono block">Pressure</span>
-              <span className="text-white font-mono font-semibold text-xs">{telemetry.pressure} dbar</span>
+              <div className="grid grid-cols-2 gap-x-3 gap-y-1.5 pt-2 border-t border-sky-500/20 text-xs">
+                <div>
+                  <span className="text-slate-400 text-[10px] uppercase font-mono block">Pressure</span>
+                  <span className="text-white font-mono font-semibold text-xs">{telemetry.pressure} dbar</span>
+                </div>
+                <div>
+                  <span className="text-slate-400 text-[10px] uppercase font-mono block">Bottom Temp</span>
+                  <span className="text-cyan-300 font-mono font-semibold text-xs">{telemetry.temperature} °C</span>
+                </div>
+                <div>
+                  <span className="text-slate-400 text-[10px] uppercase font-mono block">Deep DOXY</span>
+                  <span className="text-emerald-300 font-mono font-semibold text-xs">{telemetry.doxy} µmol/kg</span>
+                </div>
+                <div>
+                  <span className="text-slate-400 text-[10px] uppercase font-mono block">Deep Salinity</span>
+                  <span className="text-purple-300 font-mono font-semibold text-xs">{telemetry.salinity} PSU</span>
+                </div>
+              </div>
             </div>
-            <div>
-              <span className="text-slate-400 text-[10px] uppercase font-mono block">Bottom Temp</span>
-              <span className="text-cyan-300 font-mono font-semibold text-xs">{telemetry.temperature} °C</span>
-            </div>
-            <div>
-              <span className="text-slate-400 text-[10px] uppercase font-mono block">Deep DOXY</span>
-              <span className="text-emerald-300 font-mono font-semibold text-xs">{telemetry.doxy} µmol/kg</span>
-            </div>
-            <div>
-              <span className="text-slate-400 text-[10px] uppercase font-mono block">Deep Salinity</span>
-              <span className="text-purple-300 font-mono font-semibold text-xs">{telemetry.salinity} PSU</span>
-            </div>
-          </div>
-        </div>
 
-        {/* Right Vertical Depth Strata Gauge */}
-        <div className="relative z-10 flex items-center gap-2.5 h-full py-1 shrink-0 border-l border-sky-500/20 pl-3 bg-[#061022]/60 rounded-r-lg backdrop-blur-xs">
-          {/* Depth bar indicator */}
-          <div className="w-2 h-full rounded-full bg-[#0d1d36] relative overflow-hidden">
-            <div
-              className="w-full bg-cyan-400 rounded-full transition-all duration-500 shadow-[0_0_8px_#00e5ff]"
-              style={{ height: `${Math.min(100, (telemetry.depth / 2000) * 100)}%` }}
-            />
-          </div>
+            {/* Right Vertical Depth Strata Gauge */}
+            <div className="relative z-10 flex items-center gap-2.5 h-full py-1 shrink-0 border-l border-sky-500/20 pl-3 bg-[#061022]/60 rounded-r-lg backdrop-blur-xs">
+              {/* Depth bar indicator */}
+              <div className="w-2 h-full rounded-full bg-[#0d1d36] relative overflow-hidden">
+                <div
+                  className="w-full bg-cyan-400 rounded-full transition-all duration-500 shadow-[0_0_8px_#00e5ff]"
+                  style={{ height: `${Math.min(100, (telemetry.depth / 2000) * 100)}%` }}
+                />
+              </div>
 
-          {/* Strata tick labels */}
-          <div className="flex flex-col justify-between h-full text-[10px] font-mono text-slate-400 text-right">
-            <span>0m</span>
-            <span>500m</span>
-            <span>1000m</span>
-            <span>1500m</span>
-            <span className="text-cyan-300 font-bold">2000m</span>
+              {/* Strata tick labels */}
+              <div className="flex flex-col justify-between h-full text-[10px] font-mono text-slate-400 text-right">
+                <span>0m</span>
+                <span>500m</span>
+                <span>1000m</span>
+                <span>1500m</span>
+                <span className="text-cyan-300 font-bold">2000m</span>
+              </div>
+            </div>
+          </>
+        ) : (
+          <div className="relative z-10 flex-1 flex flex-col items-center justify-center gap-2">
+            <Loader2 size={24} className="text-cyan-400 animate-spin" />
+            <span className="text-xs text-slate-400 font-mono">Fetching depth profile from DB…</span>
           </div>
-        </div>
+        )}
       </div>
     </div>
   );

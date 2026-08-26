@@ -5,10 +5,15 @@ Categorized into 7 tagged groups with comprehensive request/response models and 
 
 from __future__ import annotations
 
+import os
+import json
+import logging
 import re
 import uuid
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
+
+log = logging.getLogger("varuna.api")
 
 from fastapi import APIRouter, HTTPException, Query, Path, Body
 from pydantic import BaseModel, Field
@@ -225,18 +230,24 @@ class AnomalyAlert(BaseModel):
 
 class BiodiversityRecord(BaseModel):
     id: int = Field(..., examples=[501])
+    occurrence_id: Optional[str] = Field(None, examples=["IO/SS/ANO/00161"])
     scientific_name: str = Field(..., examples=["Sardinella longiceps"])
     common_name: str = Field(..., examples=["Indian Oil Sardine"])
-    aphia_id: int = Field(..., description="World Register of Marine Species (WoRMS) Taxon Identifier", examples=[218659])
+    aphia_id: int = Field(0, description="World Register of Marine Species (WoRMS) Taxon Identifier", examples=[218659])
     kingdom: str = Field("Animalia", examples=["Animalia"])
     phylum: str = Field("Chordata", examples=["Chordata"])
     family: str = Field("Clupeidae", examples=["Clupeidae"])
+    genus: Optional[str] = Field(None, examples=["Sardinella"])
     latitude: float = Field(..., examples=[15.42])
     longitude: float = Field(..., examples=[73.81])
     depth_m: Optional[float] = Field(15.0, examples=[15.0])
     event_date: str = Field(..., examples=["2026-04-14"])
     thermal_range_min_c: float = Field(22.0, examples=[22.0])
     thermal_range_max_c: float = Field(26.0, examples=[26.0])
+    salinity_min_psu: Optional[float] = Field(34.0, examples=[34.0])
+    salinity_max_psu: Optional[float] = Field(36.5, examples=[36.5])
+    hypoxia_avoidance_threshold_umol_kg: Optional[float] = Field(45.0, examples=[45.0])
+    dataset_type: Optional[str] = Field("voucher", examples=["voucher"])
     institution_code: str = Field("CMLRE", examples=["CMLRE"])
 
 class SpatialCorrelationRecord(BaseModel):
@@ -636,23 +647,184 @@ async def get_anomaly_detail(alert_id: int = Path(..., description="Unique anoma
 # 3. 🐟 CMLRE Marine Living Resources & Cross-Domain Fusion
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
+_cmlre_bio_dataset: Optional[List[Dict[str, Any]]] = None
+
+def get_cmlre_biodiversity_dataset() -> List[Dict[str, Any]]:
+    global _cmlre_bio_dataset
+    if _cmlre_bio_dataset is not None:
+        return _cmlre_bio_dataset
+
+    try:
+        root_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", ".."))
+        csv_candidates = [
+            os.path.join(root_dir, "cmlre_occurrence_clean-dataset1.csv"),
+            os.path.join(root_dir, "cmlre_occurrence_clean.csv"),
+            os.path.join(root_dir, "dataset1_fixed.csv"),
+            "cmlre_occurrence_clean-dataset1.csv",
+        ]
+        json_candidates = [
+            os.path.join(root_dir, "species_ecological_profiles.json"),
+            os.path.join(root_dir, "ingestion", "species_ecological_profiles.json"),
+            "species_ecological_profiles.json",
+        ]
+
+        csv_path = next((p for p in csv_candidates if os.path.exists(p)), None)
+        json_path = next((p for p in json_candidates if os.path.exists(p)), None)
+
+        if not csv_path:
+            log.warning("CMLRE CSV dataset not found; falling back to mock dataset")
+            _cmlre_bio_dataset = MOCK_BIODIVERSITY
+            return _cmlre_bio_dataset
+
+        import pandas as pd
+        df = pd.read_csv(csv_path)
+
+        # Merge key commercial and ecological species from master dataset if present
+        master_csv = os.path.join(root_dir, "cmlre_occurrence_master_final--dataset1final.csv")
+        if os.path.exists(master_csv):
+            try:
+                df_master = pd.read_csv(master_csv, low_memory=False)
+                key_targets = {
+                    "sardinella longiceps", "rastrelliger kanagurta", "thunnus albacares",
+                    "acropora millepora", "epinephelus tauvina", "harpadon nehereus",
+                    "katsuwonus pelamis", "penaeus monodon", "portunus pelagicus"
+                }
+                existing_names = set(df["scientific_name"].dropna().astype(str).str.strip().str.lower())
+                missing_targets = key_targets - existing_names
+                if missing_targets:
+                    mask = df_master["scientific_name"].dropna().astype(str).str.strip().str.lower().isin(missing_targets)
+                    extra_rows = df_master[mask]
+                    if not extra_rows.empty:
+                        df = pd.concat([df, extra_rows], ignore_index=True)
+                        log.info("Appended %d key species occurrence records from master dataset", len(extra_rows))
+            except Exception as e_master:
+                log.warning("Could not merge master occurrences: %s", str(e_master))
+
+        profiles_by_name: Dict[str, Dict[str, Any]] = {}
+        if json_path and os.path.exists(json_path):
+            with open(json_path, "r", encoding="utf-8") as f:
+                profiles = json.load(f)
+                profiles_by_name = {
+                    str(p.get("scientific_name", "")).strip().lower(): p
+                    for p in profiles
+                    if isinstance(p, dict) and p.get("scientific_name")
+                }
+
+        # Also load master ecological profiles CSV if available to cover all 20k+ species
+        d2_master_csv = os.path.join(root_dir, "species_ecological_profiles_master----dataset2final.csv")
+        if os.path.exists(d2_master_csv):
+            try:
+                df_d2 = pd.read_csv(d2_master_csv, low_memory=False)
+                for _, p_row in df_d2.iterrows():
+                    p_name = str(p_row.get("scientific_name", "")).strip().lower()
+                    if p_name and p_name not in profiles_by_name:
+                        profiles_by_name[p_name] = {
+                            "scientific_name": p_row.get("scientific_name"),
+                            "common_name": p_row.get("common_name"),
+                            "family": p_row.get("family"),
+                            "phylum": p_row.get("phylum"),
+                            "temp_pref_min_c": p_row.get("temp_pref_min_c") or p_row.get("thermal_range_min_c"),
+                            "temp_pref_max_c": p_row.get("temp_pref_max_c") or p_row.get("thermal_range_max_c"),
+                            "salinity_min_psu": p_row.get("salinity_min_psu"),
+                            "salinity_max_psu": p_row.get("salinity_max_psu"),
+                            "hypoxia_avoidance_threshold_umol_kg": p_row.get("hypoxia_avoidance_threshold_umol_kg"),
+                            "depth_min_m": p_row.get("depth_min_m"),
+                            "depth_max_m": p_row.get("depth_max_m"),
+                            "aphia_id": p_row.get("aphia_id"),
+                        }
+            except Exception as e_d2:
+                log.warning("Could not merge master profiles: %s", str(e_d2))
+
+        import math
+
+        def safe_float(v, default=0.0):
+            if v is None or pd.isna(v):
+                return default
+            try:
+                f = float(v)
+                return default if pd.isna(f) or not math.isfinite(f) else f
+            except Exception:
+                return default
+
+        records = []
+        for idx, row in df.iterrows():
+            s_name = str(row.get("scientific_name", "")).strip()
+            if not s_name or pd.isna(row.get("decimal_latitude")) or pd.isna(row.get("decimal_longitude")):
+                continue
+            s_key = s_name.lower()
+            prof = profiles_by_name.get(s_key, {})
+
+            aphia_str = str(row.get("scientific_name_id", ""))
+            aphia_id = 0
+            if "taxname:" in aphia_str:
+                try:
+                    aphia_id = int(aphia_str.split("taxname:")[-1])
+                except Exception:
+                    pass
+
+            depth = row.get("maximum_depth_m")
+            if pd.isna(depth):
+                depth = row.get("minimum_depth_m")
+            if pd.isna(depth):
+                depth = prof.get("depth_min_m") or 15.0
+
+            event_dt = str(row.get("event_date", "2024-01-01"))
+            if pd.isna(row.get("event_date")) or event_dt.lower() == "nan":
+                event_dt = "2024-01-01"
+
+            records.append({
+                "id": int(idx + 1),
+                "occurrence_id": str(row.get("occurrence_id", f"CMLRE_{idx+1}")),
+                "scientific_name": s_name,
+                "common_name": str(prof.get("common_name") or s_name),
+                "aphia_id": aphia_id or int(prof.get("aphia_id", 0) or 0),
+                "kingdom": "Animalia",
+                "phylum": str(prof.get("phylum") or "Chordata"),
+                "family": str(row.get("family") or prof.get("family") or "Marine Taxa"),
+                "genus": str(row.get("genus") or prof.get("genus") or s_name.split()[0]),
+                "latitude": safe_float(row.get("decimal_latitude"), 10.0),
+                "longitude": safe_float(row.get("decimal_longitude"), 75.0),
+                "depth_m": safe_float(depth, 15.0),
+                "event_date": event_dt.split()[0],
+                "thermal_range_min_c": safe_float(prof.get("temp_pref_min_c"), 22.0),
+                "thermal_range_max_c": safe_float(prof.get("temp_pref_max_c"), 28.0),
+                "salinity_min_psu": safe_float(prof.get("salinity_min_psu"), 34.0),
+                "salinity_max_psu": safe_float(prof.get("salinity_max_psu"), 36.5),
+                "hypoxia_avoidance_threshold_umol_kg": safe_float(prof.get("hypoxia_avoidance_threshold_umol_kg"), 45.0),
+                "dataset_type": str(row.get("dataset_type", "voucher")),
+                "institution_code": "CMLRE",
+            })
+
+        _cmlre_bio_dataset = records
+        log.info("Loaded %d CMLRE biodiversity records into memory", len(_cmlre_bio_dataset))
+        return _cmlre_bio_dataset
+
+    except Exception as e:
+        log.error("Failed to load CMLRE dataset: %s", str(e))
+        _cmlre_bio_dataset = MOCK_BIODIVERSITY
+        return _cmlre_bio_dataset
+
+
 @router.get(
     "/biodiversity",
     response_model=List[BiodiversityRecord],
     tags=["🐟 CMLRE Marine Living Resources & Cross-Domain Fusion"],
     summary="Query CMLRE Marine Living Resource Catalog",
-    description="Queries 500+ Indian Ocean marine species occurrences standardized to TDWG Darwin Core (`dwc:scientificName`, `dwc:decimalLatitude`, `dwc:eventDate`).",
+    description="Queries 5,385 clean Indian Ocean marine species occurrences from CMLRE datasets 1 & 2.",
 )
 async def list_biodiversity(
     species: Optional[str] = Query(None, description="Filter by scientific name (e.g. Sardinella longiceps)", examples=["Sardinella longiceps"]),
     family: Optional[str] = Query(None, description="Filter by taxonomic family (e.g. Clupeidae)", examples=["Clupeidae"]),
-    limit: int = Query(50, description="Max records to return", ge=1, le=200)
+    dataset_type: Optional[str] = Query(None, description="Filter by dataset type (voucher, edna, fishery, marine_mammal)", examples=["voucher"]),
+    limit: int = Query(500, description="Max records to return", ge=1, le=6000)
 ):
-    records = list(MOCK_BIODIVERSITY)
+    records = get_cmlre_biodiversity_dataset()
     if species:
-        records = [r for r in records if species.lower() in r["scientific_name"].lower()]
+        records = [r for r in records if species.lower() in r["scientific_name"].lower() or species.lower() in r.get("common_name", "").lower()]
     if family:
         records = [r for r in records if family.lower() in r["family"].lower()]
+    if dataset_type:
+        records = [r for r in records if dataset_type.lower() in r.get("dataset_type", "").lower()]
     return records[:limit]
 
 
@@ -767,7 +939,7 @@ async def get_profile(
     cycle: Optional[int] = Query(None, description="Specific profiling cycle number", examples=[42])
 ):
     cache_key = f"profile_{platform_number}_{cycle}"
-    cached = _get_cached(cache_key, ttl_seconds=600)
+    cached = _get_cached(cache_key, ttl_seconds=120)
     if cached:
         return cached
 

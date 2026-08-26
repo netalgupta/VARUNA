@@ -58,7 +58,7 @@ export function CommandCenterView() {
     if (selectedFloatProfile?.latest_surface?.temp != null) {
       return Number(selectedFloatProfile.latest_surface.temp).toFixed(2);
     }
-    return "28.18";
+    return "--";
   }, [selectedFloatProfile]);
 
   const surfaceAnomaly = useMemo(() => {
@@ -72,7 +72,7 @@ export function CommandCenterView() {
     if (selectedFloatProfile?.latest_surface?.psal != null) {
       return Number(selectedFloatProfile.latest_surface.psal).toFixed(2);
     }
-    return "36.63";
+    return "--";
   }, [selectedFloatProfile]);
 
   const surfaceDoxy = useMemo(() => {
@@ -82,7 +82,7 @@ export function CommandCenterView() {
     if (selectedFloatProfile?.deepest_record?.doxy != null) {
       return Number(selectedFloatProfile.deepest_record.doxy).toFixed(1);
     }
-    return "182.8";
+    return "--";
   }, [selectedFloatProfile]);
 
   const latestSurfaceDepth = useMemo(() => {
@@ -95,7 +95,7 @@ export function CommandCenterView() {
     if (selectedFloatProfile?.latest_surface?.pres != null) {
       return Number(selectedFloatProfile.latest_surface.pres).toFixed(1);
     }
-    return "4.2";
+    return "--";
   }, [selectedFloatProfile]);
 
   const latestCycle = useMemo(() => {
@@ -426,15 +426,11 @@ export function CommandCenterView() {
             <div className="space-y-1.5 font-mono text-xs">
               <div className="flex items-center gap-2 text-slate-300">
                 <span className="w-2 h-2 rounded-full bg-cyan-400 shadow-[0_0_4px_#00e5ff]" />
-                <span className="font-bold text-white">55</span> ARGO Active Floats
+                <span className="font-bold text-white">{floats.length || 55}</span> ARGO Active Floats
               </div>
               <div className="flex items-center gap-2 text-slate-300">
                 <span className="w-2 h-2 rounded-full bg-emerald-400 shadow-[0_0_4px_#34d399]" />
-                <span className="font-bold text-white">04</span> Biological Streams
-              </div>
-              <div className="flex items-center gap-2 text-slate-300">
-                <span className="w-2 h-2 rounded-full bg-sky-400 shadow-[0_0_4px_#38bdf8]" />
-                <span className="font-bold text-white">12</span> Satellites Tracking
+                <span className="font-bold text-white">{biodiversity.length ? biodiversity.length.toLocaleString() : "5,385"}</span> CMLRE Species Records
               </div>
             </div>
 

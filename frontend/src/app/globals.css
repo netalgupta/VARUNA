@@ -198,3 +198,24 @@
   top: 8px !important;
   right: 8px !important;
 }
+
+/* MapLibre Biodiversity Popup Overrides */
+.varuna-bio-popup .maplibregl-popup-content {
+  background: transparent !important;
+  box-shadow: none !important;
+  padding: 0 !important;
+  border-radius: 8px !important;
+}
+
+.varuna-bio-popup .maplibregl-popup-tip {
+  border-top-color: rgba(4, 13, 26, 0.96) !important;
+}
+
+/* ARGO Float Marker Tooltip Styles */
+.varuna-float-marker .varuna-float-hover-tooltip {
+  display: none !important;
+}
+
+.varuna-float-marker:hover .varuna-float-hover-tooltip {
+  display: flex !important;
+}

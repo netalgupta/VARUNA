@@ -5,18 +5,24 @@
 
 export interface BiodiversityRecord {
   id: number;
+  occurrence_id?: string;
   scientific_name: string;
   common_name: string;
   aphia_id: number;
   kingdom: string;
   phylum: string;
   family: string;
+  genus?: string;
   latitude: number;
   longitude: number;
   depth_m?: number | null;
   event_date: string;
   thermal_range_min_c: number;
   thermal_range_max_c: number;
+  salinity_min_psu?: number;
+  salinity_max_psu?: number;
+  hypoxia_avoidance_threshold_umol_kg?: number;
+  dataset_type?: string;
   institution_code: string;
 }
 

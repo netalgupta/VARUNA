@@ -409,7 +409,7 @@ def depth_profile(
     where = " AND ".join(conditions)
     sql = f"""
     SELECT platform_number, cycle_number, direction, time, latitude, longitude,
-           pres AS depth_m, temp, psal, doxy, chla, nitrate, ph_in_situ_total
+           pres, pres AS depth_m, pres AS depth, temp, psal, doxy, chla, nitrate, ph_in_situ_total
     FROM public.marine_data
     WHERE {where}
       AND pres IS NOT NULL
@@ -427,10 +427,10 @@ def depth_profile(
 
 
 def get_float_deepest_cast(platform_number: int) -> Optional[Dict[str, Any]]:
-    """Retrieve the absolute deepest recorded measurement for a given float."""
+    """Retrieve the absolute deepest recorded measurement for a given float (1 dbar = 1 m)."""
     sql = f"""
     SELECT platform_number, cycle_number, direction, time, latitude, longitude,
-           pres AS depth_m, temp, psal, doxy, chla, nitrate, ph_in_situ_total
+           pres, pres AS depth_m, pres AS depth, temp, psal, doxy, chla, nitrate, ph_in_situ_total
     FROM public.marine_data
     WHERE platform_number = {platform_number}
       AND pres IS NOT NULL AND temp IS NOT NULL
@@ -447,10 +447,10 @@ def get_float_deepest_cast(platform_number: int) -> Optional[Dict[str, Any]]:
 
 
 def get_float_latest_surface(platform_number: int) -> Optional[Dict[str, Any]]:
-    """Retrieve the latest surface measurement for a given float."""
+    """Retrieve the latest surface measurement for a given float (1 dbar = 1 m)."""
     sql = f"""
     SELECT platform_number, cycle_number, direction, time, latitude, longitude,
-           pres AS depth_m, temp, psal, doxy, chla, nitrate, ph_in_situ_total
+           pres, pres AS depth_m, pres AS depth, temp, psal, doxy, chla, nitrate, ph_in_situ_total
     FROM public.marine_data
     WHERE platform_number = {platform_number}
       AND pres < 25 AND temp IS NOT NULL

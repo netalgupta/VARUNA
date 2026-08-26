@@ -9,20 +9,17 @@ import type { StyleSpecification } from "maplibre-gl";
  * - GeoJSON layers for anomalies and overlays
  */
 export function getVarunaMapStyle(theme: "dark" | "voyager" = "dark"): StyleSpecification {
-  const subdomains = ["a", "b", "c", "d"];
-  const tileTheme = theme === "voyager" ? "voyager" : "dark_all";
-
   return {
     version: 8,
-    name: "VARUNA Dark Navy Tactical Marine Map",
+    name: "VARUNA Dark Tactical Oceanographic Map",
     sources: {
       "varuna-base-tiles": {
         type: "raster",
-        tiles: subdomains.map(
-          (s) => `https://${s}.basemaps.cartocdn.com/rastertiles/${tileTheme}/{z}/{x}/{y}@2x.png`
-        ),
+        tiles: [
+          "https://services.arcgisonline.com/arcgis/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}",
+        ],
         tileSize: 256,
-        attribution: "© OpenStreetMap contributors, © CARTO, VARUNA Operational Command",
+        attribution: "© Esri, HERE, Garmin, OpenStreetMap contributors, VARUNA Marine Command",
       },
       "anomalies": {
         type: "geojson",
@@ -42,7 +39,7 @@ export function getVarunaMapStyle(theme: "dark" | "voyager" = "dark"): StyleSpec
       },
     },
     layers: [
-      // 1. Dark Navy Raster Base Layer
+      // 1. Dark Tactical Raster Base Layer (Black Water, Dark Grey Land, Zero Watermarks)
       {
         id: "base-tiles",
         type: "raster",
@@ -52,7 +49,7 @@ export function getVarunaMapStyle(theme: "dark" | "voyager" = "dark"): StyleSpec
         paint: {
           "raster-opacity": 1.0,
           "raster-contrast": 0.15,
-          "raster-saturation": 0.1,
+          "raster-saturation": 0.05,
         },
       },
       // 2. Trajectory Glow Outer Halo
@@ -111,55 +108,63 @@ export function getVarunaMapStyle(theme: "dark" | "voyager" = "dark"): StyleSpec
           "line-opacity": 0.95,
         },
       },
-      // 6. ARGO Floats Outer Glow Halo
+      // 6. Biodiversity Species Outer Glow Halo
       {
-        id: "argo-floats-halo-layer",
+        id: "biodiversity-halo-layer",
         type: "circle",
-        source: "argo-floats",
+        source: "biodiversity",
         paint: {
           "circle-radius": [
-            "case",
-            ["get", "isSelected"],
-            14,
-            7,
-          ],
-          "circle-color": "#00e5ff",
-          "circle-opacity": 0.35,
-          "circle-blur": 0.8,
-        },
-      },
-      // 7. ARGO Floats Inner Core Dot
-      {
-        id: "argo-floats-circle-layer",
-        type: "circle",
-        source: "argo-floats",
-        paint: {
-          "circle-radius": [
-            "case",
-            ["get", "isSelected"],
+            "interpolate",
+            ["linear"],
+            ["zoom"],
+            2,
             6,
-            3.5,
+            5,
+            9,
+            8,
+            14,
           ],
-          "circle-color": [
-            "case",
-            ["get", "isSelected"],
-            "#ffffff",
-            "#00e5ff",
-          ],
-          "circle-stroke-color": "#030a16",
-          "circle-stroke-width": 1.5,
+          "circle-color": "#10b981",
+          "circle-opacity": 0.4,
+          "circle-blur": 0.6,
         },
       },
-      // 8. Biodiversity Species Dots
+      // 7. Biodiversity Species Core Dots (Color-coded by CMLRE Dataset Collection)
       {
         id: "biodiversity-circle-layer",
         type: "circle",
         source: "biodiversity",
         paint: {
-          "circle-radius": 4,
-          "circle-color": "#10b981",
-          "circle-stroke-color": "#030a16",
-          "circle-stroke-width": 1.5,
+          "circle-radius": [
+            "interpolate",
+            ["linear"],
+            ["zoom"],
+            2,
+            4,
+            5,
+            6,
+            8,
+            9,
+          ],
+          "circle-color": [
+            "match",
+            ["coalesce", ["get", "dataset_type"], "voucher"],
+            "voucher",
+            "#10b981",
+            "edna",
+            "#a855f7",
+            "fishery",
+            "#f59e0b",
+            "marine_mammal",
+            "#06b6d4",
+            "voucher_referral",
+            "#14b8a6",
+            "#10b981",
+          ],
+          "circle-stroke-color": "#ffffff",
+          "circle-stroke-width": 1.2,
+          "circle-opacity": 0.95,
         },
       },
     ],

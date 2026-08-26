@@ -432,12 +432,17 @@ export function OperationalProvider({ children }: { children: React.ReactNode })
   const loadBiodiversityData = useCallback(async (speciesName: string) => {
     setIsLoadingBio(true);
     try {
-      const [bioList, corrList] = await Promise.all([
-        getBiodiversity({ limit: 50 }),
+      const results = await Promise.allSettled([
+        getBiodiversity({ limit: 5000 }),
         getSpeciesCorrelations(speciesName, 90, 50),
       ]);
-      if (bioList && bioList.length > 0) setBiodiversity(bioList);
-      if (corrList && corrList.length > 0) setCorrelations(corrList);
+
+      if (results[0].status === "fulfilled" && results[0].value && results[0].value.length > 0) {
+        setBiodiversity(results[0].value);
+      }
+      if (results[1].status === "fulfilled" && results[1].value && results[1].value.length > 0) {
+        setCorrelations(results[1].value);
+      }
     } catch {
       // Graceful fallback
     } finally {
@@ -485,13 +490,14 @@ export function OperationalProvider({ children }: { children: React.ReactNode })
   }, []);
 
   const refreshAllData = useCallback(async () => {
-    // Critical first paint data: health, active float fleet, and critical anomalies
+    // Critical first paint data: health, active float fleet, anomalies, and CMLRE biodiversity occurrences
     await Promise.allSettled([
       checkHealth(),
       loadFloats(),
       loadAnomalies(),
+      loadBiodiversityData(selectedSpecies),
     ]);
-  }, [checkHealth, loadFloats, loadAnomalies]);
+  }, [checkHealth, loadFloats, loadAnomalies, loadBiodiversityData, selectedSpecies]);
 
   useEffect(() => {
     refreshAllData();
@@ -502,22 +508,16 @@ export function OperationalProvider({ children }: { children: React.ReactNode })
     loadBiodiversityData(selectedSpecies);
   }, [selectedSpecies, loadBiodiversityData]);
 
-  // When float changes, reload profile with zero-delay cache
+  // When float changes, IMMEDIATELY clear stale data and fetch fresh profile from DB
   useEffect(() => {
     if (selectedFloatId) {
+      // Clear previous float's data so the UI never shows stale readings from a different float
+      setSelectedFloatProfile(null);
       loadProfile(selectedFloatId);
+    } else {
+      setSelectedFloatProfile(null);
     }
   }, [selectedFloatId, loadProfile]);
-
-  // Background pre-cache top floats for instant sub-millisecond click response
-  useEffect(() => {
-    if (floats.length > 0) {
-      const topWMOs = floats.slice(0, 6).map((f) => String(f.wmo_id));
-      topWMOs.forEach((wmo) => {
-        getDepthProfile(wmo).catch(() => {});
-      });
-    }
-  }, [floats]);
 
   const value = useMemo<OperationalContextValue>(
     () => ({
