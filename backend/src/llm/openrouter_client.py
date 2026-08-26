@@ -67,30 +67,42 @@ async def chat_complete(
     }
 
     try:
-        async with httpx.AsyncClient(timeout=45.0) as client:
-            resp = await client.post(
-                f"{OPENROUTER_URL}/chat/completions",
-                headers=_get_headers(),
-                json=payload,
-            )
+        models_to_try = [chosen_model]
+        for fallback_m in ["google/gemini-2.5-flash", "nvidia/nemotron-3.5-lightning:free", "openrouter/free"]:
+            if fallback_m not in models_to_try:
+                models_to_try.append(fallback_m)
 
-            if resp.status_code == 200:
-                data = resp.json()
-                content = data["choices"][0]["message"]["content"]
-                elapsed_ms = (time.perf_counter() - start_time) * 1000.0
-
-                usage = data.get("usage", {})
-                if trace:
-                    trace.log(
-                        "OPENROUTER_COMPLETION",
-                        f"Completed {task_tag} via {chosen_model} in {elapsed_ms:.1f}ms",
-                        prompt_tokens=usage.get("prompt_tokens", 0),
-                        completion_tokens=usage.get("completion_tokens", 0),
+        for attempt_model in models_to_try:
+            payload["model"] = attempt_model
+            try:
+                async with httpx.AsyncClient(timeout=35.0) as client:
+                    resp = await client.post(
+                        f"{OPENROUTER_URL}/chat/completions",
+                        headers=_get_headers(),
+                        json=payload,
                     )
-                return content.strip()
 
-            log.error("OpenRouter API returned non-200 status: %s - %s", resp.status_code, resp.text)
-            return _offline_chat_fallback(messages, task_tag)
+                    if resp.status_code == 200:
+                        data = resp.json()
+                        content = data["choices"][0]["message"]["content"]
+                        elapsed_ms = (time.perf_counter() - start_time) * 1000.0
+
+                        usage = data.get("usage", {})
+                        if trace:
+                            trace.log(
+                                "OPENROUTER_COMPLETION",
+                                f"Completed {task_tag} via {attempt_model} in {elapsed_ms:.1f}ms",
+                                prompt_tokens=usage.get("prompt_tokens", 0),
+                                completion_tokens=usage.get("completion_tokens", 0),
+                            )
+                        return content.strip()
+
+                    log.warning("OpenRouter model %s returned status %s: %s", attempt_model, resp.status_code, resp.text[:100])
+            except Exception as e:
+                log.warning("OpenRouter request to %s failed: %s", attempt_model, str(e))
+
+        log.error("All OpenRouter candidate models failed for task: %s", task_tag)
+        return _offline_chat_fallback(messages, task_tag)
 
     except Exception as e:
         log.warning("OpenRouter connection failed [%s], using offline fallback: %s", task_tag, str(e))
@@ -149,22 +161,5 @@ async def embed_texts(
 
 
 def _offline_chat_fallback(messages: List[Dict[str, str]], task_tag: str) -> str:
-    """Dynamic precision fallback responses for testing and offline execution."""
-    last_msg = messages[-1]["content"] if messages else ""
-    tl = last_msg.lower()
-
-    if "plan" in task_tag.lower() or "planner" in task_tag.lower() or "decompose" in tl:
-        from src.agents.orchestrator import _build_default_plan
-        plan = _build_default_plan(last_msg)
-        return plan.model_dump_json()
-
-    if "sql" in task_tag.lower():
-        from src.llm.sql_gen import generate_fallback_sql
-        clean_task = last_msg.replace("Generate SQL query for:", "").strip()
-        sql = generate_fallback_sql(clean_task)
-        return f"```sql\n{sql}\n```"
-
-    if "synthesize" in task_tag.lower() or "summary" in task_tag.lower():
-        return "### 🌊 Marine Ecosystem Assessment\n\nOceanographic physical and biological parameters evaluated across active ARGO float telemetry."
-
-    return "VARUNA Marine Intelligence Platform: Analysis complete."
+    """Offline error message when LLM API is unavailable."""
+    return f"ERROR: LLM API request failed for task {task_tag}. No fallback synthesized."

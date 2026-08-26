@@ -28,7 +28,6 @@ from src.database.postgres import run_sql, route_query, get_active_floats, neare
 from src.database.qdrant import search_similar
 from src.agents.biodiversity_agent import execute_biodiversity_task
 from src.agents.sql_gen_agent import execute_sql_task
-from src.llm.sql_gen import generate_fallback_sql
 
 # ── Benchmark Query Matrix (35 Comprehensive Queries) ──────────────────────────
 
@@ -271,15 +270,13 @@ async def run_single_benchmark(test: Dict[str, Any]) -> Dict[str, Any]:
 
     try:
         if qtype in ("SQL_PHYSICAL", "SQL_BGC", "SQL_BIO"):
-            # Generate and execute SQL
-            sql_executed = generate_fallback_sql(query)
-            if sql_executed:
-                rows = run_sql(sql_executed, limit=50)
-                row_count = len(rows)
-            else:
-                agent_res = await execute_sql_task(query)
-                sql_executed = agent_res.get("sql")
-                row_count = agent_res.get("row_count", 0)
+            # Dynamic LLM NL2SQL generation
+            agent_res = await execute_sql_task(query)
+            sql_executed = agent_res.get("sql")
+            row_count = agent_res.get("row_count", 0)
+            if agent_res.get("status") == "ERROR":
+                status = "FAIL"
+                error_msg = agent_res.get("error")
 
             # Fetch Qdrant domain context
             hits = await search_similar(query, collection_name="argo_knowledge", limit=2)
