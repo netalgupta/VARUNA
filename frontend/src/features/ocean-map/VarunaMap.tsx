@@ -73,29 +73,31 @@ export function VarunaMap({ onHoverCoords }: VarunaMapProps) {
 
         if (isSelected) {
           el.innerHTML = `
-            <div class="absolute inset-0 rounded-full bg-rose-500/40 animate-ping"></div>
-            <div class="relative w-5 h-5 rounded-full bg-[#FF3366] border-2 border-white shadow-[0_0_12px_#FF3366] flex items-center justify-center">
+            <div class="relative w-4 h-4 rounded-full bg-blue-600 border-2 border-white shadow-md flex items-center justify-center">
               <div class="w-1.5 h-1.5 rounded-full bg-white"></div>
             </div>
-            <div class="absolute -top-7 left-1/2 -translate-x-1/2 px-2 py-0.5 rounded bg-[#0B1D2C] border border-[#FF3366] text-[#FF3366] text-[9px] font-mono font-bold whitespace-nowrap shadow-lg z-50 pointer-events-none">
-              ★ #${wmoId}
+            <div class="absolute -top-7 left-1/2 -translate-x-1/2 px-2 py-0.5 rounded bg-zinc-900 border border-zinc-700 text-zinc-100 text-[11px] font-medium whitespace-nowrap shadow-lg z-50 pointer-events-none font-sans">
+              ARGO ${wmoId}
             </div>
           `;
         } else {
           el.innerHTML = `
-            <div class="absolute inset-0 rounded-full bg-[#00FFC6]/20 group-hover:scale-150 transition-transform duration-300"></div>
-            <div class="relative w-3.5 h-3.5 rounded-full bg-[#0284C7] group-hover:bg-[#00FFC6] border-2 border-white shadow-[0_0_8px_rgba(2,132,199,0.8)] transition-all flex items-center justify-center">
+            <div class="relative w-3 h-3 rounded-full bg-blue-500 hover:bg-blue-400 border-[1.5px] border-zinc-900 shadow-sm transition-transform hover:scale-125 flex items-center justify-center">
               <div class="w-1 h-1 rounded-full bg-white"></div>
             </div>
-            <div class="hidden group-hover:flex absolute -top-6 left-1/2 -translate-x-1/2 px-1.5 py-0.5 rounded bg-[#0B1D2C]/95 border border-[#2EE6C6]/50 text-[#2EE6C6] text-[9px] font-mono whitespace-nowrap shadow-md z-50 pointer-events-none">
-              ARGO #${wmoId}
+            <div class="hidden group-hover:flex absolute -top-6 left-1/2 -translate-x-1/2 px-1.5 py-0.5 rounded bg-zinc-900 border border-zinc-700 text-zinc-200 text-[10px] whitespace-nowrap shadow-md z-50 pointer-events-none font-sans">
+              ARGO ${wmoId}
             </div>
           `;
         }
 
         el.addEventListener("click", (e) => {
           e.stopPropagation();
-          setSelectedFloatId(wmoId);
+          if (String(selectedFloatId) === String(wmoId)) {
+            setSelectedFloatId("");
+          } else {
+            setSelectedFloatId(wmoId);
+          }
         });
 
         const marker = new maplibregl.Marker({ element: el, anchor: "center" })
@@ -119,15 +121,12 @@ export function VarunaMap({ onHoverCoords }: VarunaMapProps) {
 
         const el = document.createElement("div");
         el.className = "varuna-bio-marker cursor-pointer group relative flex items-center justify-center";
-        el.style.width = "18px";
-        el.style.height = "18px";
+        el.style.width = "16px";
+        el.style.height = "16px";
         el.innerHTML = `
-          <div class="absolute inset-0 rounded-full bg-[#10B981]/25 group-hover:scale-150 transition-transform"></div>
-          <div class="relative w-3.5 h-3.5 rounded-full bg-[#10B981] border-2 border-white shadow-[0_0_8px_#10B981] flex items-center justify-center">
-            <div class="w-1 h-1 rounded-full bg-white"></div>
-          </div>
-          <div class="hidden group-hover:flex absolute -top-6 left-1/2 -translate-x-1/2 px-1.5 py-0.5 rounded bg-[#061A14]/95 border border-[#10B981]/60 text-[#10B981] text-[9px] font-mono whitespace-nowrap shadow-md z-50 pointer-events-none">
-            🐟 ${b.scientific_name || b.name}
+          <div class="relative w-2.5 h-2.5 rounded-full bg-emerald-500 hover:bg-emerald-400 border-[1.5px] border-zinc-900 shadow-sm transition-transform hover:scale-125"></div>
+          <div class="hidden group-hover:flex absolute -top-6 left-1/2 -translate-x-1/2 px-1.5 py-0.5 rounded bg-zinc-900 border border-zinc-700 text-zinc-200 text-[10px] whitespace-nowrap shadow-md z-50 pointer-events-none font-sans">
+            ${b.scientific_name || b.name}
           </div>
         `;
 

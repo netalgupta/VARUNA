@@ -41,9 +41,9 @@ export function LeftNav() {
   const alertCount = anomalies.length > 0 ? anomalies.length : 7;
 
   return (
-    <aside className="w-48 bg-[#020B14]/95 border-r border-[#2EE6C6]/15 flex flex-col justify-between p-2 z-30 shrink-0 select-none">
+    <aside className="w-48 bg-[#09090b] border-r border-white/[0.08] flex flex-col justify-between p-2 z-30 shrink-0 select-none text-xs">
       {/* ── Navigation Links ──────────────────────────────────────────────── */}
-      <nav className="space-y-1">
+      <nav className="space-y-0.5">
         {NAV_ITEMS.map((item) => {
           const Icon = item.icon;
           const isActive = activeNav === item.id;
@@ -53,19 +53,19 @@ export function LeftNav() {
             <button
               key={item.id}
               onClick={() => setActiveNav(item.id)}
-              className={`w-full h-8 px-2.5 rounded-lg flex items-center justify-between text-xs font-mono transition-all group ${
+              className={`w-full h-8 px-2.5 rounded-md flex items-center justify-between text-xs transition-colors group ${
                 isActive
-                  ? "bg-[#0B1D2C] text-[#00FFC6] font-bold border border-[#2EE6C6]/40 shadow-[0_0_12px_rgba(46,230,198,0.15)]"
-                  : "text-[#809AAB] hover:text-white hover:bg-[#0B1D2C]/50 border border-transparent"
+                  ? "bg-zinc-800 text-zinc-100 font-medium"
+                  : "text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/50"
               }`}
             >
-              <div className="flex items-center gap-2 min-w-0">
+              <div className="flex items-center gap-2.5 min-w-0">
                 <Icon
                   size={14}
                   className={`shrink-0 ${
                     isActive
-                      ? "text-[#00FFC6]"
-                      : "text-[#809AAB] group-hover:text-[#2EE6C6] transition-colors"
+                      ? "text-blue-400"
+                      : "text-zinc-500 group-hover:text-zinc-300 transition-colors"
                   }`}
                 />
                 <span className="truncate">{item.label}</span>
@@ -73,8 +73,10 @@ export function LeftNav() {
 
               {displayBadge !== undefined && (
                 <span
-                  className={`px-1.5 py-0.2 rounded-full text-[9px] font-bold shrink-0 ${
-                    item.badgeColor || "bg-[#2EE6C6]/20 text-[#2EE6C6]"
+                  className={`px-1.5 py-0.2 rounded text-[10px] font-medium shrink-0 ${
+                    item.id === "ALERTS"
+                      ? "bg-rose-500/20 text-rose-400"
+                      : "bg-zinc-800 text-zinc-400"
                   }`}
                 >
                   {displayBadge}
@@ -86,23 +88,23 @@ export function LeftNav() {
       </nav>
 
       {/* ── Bottom System Status Card ─────────────────────────────────────── */}
-      <div className="pt-2 border-t border-white/5">
-        <div className="p-2 rounded-lg bg-[#0B1D2C]/80 border border-white/10 flex items-center justify-between">
+      <div className="pt-2 border-t border-white/[0.06]">
+        <div className="p-2 rounded-md bg-zinc-900/80 border border-white/[0.06] flex items-center justify-between">
           <div className="flex items-center gap-2 min-w-0">
-            <div className="w-6 h-6 rounded-full bg-[#2EE6C6]/20 border border-[#2EE6C6]/40 flex items-center justify-center shrink-0">
-              <User size={12} className="text-[#2EE6C6]" />
+            <div className="w-5 h-5 rounded bg-zinc-800 flex items-center justify-center shrink-0 text-zinc-400">
+              <User size={11} />
             </div>
             <div className="min-w-0">
-              <div className="text-[10px] font-mono font-bold text-white truncate">
-                VARUNA Core
+              <div className="text-[11px] font-medium text-zinc-200 truncate">
+                Admin Console
               </div>
-              <div className="text-[9px] font-mono text-[#809AAB] flex items-center gap-1">
-                <span className="w-1.5 h-1.5 rounded-full bg-[#00FFC6]" />
-                <span>v2.4 · Online</span>
+              <div className="text-[10px] text-zinc-500 flex items-center gap-1">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                <span>Operational</span>
               </div>
             </div>
           </div>
-          <ChevronRight size={12} className="text-zinc-500 shrink-0" />
+          <ChevronRight size={11} className="text-zinc-500 shrink-0" />
         </div>
       </div>
     </aside>

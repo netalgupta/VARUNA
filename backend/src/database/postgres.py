@@ -416,10 +416,54 @@ def depth_profile(
     ORDER BY pres ASC
     LIMIT 1000
     """
-    rows = run_sql(sql, params=params, limit=1000)
+    # Fast path: query DB2 first (recent active float data), fallback to DB1
+    rows = _execute_single_db("db2", sql, params)
     if rows:
         return rows
+    rows_db1 = _execute_single_db("db1", sql, params)
+    if rows_db1:
+        return rows_db1
     return []
+
+
+def get_float_deepest_cast(platform_number: int) -> Optional[Dict[str, Any]]:
+    """Retrieve the absolute deepest recorded measurement for a given float."""
+    sql = f"""
+    SELECT platform_number, cycle_number, direction, time, latitude, longitude,
+           pres AS depth_m, temp, psal, doxy, chla, nitrate, ph_in_situ_total
+    FROM public.marine_data
+    WHERE platform_number = {platform_number}
+      AND pres IS NOT NULL AND temp IS NOT NULL
+    ORDER BY pres DESC
+    LIMIT 1
+    """
+    rows = _execute_single_db("db2", sql)
+    if rows:
+        return rows[0]
+    rows_db1 = _execute_single_db("db1", sql)
+    if rows_db1:
+        return rows_db1[0]
+    return None
+
+
+def get_float_latest_surface(platform_number: int) -> Optional[Dict[str, Any]]:
+    """Retrieve the latest surface measurement for a given float."""
+    sql = f"""
+    SELECT platform_number, cycle_number, direction, time, latitude, longitude,
+           pres AS depth_m, temp, psal, doxy, chla, nitrate, ph_in_situ_total
+    FROM public.marine_data
+    WHERE platform_number = {platform_number}
+      AND pres < 25 AND temp IS NOT NULL
+    ORDER BY time DESC, pres ASC
+    LIMIT 1
+    """
+    rows = _execute_single_db("db2", sql)
+    if rows:
+        return rows[0]
+    rows_db1 = _execute_single_db("db1", sql)
+    if rows_db1:
+        return rows_db1[0]
+    return None
 
 
 # ── Regional statistics ───────────────────────────────────────────────────────

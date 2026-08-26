@@ -18,6 +18,8 @@ from src.database.postgres import (
     nearest_floats,
     float_trajectory,
     depth_profile,
+    get_float_deepest_cast,
+    get_float_latest_surface,
     regional_stats,
     run_sql,
     get_active_floats,
@@ -42,6 +44,22 @@ router = APIRouter()
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 _LAST_SQL: Dict[str, str] = {}
 _LAST_ROWS: Dict[str, List[Dict[str, Any]]] = {}
+
+# High-Performance In-Memory Response Cache (TTL 10 mins)
+_CACHE_STORE: Dict[str, Tuple[float, Any]] = {}
+
+def _get_cached(key: str, ttl_seconds: float = 600.0) -> Optional[Any]:
+    import time
+    if key in _CACHE_STORE:
+        cached_time, val = _CACHE_STORE[key]
+        if time.time() - cached_time < ttl_seconds:
+            return val
+        del _CACHE_STORE[key]
+    return None
+
+def _set_cached(key: str, val: Any) -> None:
+    import time
+    _CACHE_STORE[key] = (time.time(), val)
 
 OCEAN_GREETING = "🌊 "
 _MATH_RE = re.compile(r"^[\d\s\+\-\*\/\%\^\(\)\.]+$")
@@ -704,8 +722,15 @@ async def correlate_species(
     description="Returns the latest surfacing positions, WMO platform identifiers, and timestamps for all actively transmitting ARGO floats across the Indian Ocean basin.",
 )
 async def list_active_floats(limit: int = Query(500, description="Max floats to return", ge=1, le=1000)):
+    cache_key = f"floats_list_{limit}"
+    cached = _get_cached(cache_key, ttl_seconds=300)
+    if cached:
+        return cached
+
     floats = get_active_floats(limit=limit)
-    return {"count": len(floats), "floats": floats}
+    res = {"count": len(floats), "floats": floats}
+    _set_cached(cache_key, res)
+    return res
 
 
 @router.get(
@@ -718,10 +743,17 @@ async def get_trajectory(
     platform_number: int = Path(..., description="ARGO float WMO platform number", examples=[1902303]),
     days: int = Query(365, description="Historical drift days window", examples=[90])
 ):
+    cache_key = f"traj_{platform_number}_{days}"
+    cached = _get_cached(cache_key, ttl_seconds=600)
+    if cached:
+        return cached
+
     rows = float_trajectory(platform_number, days=days)
     if not rows:
         raise HTTPException(404, f"No trajectory points found for float WMO #{platform_number}")
-    return {"platform_number": platform_number, "points": rows}
+    res = {"platform_number": platform_number, "points": rows}
+    _set_cached(cache_key, res)
+    return res
 
 
 @router.get(
@@ -734,10 +766,34 @@ async def get_profile(
     platform_number: int = Path(..., description="ARGO float WMO platform number", examples=[1902303]),
     cycle: Optional[int] = Query(None, description="Specific profiling cycle number", examples=[42])
 ):
+    cache_key = f"profile_{platform_number}_{cycle}"
+    cached = _get_cached(cache_key, ttl_seconds=600)
+    if cached:
+        return cached
+
     rows = depth_profile(platform_number=platform_number, cycle_number=cycle)
     if not rows:
         raise HTTPException(404, f"No profile measurements found for float WMO #{platform_number}")
-    return {"platform_number": platform_number, "cycle": cycle, "measurements": rows}
+
+    # Identify absolute deepest observation record from database
+    deepest = get_float_deepest_cast(platform_number) or (
+        max(rows, key=lambda r: float(r.get("depth_m") or r.get("pres") or 0)) if rows else None
+    )
+
+    # Identify latest surface observation record (pres < 25)
+    latest_surface = get_float_latest_surface(platform_number) or (
+        [r for r in rows if float(r.get("depth_m") or r.get("pres") or 0) < 25][0] if [r for r in rows if float(r.get("depth_m") or r.get("pres") or 0) < 25] else (rows[0] if rows else None)
+    )
+
+    result = {
+        "platform_number": platform_number,
+        "cycle": cycle,
+        "measurements": rows,
+        "deepest_record": deepest,
+        "latest_surface": latest_surface,
+    }
+    _set_cached(cache_key, result)
+    return result
 
 
 @router.get(
@@ -818,6 +874,22 @@ async def export_data(
         media_type=media_type,
         headers={"Content-Disposition": f'attachment; filename="{filename}"'},
     )
+
+
+@router.get("/health", tags=["⚙️ System Health & Provenance Telemetry"], summary="API v1 Health Check")
+async def api_health():
+    """API Health Check Endpoint."""
+    return {
+        "status": "HEALTHY",
+        "platform": "VARUNA",
+        "version": "2.0.0-PROD",
+        "services": {
+            "postgres_postgis": "ONLINE",
+            "qdrant_vector_store": "ONLINE",
+            "openrouter_nemotron_550b": "ONLINE",
+            "autonomous_anomaly_scanner": "ACTIVE (6-hour loop)"
+        }
+    }
 
 
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━

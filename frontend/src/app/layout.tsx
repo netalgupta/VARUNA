@@ -1,30 +1,26 @@
 import type { Metadata } from "next";
-import { Inter, Outfit, JetBrains_Mono } from "next/font/google";
+import { Inter, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
 
 const inter = Inter({
   subsets: ["latin"],
-  variable: "--font-inter",
-  display: "swap",
-});
-
-const outfit = Outfit({
-  subsets: ["latin"],
-  variable: "--font-outfit",
+  variable: "--font-sans",
+  weight: ["300", "400", "500", "600", "700"],
   display: "swap",
 });
 
 const jetbrainsMono = JetBrains_Mono({
   subsets: ["latin"],
-  variable: "--font-jetbrains-mono",
+  variable: "--font-mono",
+  weight: ["400", "500", "600"],
   display: "swap",
 });
 
 export const metadata: Metadata = {
-  title: "VARUNA — National Marine Data Backbone & Ocean Intelligence",
+  title: "Varuna — Ocean Intelligence & Data Platform",
   description:
-    "Fusing INCOIS ARGO Physical Oceanography with CMLRE Marine Living Resources into an Agentic AI Operations Center.",
-  keywords: ["VARUNA", "INCOIS", "CMLRE", "ARGO floats", "marine biodiversity", "oceanography", "marine heatwaves", "MoES"],
+    "National Marine Data Backbone fusing INCOIS ARGO Physical Oceanography with CMLRE Marine Living Resources.",
+  keywords: ["Varuna", "INCOIS", "CMLRE", "ARGO floats", "marine biodiversity", "oceanography", "MoES"],
 };
 
 export default function RootLayout({
@@ -33,7 +29,7 @@ export default function RootLayout({
   return (
     <html lang="en" className="dark">
       <body
-        className={`${inter.variable} ${outfit.variable} ${jetbrainsMono.variable} font-sans antialiased bg-[#020B14] text-[#D6F6FF]`}
+        className={`${inter.variable} ${jetbrainsMono.variable} font-sans antialiased bg-[#09090b] text-[#f4f4f5] selection:bg-blue-600 selection:text-white`}
       >
         {children}
       </body>
