@@ -19,7 +19,7 @@ from src.llm.embedder import embed_texts
 log = logging.getLogger("varuna.qdrant")
 
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-# 1. ARGO Physical & Oceanographic Knowledge Base
+# 1. ARGO Physical & Oceanographic Knowledge Base (Comprehensive Domain Mesh)
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ARGO_KNOWLEDGE_BASE = [
     {
@@ -43,14 +43,14 @@ ARGO_KNOWLEDGE_BASE = [
         "text": (
             "PSAL (Practical Salinity): Measured on the Practical Salinity Scale (PSU). The Arabian Sea exhibits high salinity "
             "(~35.5 - 36.8 PSU) due to strong evaporation exceeding precipitation, while the Bay of Bengal exhibits lower salinity "
-            "(~31.0 - 34.0 PSU) due to heavy monsoonal river discharge from the Ganges and Brahmaputra."
+            "(~31.0 - 34.0 PSU) due to heavy monsoonal river discharge from the Ganges, Brahmaputra, and Irrawaddy rivers."
         ),
         "payload": {"source": "variables", "var": "psal", "topic": "salinity_dynamics"},
     },
     {
         "id": 1004,
         "text": (
-            "DOXY (Dissolved Oxygen): Measured in µmol/kg by BGC-ARGO optode sensors. The Northern Arabian Sea contains one of "
+            "DOXY (Dissolved Oxygen): Measured in µmol/kg by BGC-ARGO optode sensors (Aanderaa 4330 / SBE 63). The Northern Arabian Sea contains one of "
             "the world's most acute Oxygen Minimum Zones (OMZ), where dissolved oxygen drops below 20 µmol/kg between 150m and 1000m depth."
         ),
         "payload": {"source": "variables", "var": "doxy", "topic": "hypoxia_omz"},
@@ -59,7 +59,7 @@ ARGO_KNOWLEDGE_BASE = [
         "id": 1005,
         "text": (
             "CHLA (Chlorophyll-a): Fluorescent optical proxy for phytoplankton biomass (mg/m³). Monsoon-driven coastal upwelling "
-            "along the southwest coast of India (Kerala/Goa) elevates chlorophyll concentrations (> 2.0 mg/m³) during July-September."
+            "along the southwest coast of India (Kerala/Goa/Malabar) elevates chlorophyll concentrations (> 2.0 mg/m³) during July-September."
         ),
         "payload": {"source": "variables", "var": "chla", "topic": "biological_productivity"},
     },
@@ -75,10 +75,90 @@ ARGO_KNOWLEDGE_BASE = [
     {
         "id": 1007,
         "text": (
-            "ARGO Profiling Cycle: Autonomous floats descend to a parking depth of 1000m for 9-10 days, then descend to 2000m before ascending "
+            "ARGO Profiling Cycle: Autonomous floats descend to a parking depth of 1000m for 9-10 days (drift phase), then descend to 2000m before ascending "
             "to the sea surface while measuring temperature, salinity, and biogeochemical parameters. Data is transmitted via Iridium satellites."
         ),
         "payload": {"source": "documentation", "topic": "argo_float_mission"},
+    },
+    {
+        "id": 1008,
+        "text": (
+            "Arabian Sea Oxygen Minimum Zone (AS-OMZ): Located in the northern and central Arabian Sea (lat 12°N-24°N, lon 60°E-74°E). "
+            "High primary productivity combined with sluggish intermediate water renewal results in intense suboxia (< 20 µmol/kg DOXY) "
+            "between 100m and 900m depth, driving massive denitrification and forcing pelagic fish into shallow surface layers."
+        ),
+        "payload": {"source": "regional_oceanography", "topic": "omz_arabian_sea", "basin": "arabian_sea"},
+    },
+    {
+        "id": 1009,
+        "text": (
+            "Bay of Bengal Barrier Layer & Freshwater Lens: Massive river runoff (~1.6×10¹² m³/yr) creates a thin, buoyant low-salinity "
+            "surface layer (30-33 PSU) over warm, saline subsurface water. This strong halocline inhibits vertical mixing, creating a thick "
+            "Barrier Layer (15-50m) that traps solar heat and intensifies tropical cyclones."
+        ),
+        "payload": {"source": "regional_oceanography", "topic": "barrier_layer_bob", "basin": "bay_of_bengal"},
+    },
+    {
+        "id": 1010,
+        "text": (
+            "Somali Current & Great Whirl Upwelling: During the Southwest Monsoon (June-September), southwesterly winds drive the intense "
+            "northward Somali Current (> 2 m/s) and generate large anticyclonic eddies (the Great Whirl). Coastal divergence produces cold, "
+            "nutrient-rich upwelling (SST < 22°C, high nitrate and chlorophyll) along the Horn of Africa and western Arabian Sea."
+        ),
+        "payload": {"source": "regional_oceanography", "topic": "somali_current_upwelling", "basin": "western_arabian_sea"},
+    },
+    {
+        "id": 1011,
+        "text": (
+            "Indian Ocean Dipole (IOD): A coupled ocean-atmosphere climate mode. Positive IOD (pIOD) features anomalous cooling in the southeastern "
+            "tropical Indian Ocean (off Sumatra/Java) and warming in the western Indian Ocean, driving enhanced rainfall over India and suppressing "
+            "cyclone activity in the Bay of Bengal. Negative IOD (nIOD) reverses these thermal anomalies."
+        ),
+        "payload": {"source": "climate_modes", "topic": "indian_ocean_dipole", "mode": "IOD"},
+    },
+    {
+        "id": 1012,
+        "text": (
+            "Wyrtki Jets: Strong eastward equatorial surface current jets occurring semi-annually during monsoon transition periods "
+            "(April-May and October-November). Speeds exceed 1 m/s, transporting warm surface water from the western to the eastern equatorial "
+            "Indian Ocean and deepening the thermocline in the east."
+        ),
+        "payload": {"source": "equatorial_dynamics", "topic": "wyrtki_jets", "region": "equatorial_indian_ocean"},
+    },
+    {
+        "id": 1013,
+        "text": (
+            "ARGO Float WMO 1902303: Active BGC-Argo float deployed in the central Arabian Sea. Equipped with Sea-Bird CTD and Aanderaa "
+            "Oxygen Optode. Transmits full vertical profiles (0-2000m) measuring intense mid-depth hypoxia (< 35 µmol/kg) and surface salinity > 36.2 PSU."
+        ),
+        "payload": {"source": "float_dossier", "platform_number": 1902303, "basin": "arabian_sea", "sensors": ["CTD", "DOXY"]},
+    },
+    {
+        "id": 1014,
+        "text": (
+            "ARGO Float WMO 5906478: Deep-profiling BGC-Argo float in the western Arabian Sea / Oman Basin. Records upper thermocline "
+            "variability, coastal upwelling plumes, and severe oxygen depletion in the mesopelagic zone."
+        ),
+        "payload": {"source": "float_dossier", "platform_number": 5906478, "basin": "arabian_sea", "sensors": ["CTD", "DOXY", "CHLA"]},
+    },
+    {
+        "id": 1015,
+        "text": (
+            "ARGO Float WMO 2903567: Equatorial Indian Ocean BGC float monitoring Wyrtki Jet passage, mixed layer heat content, "
+            "and equatorial upwelling waves (Kelvin and Rossby wave signatures)."
+        ),
+        "payload": {"source": "float_dossier", "platform_number": 2903567, "basin": "equatorial_io", "sensors": ["CTD", "DOXY"]},
+    },
+    {
+        "id": 1016,
+        "text": (
+            "Hypoxia Physiological Impact Thresholds: Marine organisms experience varying physiological stress depending on dissolved oxygen: "
+            "1. Normoxia (> 90 µmol/kg): Unimpaired aerobic respiration. "
+            "2. Mild Hypoxia (60-90 µmol/kg): Reduced metabolic scope in active pelagic teleosts (tunas, billfish). "
+            "3. Severe Hypoxia (20-60 µmol/kg): Lethal floor for most coastal and demersal finfish; schooling compression. "
+            "4. Suboxia / Anoxia (< 20 µmol/kg): Only specialized OMZ zooplankton and microbes survive; complete fish mortality."
+        ),
+        "payload": {"source": "physiological_thresholds", "topic": "hypoxia_impact_tiers"},
     },
 ]
 
@@ -89,7 +169,7 @@ ARGO_SCHEMA_KNOWLEDGE_BASE = [
     {
         "id": 2001,
         "text": (
-            "Table public.marine_data: Canonical physical ocean observation table containing 3.96M rows spanning 2022 to 2026. "
+            "Table public.marine_data: Canonical physical ocean observation table containing 3.96M rows spanning 2022 to 2026 across DB1 and DB2. "
             "Columns: platform_number (INT), cycle_number (INT), direction (CHAR 'A'/'D'), latitude (FLOAT), longitude (FLOAT), "
             "time (TIMESTAMP UTC), pres (FLOAT dbar), temp (FLOAT °C), psal (FLOAT PSU), doxy (FLOAT µmol/kg), chla (FLOAT mg/m³), "
             "ph_in_situ_total (FLOAT), nitrate (FLOAT µmol/kg), geom (GEOGRAPHY POINT 4326). "
@@ -100,6 +180,17 @@ ARGO_SCHEMA_KNOWLEDGE_BASE = [
     {
         "id": 2002,
         "text": (
+            "Table public.marine_biodiversity: CMLRE Darwin Core marine species occurrence table containing 105,866 in-situ observations (1946–2025). "
+            "Columns: occurrence_id (VARCHAR), scientific_name (VARCHAR), kingdom (VARCHAR), phylum (VARCHAR), class (VARCHAR), "
+            "order (VARCHAR), family (VARCHAR), genus (VARCHAR), species (VARCHAR), decimal_latitude (FLOAT), decimal_longitude (FLOAT), "
+            "geom (GEOGRAPHY POINT 4326), event_date (TIMESTAMPTZ), minimum_depth_m (FLOAT), maximum_depth_m (FLOAT), "
+            "basis_of_record (VARCHAR), source_dataset_name (TEXT). Indexed with GIST on geom and B-Tree on scientific_name."
+        ),
+        "payload": {"source": "schema", "table": "public.marine_biodiversity"},
+    },
+    {
+        "id": 2003,
+        "text": (
             "View public.v_latest_positions: Pre-computed real-time fleet map view returning the single newest observation position "
             "for each active ARGO float. "
             "Columns: platform_number (INT), time (TIMESTAMP UTC), latitude (FLOAT), longitude (FLOAT). "
@@ -108,7 +199,7 @@ ARGO_SCHEMA_KNOWLEDGE_BASE = [
         "payload": {"source": "schema", "table": "public.v_latest_positions"},
     },
     {
-        "id": 2003,
+        "id": 2004,
         "text": (
             "SQL Exemplar - Recent Monthly Temperature & Oxygen Aggregation:\n"
             "SELECT DATE_TRUNC('month', time) AS month, AVG(temp) AS avg_temp, AVG(doxy) AS avg_doxy\n"
@@ -120,7 +211,7 @@ ARGO_SCHEMA_KNOWLEDGE_BASE = [
         "payload": {"source": "few_shot_sql", "intent": "RECENT_MONTHLY_AGGREGATION"},
     },
     {
-        "id": 2004,
+        "id": 2005,
         "text": (
             "SQL Exemplar - Historical Float Surfacing Trajectory:\n"
             "SELECT platform_number, time, latitude, longitude, temp, psal, doxy\n"
@@ -131,7 +222,7 @@ ARGO_SCHEMA_KNOWLEDGE_BASE = [
         "payload": {"source": "few_shot_sql", "intent": "FLOAT_TRAJECTORY"},
     },
     {
-        "id": 2005,
+        "id": 2006,
         "text": (
             "SQL Exemplar - Vertical Depth Profile Cast:\n"
             "SELECT pres AS depth_m, temp, psal, doxy, chla, nitrate\n"
@@ -141,6 +232,22 @@ ARGO_SCHEMA_KNOWLEDGE_BASE = [
             "ORDER BY pres ASC LIMIT 500;"
         ),
         "payload": {"source": "few_shot_sql", "intent": "VERTICAL_DEPTH_CAST"},
+    },
+    {
+        "id": 2007,
+        "text": (
+            "SQL Exemplar - Cross-Domain Spatial Join between Marine Biodiversity and ARGO Float Telemetry:\n"
+            "SELECT b.scientific_name, b.family, b.genus, b.event_date,\n"
+            "       m.platform_number AS nearest_argo_float, m.time AS argo_time, m.temp, m.doxy,\n"
+            "       ROUND((ST_Distance(b.geom, m.geom)/1000.0)::numeric, 1) AS dist_km\n"
+            "FROM public.marine_biodiversity b\n"
+            "JOIN public.marine_data m\n"
+            "  ON ST_DWithin(b.geom, m.geom, 50000)\n"
+            " AND ABS(EXTRACT(EPOCH FROM (b.event_date - m.time))) <= 7 * 86400\n"
+            "WHERE m.doxy < 60.0 AND m.pres <= 200\n"
+            "ORDER BY dist_km ASC LIMIT 25;"
+        ),
+        "payload": {"source": "few_shot_sql", "intent": "BIO_ARGO_SPATIAL_JOIN"},
     },
 ]
 

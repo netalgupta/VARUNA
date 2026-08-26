@@ -27,8 +27,8 @@ SPECIES_CSV_PATH = _REPO_ROOT / "species_ecological_profiles_master----dataset2f
 SPECIES_JSON_PATH = _REPO_ROOT / "species_ecological_profiles.json"
 
 QDRANT_COLLECTION = "bio_knowledge"
-EMBED_BATCH_SIZE = 64   # rows per embedding call
-UPSERT_BATCH_SIZE = 200  # points per Qdrant upsert
+EMBED_BATCH_SIZE = 64    # rows per embedding call
+UPSERT_BATCH_SIZE = 100  # smaller batches to avoid Qdrant Cloud write timeouts
 
 
 # ── Text Chunk Formatter ──────────────────────────────────────────────────────
@@ -117,14 +117,14 @@ def _load_from_csv(path: Path) -> List[Dict[str, Any]]:
 
 
 def _load_species_profiles() -> List[Dict[str, Any]]:
-    """Load species profiles, preferring JSON (cleaner encoding) then CSV."""
-    if SPECIES_JSON_PATH.exists():
-        return _load_from_json(SPECIES_JSON_PATH)
+    """Load full species master profiles (20,514 species), preferring master CSV."""
     if SPECIES_CSV_PATH.exists():
         return _load_from_csv(SPECIES_CSV_PATH)
+    if SPECIES_JSON_PATH.exists():
+        return _load_from_json(SPECIES_JSON_PATH)
     raise FileNotFoundError(
         f"No species profiles file found.\n"
-        f"Expected one of:\n  {SPECIES_JSON_PATH}\n  {SPECIES_CSV_PATH}"
+        f"Expected one of:\n  {SPECIES_CSV_PATH}\n  {SPECIES_JSON_PATH}"
     )
 
 
@@ -207,14 +207,22 @@ def seed_bio_knowledge_sync(dry_run: bool = False) -> int:
             upserted += len(points)
             continue
 
-        # Upsert in sub-batches
+        # Upsert in sub-batches with retry
         for sub_start in range(0, len(points), UPSERT_BATCH_SIZE):
             sub_batch = points[sub_start : sub_start + UPSERT_BATCH_SIZE]
-            try:
-                client.upsert(collection_name=QDRANT_COLLECTION, points=sub_batch)
-                upserted += len(sub_batch)
-            except Exception as e:
-                log.warning("Upsert failed for sub-batch: %s", e)
+            success = False
+            for attempt in range(3):
+                try:
+                    client.upsert(collection_name=QDRANT_COLLECTION, points=sub_batch)
+                    upserted += len(sub_batch)
+                    success = True
+                    break
+                except Exception as e:
+                    if attempt < 2:
+                        import time
+                        time.sleep(1.5 * (attempt + 1))
+                    else:
+                        log.warning("Upsert failed for sub-batch after 3 attempts: %s", e)
 
         pct = min(100, int((batch_start + len(batch)) / total * 100))
         print(f"\r  ⬆  {upserted:>6} / {total} upserted ({pct}%)  ", end="", flush=True)
