@@ -304,7 +304,7 @@ export function BiodiversityView() {
           <div className="flex items-center gap-2">
             <Fish size={16} className="text-[#00FFC6]" />
             <h4 className="text-sm font-bold font-mono text-white tracking-wider">
-              CMLRE Marine Living Resources Catalog ({biodiversity.length || 500} Occurrences)
+              CMLRE Marine Living Resources Catalog ({biodiversity.length ? biodiversity.length.toLocaleString() : "5,629"} Occurrences)
             </h4>
           </div>
 

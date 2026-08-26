@@ -816,7 +816,7 @@ async def list_biodiversity(
     species: Optional[str] = Query(None, description="Filter by scientific name (e.g. Sardinella longiceps)", examples=["Sardinella longiceps"]),
     family: Optional[str] = Query(None, description="Filter by taxonomic family (e.g. Clupeidae)", examples=["Clupeidae"]),
     dataset_type: Optional[str] = Query(None, description="Filter by dataset type (voucher, edna, fishery, marine_mammal)", examples=["voucher"]),
-    limit: int = Query(500, description="Max records to return", ge=1, le=6000)
+    limit: int = Query(10000, description="Max records to return", ge=1, le=100000)
 ):
     records = get_cmlre_biodiversity_dataset()
     if species:

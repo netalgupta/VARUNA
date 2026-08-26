@@ -433,7 +433,7 @@ export function OperationalProvider({ children }: { children: React.ReactNode })
     setIsLoadingBio(true);
     try {
       const results = await Promise.allSettled([
-        getBiodiversity({ limit: 5000 }),
+        getBiodiversity({ limit: 10000 }),
         getSpeciesCorrelations(speciesName, 90, 50),
       ]);
 

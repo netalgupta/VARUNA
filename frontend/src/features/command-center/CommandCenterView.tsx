@@ -430,7 +430,7 @@ export function CommandCenterView() {
               </div>
               <div className="flex items-center gap-2 text-slate-300">
                 <span className="w-2 h-2 rounded-full bg-emerald-400 shadow-[0_0_4px_#34d399]" />
-                <span className="font-bold text-white">{biodiversity.length ? biodiversity.length.toLocaleString() : "5,385"}</span> CMLRE Species Records
+                <span className="font-bold text-white">{biodiversity.length ? biodiversity.length.toLocaleString() : "5,629"}</span> CMLRE Species Records
               </div>
             </div>
 

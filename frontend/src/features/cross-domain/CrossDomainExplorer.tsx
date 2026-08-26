@@ -500,7 +500,7 @@ export function CrossDomainExplorer() {
                     <Fish size={12} /> Select Species
                   </span>
                   <span className="text-slate-400 text-[10px]">
-                    [{DETAILED_SPECIES.length} Curated · {biodiversity.length || 5000}+ CMLRE]
+                    [{DETAILED_SPECIES.length} Curated · {biodiversity.length ? biodiversity.length.toLocaleString() : "5,629"} CMLRE Records]
                   </span>
                 </div>
 
