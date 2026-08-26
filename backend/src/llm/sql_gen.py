@@ -72,10 +72,10 @@ def generate_fallback_sql(question: str) -> str:
         else:
             bbox = "b.decimal_latitude BETWEEN 0.0 AND 25.0 AND b.decimal_longitude BETWEEN 60.0 AND 100.0"
         return (
-            "SELECT b.scientific_name, b.family, b.genus, b.habitat_zone, "
+            "SELECT b.scientific_name, b.family, b.genus, b.phylum, "
             "       b.minimum_depth_m, b.maximum_depth_m, "
             "       b.event_date, b.decimal_latitude AS lat, b.decimal_longitude AS lon, "
-            "       b.basis_of_record "
+            "       b.dataset_type "
             "FROM public.marine_biodiversity b "
             f"WHERE {bbox} "
             "ORDER BY b.event_date DESC NULLS LAST "
@@ -104,17 +104,17 @@ def generate_fallback_sql(question: str) -> str:
         else:
             species_term = "Clupeidae"  # default to sardine family
         return (
-            "SELECT b.scientific_name, b.family, b.genus, "
-            "       b.habitat_zone, b.event_date, "
+            "SELECT b.scientific_name, b.family, b.genus, b.phylum, "
+            "       b.event_date, "
             "       b.decimal_latitude AS lat, b.decimal_longitude AS lon, "
             "       b.minimum_depth_m, b.maximum_depth_m, "
-            "       b.basis_of_record, b.occurrence_status "
+            "       b.dataset_type "
             "FROM public.marine_biodiversity b "
             f"WHERE b.scientific_name ILIKE '%{species_term}%' "
             "   OR b.family ILIKE '%{species_term}%' "
             "ORDER BY b.event_date DESC NULLS LAST "
             "LIMIT 25;"
-        ).replace("%{species_term}%", f"%{species_term}%")
+        )
 
 
     if "1902751" in q:

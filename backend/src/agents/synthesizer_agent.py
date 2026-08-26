@@ -6,6 +6,7 @@ Fuses upstream SQL rows, biodiversity correlations, and anomaly alerts into cite
 from __future__ import annotations
 
 import json
+import math
 import logging
 from typing import Any, Dict, List, Optional
 
