@@ -205,7 +205,10 @@ def _execute_single_db(db_name: str, sql: str, params: Optional[dict] = None) ->
     try:
         with _conn(db_name) as conn:
             with conn.cursor() as cur:
-                cur.execute(sql, params or {})  # type: ignore[arg-type]
+                if params:
+                    cur.execute(sql, params)  # type: ignore[arg-type]
+                else:
+                    cur.execute(sql)
                 rows = cur.fetchall()
                 return [dict(r) for r in rows]
     except Exception as e:
