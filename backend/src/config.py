@@ -41,8 +41,9 @@ class Settings(BaseSettings):
 
     # ── OpenRouter / Cloud Cognitive API ────────────────
     openrouter_api_key: str = Field("", alias="OPENROUTER_API_KEY")
+    openrouter_api_keys_pool: str = Field("", alias="OPENROUTER_API_KEYS_POOL")
     openrouter_base_url: str = Field("https://openrouter.ai/api/v1", alias="OPENROUTER_BASE_URL")
-    openrouter_model: str = Field("nvidia/nemotron-3-super-120b-a12b:free", alias="OPENROUTER_MODEL")
+    openrouter_model: str = Field("google/gemini-2.5-flash", alias="OPENROUTER_MODEL")
     openrouter_embed_model: str = Field("nomic-ai/nomic-embed-text-v1.5:free", alias="OPENROUTER_EMBED_MODEL")
     hf_token: str = Field("", alias="HF_TOKEN")
 

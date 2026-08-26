@@ -27,14 +27,26 @@ DEFAULT_EMBED_MODEL = settings.openrouter_embed_model
 OPENROUTER_URL = settings.openrouter_base_url
 
 
-def _get_headers() -> Dict[str, str]:
+def _get_key_pool() -> List[str]:
+    keys: List[str] = []
+    if getattr(settings, "openrouter_api_keys_pool", ""):
+        for k in settings.openrouter_api_keys_pool.split(","):
+            k_clean = k.strip()
+            if k_clean and k_clean not in keys:
+                keys.append(k_clean)
+    if settings.openrouter_api_key and settings.openrouter_api_key not in keys:
+        keys.append(settings.openrouter_api_key)
+    return keys
+
+
+def _get_headers_for_key(api_key: str) -> Dict[str, str]:
     headers = {
         "Content-Type": "application/json",
         "HTTP-Referer": "https://varuna.incois.gov.in",
         "X-Title": "VARUNA Marine Intelligence Platform",
     }
-    if settings.openrouter_api_key:
-        headers["Authorization"] = f"Bearer {settings.openrouter_api_key}"
+    if api_key:
+        headers["Authorization"] = f"Bearer {api_key}"
     return headers
 
 
@@ -47,16 +59,14 @@ async def chat_complete(
     trace: Optional[Any] = None,
 ) -> str:
     """
-    Executes chat completion via OpenRouter API.
-    Gracefully handles rate limits with exponential backoff.
-    Falls back to grounded deterministic output if API key is not configured or offline.
+    Executes chat completion via OpenRouter API with multi-key rotation and multi-model failover.
     """
     chosen_model = model or DEFAULT_MODEL
     start_time = time.perf_counter()
+    key_pool = _get_key_pool()
 
-    # If no API key configured, use intelligent deterministic fallback for local testing
-    if not settings.openrouter_api_key:
-        log.warning("OPENROUTER_API_KEY not configured. Using grounded offline synthesis for [%s].", task_tag)
+    if not key_pool:
+        log.warning("No OPENROUTER API keys configured in pool. Using offline error for [%s].", task_tag)
         return _offline_chat_fallback(messages, task_tag)
 
     payload = {
@@ -66,19 +76,26 @@ async def chat_complete(
         "max_tokens": max_tokens,
     }
 
-    try:
-        models_to_try = [chosen_model]
-        for fallback_m in ["google/gemini-2.5-flash", "nvidia/nemotron-3.5-lightning:free", "openrouter/free"]:
-            if fallback_m not in models_to_try:
-                models_to_try.append(fallback_m)
+    models_to_try = [chosen_model]
+    for fallback_m in [
+        "nvidia/nemotron-3-super-120b-a12b:free",
+        "google/gemini-2.5-flash",
+        "nvidia/nemotron-3.5-lightning:free",
+        "openrouter/free",
+    ]:
+        if fallback_m not in models_to_try:
+            models_to_try.append(fallback_m)
 
+    # Multi-Key x Multi-Model Resilient Cascade
+    for attempt_key in key_pool:
+        headers = _get_headers_for_key(attempt_key)
         for attempt_model in models_to_try:
             payload["model"] = attempt_model
             try:
-                async with httpx.AsyncClient(timeout=35.0) as client:
+                async with httpx.AsyncClient(timeout=30.0) as client:
                     resp = await client.post(
                         f"{OPENROUTER_URL}/chat/completions",
-                        headers=_get_headers(),
+                        headers=headers,
                         json=payload,
                     )
 
@@ -91,22 +108,23 @@ async def chat_complete(
                         if trace:
                             trace.log(
                                 "OPENROUTER_COMPLETION",
-                                f"Completed {task_tag} via {attempt_model} in {elapsed_ms:.1f}ms",
+                                f"Completed {task_tag} via {attempt_model} (key: ...{attempt_key[-6:]}) in {elapsed_ms:.1f}ms",
                                 prompt_tokens=usage.get("prompt_tokens", 0),
                                 completion_tokens=usage.get("completion_tokens", 0),
                             )
                         return content.strip()
 
-                    log.warning("OpenRouter model %s returned status %s: %s", attempt_model, resp.status_code, resp.text[:100])
+                    # If 402/429 occurs on this key, break to next key in pool
+                    if resp.status_code in (402, 429):
+                        log.warning("Key ...%s rate/credit limited (status %s) for %s. Rotating to next key in pool.", attempt_key[-6:], resp.status_code, attempt_model)
+                        break
+                    else:
+                        log.warning("OpenRouter model %s returned status %s: %s", attempt_model, resp.status_code, resp.text[:100])
             except Exception as e:
-                log.warning("OpenRouter request to %s failed: %s", attempt_model, str(e))
+                log.warning("OpenRouter request to %s with key ...%s failed: %s", attempt_model, attempt_key[-6:], str(e))
 
-        log.error("All OpenRouter candidate models failed for task: %s", task_tag)
-        return _offline_chat_fallback(messages, task_tag)
-
-    except Exception as e:
-        log.warning("OpenRouter connection failed [%s], using offline fallback: %s", task_tag, str(e))
-        return _offline_chat_fallback(messages, task_tag)
+    log.error("All OpenRouter keys and candidate models in pool failed for task: %s", task_tag)
+    return _offline_chat_fallback(messages, task_tag)
 
 
 async def embed_texts(
