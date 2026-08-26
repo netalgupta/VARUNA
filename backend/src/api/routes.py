@@ -11,7 +11,7 @@ import logging
 import re
 import uuid
 from datetime import datetime, timezone
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Tuple
 
 log = logging.getLogger("varuna.api")
 
@@ -741,9 +741,10 @@ def get_cmlre_biodiversity_dataset() -> List[Dict[str, Any]]:
             if pd.isna(row.get("event_date")) or event_dt.lower() == "nan":
                 event_dt = "2024-01-01"
 
+            row_id = int(str(idx)) + 1 if str(idx).isdigit() else len(records) + 1
             records.append({
-                "id": int(idx + 1),
-                "occurrence_id": str(row.get("occurrence_id", f"CMLRE_{idx+1}")),
+                "id": row_id,
+                "occurrence_id": str(row.get("occurrence_id", f"CMLRE_{row_id}")),
                 "scientific_name": s_name,
                 "common_name": str(prof.get("common_name") or s_name),
                 "aphia_id": aphia_id or int(prof.get("aphia_id", 0) or 0),
