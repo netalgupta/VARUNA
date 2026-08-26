@@ -148,8 +148,8 @@ def route_query(sql: str) -> List[str]:
     if "v_latest_positions" in s_lower:
         return ["db2"]
 
-    # 1b. Marine biodiversity (CMLRE) -> lives in DB1
-    if "marine_biodiversity" in s_lower:
+    # 1b. Marine biodiversity (CMLRE) & Species Ecological Profiles -> live in DB1
+    if "marine_biodiversity" in s_lower or "species_ecological_profiles" in s_lower or "species_profiles" in s_lower:
         return ["db1"]
 
     # 2. Relative recent time expressions (NOW() - INTERVAL 'X days/months') -> DB2
