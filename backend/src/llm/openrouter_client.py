@@ -149,11 +149,15 @@ async def embed_texts(
             vectors.append([x / norm for x in vec])
         return vectors
 
+    key_pool = _get_key_pool()
+    api_key = key_pool[0] if key_pool else settings.openrouter_api_key
+    headers = _get_headers_for_key(api_key)
+
     try:
         async with httpx.AsyncClient(timeout=20.0) as client:
             resp = await client.post(
                 f"{OPENROUTER_URL}/embeddings",
-                headers=_get_headers(),
+                headers=headers,
                 json={
                     "model": chosen_model,
                     "input": texts,
