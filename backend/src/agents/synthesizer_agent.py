@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import json
 import math
+from math import isnan
 import logging
 from typing import Any, Dict, List, Optional
 
@@ -107,15 +108,15 @@ def _generate_grounded_answer(
             fam = r.get("family", "Unknown")
             d_min = r.get("minimum_depth_m")
             d_max = r.get("maximum_depth_m")
-            if d_min is not None and d_max is not None and not (math.isnan(float(d_min)) or math.isnan(float(d_max))):
+            if d_min is not None and d_max is not None and not (isnan(float(d_min)) or isnan(float(d_max))):
                 d_str = f"{float(d_min):.0f}–{float(d_max):.0f}m"
             else:
                 d_str = "Pelagic / Shelf"
             wmo = r.get("argo_float_id", "N/A")
             do_val = r.get("dissolved_oxygen_umol_kg")
-            do_str = f"**{float(do_val):.1f}**" if do_val is not None and not math.isnan(float(do_val)) else "N/A"
+            do_str = f"**{float(do_val):.1f}**" if do_val is not None and not isnan(float(do_val)) else "N/A"
             t_val = r.get("water_temp_c")
-            t_str = f"{float(t_val):.2f}" if t_val is not None and not math.isnan(float(t_val)) else "N/A"
+            t_str = f"{float(t_val):.2f}" if t_val is not None and not isnan(float(t_val)) else "N/A"
             km = float(r.get("dist_km", 0.0))
             lines.append(f"| *{s_name}* | {fam} | {d_str} | `{wmo}` | {do_str} | {t_str} | **{km:.1f} km** |")
 
