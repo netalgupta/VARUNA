@@ -19,20 +19,20 @@ log = logging.getLogger("varuna.agent.biodiversity")
 # Template 1: Species near low-oxygen ARGO floats (OMZ habitat compression)
 _SQL_OMZ_SPECIES = """
 SELECT DISTINCT ON (b.scientific_name)
-    b.scientific_name, b.family, b.habitat_zone,
+    b.scientific_name, b.family, b.genus,
     b.minimum_depth_m, b.maximum_depth_m,
     m.platform_number AS argo_float_id,
     m.time  AS argo_obs_time,
     ROUND(m.temp::numeric, 2) AS water_temp_c,
     ROUND(m.doxy::numeric, 1) AS dissolved_oxygen_umol_kg,
     ROUND(m.psal::numeric, 3) AS salinity_psu,
-    ROUND((ST_Distance(b.geom::geography, m.geom::geography) / 1000.0)::numeric, 1) AS dist_km
+    ROUND((ST_Distance(b.geom, m.geom) / 1000.0)::numeric, 1) AS dist_km
 FROM public.marine_biodiversity b
 JOIN public.marine_data m
-  ON ST_DWithin(b.geom::geography, m.geom::geography, 50000)
- AND ABS(EXTRACT(EPOCH FROM (b.event_date - m.time))) <= 7 * 86400
+  ON ST_DWithin(b.geom, m.geom, 100000)
 WHERE m.doxy IS NOT NULL AND m.doxy < {doxy_threshold}
   AND m.pres <= 200
+  AND m.time >= NOW() - INTERVAL '24 months'
 ORDER BY b.scientific_name, dist_km ASC
 LIMIT 20;
 """
@@ -40,19 +40,19 @@ LIMIT 20;
 # Template 2: Species at thermal stress (SST > threshold)
 _SQL_THERMAL_STRESS = """
 SELECT DISTINCT ON (b.scientific_name)
-    b.scientific_name, b.family, b.habitat_zone,
+    b.scientific_name, b.family, b.genus,
     b.minimum_depth_m, b.maximum_depth_m,
     m.platform_number AS argo_float_id,
     m.time  AS argo_obs_time,
     ROUND(m.temp::numeric, 2) AS water_temp_c,
     ROUND(m.doxy::numeric, 1) AS dissolved_oxygen_umol_kg,
-    ROUND((ST_Distance(b.geom::geography, m.geom::geography) / 1000.0)::numeric, 1) AS dist_km
+    ROUND((ST_Distance(b.geom, m.geom) / 1000.0)::numeric, 1) AS dist_km
 FROM public.marine_biodiversity b
 JOIN public.marine_data m
-  ON ST_DWithin(b.geom::geography, m.geom::geography, 50000)
- AND ABS(EXTRACT(EPOCH FROM (b.event_date - m.time))) <= 7 * 86400
+  ON ST_DWithin(b.geom, m.geom, 100000)
 WHERE m.temp IS NOT NULL AND m.temp > {temp_threshold}
   AND m.pres <= 10
+  AND m.time >= NOW() - INTERVAL '24 months'
 ORDER BY b.scientific_name, dist_km ASC
 LIMIT 20;
 """
@@ -60,7 +60,7 @@ LIMIT 20;
 # Template 3: Basin-specific species occurrence lookup
 _SQL_BASIN_SPECIES = """
 SELECT b.scientific_name, b.family, b.genus,
-       b.habitat_zone, b.minimum_depth_m, b.maximum_depth_m,
+       b.minimum_depth_m, b.maximum_depth_m,
        b.event_date, b.decimal_latitude AS lat, b.decimal_longitude AS lon,
        b.basis_of_record
 FROM public.marine_biodiversity b
@@ -73,7 +73,7 @@ LIMIT 30;
 # Template 4: Named species occurrence history
 _SQL_SPECIES_LOOKUP = """
 SELECT b.scientific_name, b.family, b.genus,
-       b.habitat_zone, b.event_date,
+       b.event_date,
        b.decimal_latitude AS lat, b.decimal_longitude AS lon,
        b.minimum_depth_m, b.maximum_depth_m,
        b.basis_of_record, b.occurrence_status

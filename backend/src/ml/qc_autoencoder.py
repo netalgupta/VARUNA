@@ -60,8 +60,17 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
 import numpy as np
-import torch
-import torch.nn as nn
+try:
+    import torch
+    import torch.nn as nn
+    _HAS_TORCH = True
+    _NN_MODULE = nn.Module
+except ImportError:
+    torch = None  # type: ignore
+    nn = None     # type: ignore
+    _HAS_TORCH = False
+    _NN_MODULE = object  # type: ignore
+
 from pydantic import BaseModel, Field
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -109,7 +118,7 @@ K_SIGMA: float = 3.0  # calibration rule: clean-mean + 3 std
 # ─────────────────────────────────────────────────────────────────────────────
 
 
-class ProfileConvAutoencoder(nn.Module):
+class ProfileConvAutoencoder(_NN_MODULE):  # type: ignore[misc]
     """1D-CNN encoder/decoder with a 4-float linear bottleneck."""
 
     def __init__(self, latent_dim: int = LATENT_DIM):

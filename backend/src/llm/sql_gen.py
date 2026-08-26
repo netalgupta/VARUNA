@@ -22,7 +22,7 @@ def generate_fallback_sql(question: str) -> str:
        any(kw in q for kw in ["oxygen", "omz", "hypox", "low oxygen", "dissolved oxygen"]):
         return (
             "SELECT DISTINCT ON (b.scientific_name) "
-            "    b.scientific_name, b.family, b.habitat_zone, "
+            "    b.scientific_name, b.family, b.genus, "
             "    b.minimum_depth_m, b.maximum_depth_m, "
             "    m.platform_number AS argo_float_id, "
             "    m.time AS argo_obs_time, "
@@ -43,7 +43,7 @@ def generate_fallback_sql(question: str) -> str:
        ("coral" in q and any(kw in q for kw in ["risk", "danger", "temperature", "mhw"])):
         return (
             "SELECT DISTINCT ON (b.scientific_name) "
-            "    b.scientific_name, b.family, b.habitat_zone, "
+            "    b.scientific_name, b.family, b.genus, "
             "    m.platform_number AS argo_float_id, "
             "    m.time AS argo_obs_time, "
             "    ROUND(m.temp::numeric, 2) AS water_temp_c, "

@@ -59,8 +59,17 @@ from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional, Tuple
 
 import numpy as np
-import torch
-import torch.nn as nn
+try:
+    import torch
+    import torch.nn as nn
+    _HAS_TORCH = True
+    _NN_MODULE = nn.Module
+except ImportError:
+    torch = None  # type: ignore
+    nn = None     # type: ignore
+    _HAS_TORCH = False
+    _NN_MODULE = object  # type: ignore
+
 from pydantic import BaseModel, Field
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -287,7 +296,11 @@ def generate_synthetic_history(
 # ─────────────────────────────────────────────────────────────────────────────
 
 
-class TemporalBlock(nn.Module):
+class TemporalBlock(_NN_MODULE):  # type: ignore[misc]
+    """
+    1D dilated causal convolution block with weight-norm and residual path.
+    Receptive field grows exponentially with dilation factor d = 2^k.
+    """
     def __init__(self, in_ch: int, out_ch: int, dilation: int):
         super().__init__()
         self.pad = nn.ConstantPad1d((2 * dilation, 0), 0.0)  # causal: left-only pad
@@ -299,7 +312,7 @@ class TemporalBlock(nn.Module):
         return self.act(self.norm(self.conv(self.pad(x))))
 
 
-class SpatioTemporalTCN(nn.Module):
+class SpatioTemporalTCN(_NN_MODULE):  # type: ignore[misc]
     """
     Per-cell temporal encoder (dilated causal Conv1d over 30-day history)
     followed by a light spatial refinement head (3x3 convs over the grid).
