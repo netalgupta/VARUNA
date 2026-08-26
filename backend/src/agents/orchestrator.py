@@ -18,6 +18,7 @@ from pydantic import BaseModel, Field
 from src.agents.sql_gen_agent import execute_sql_task
 from src.agents.retrieval_agent import execute_retrieval_task
 from src.agents.synthesizer_agent import synthesize_answer
+from src.agents.biodiversity_agent import execute_biodiversity_task
 from src.llm.openrouter_client import chat_complete
 from src.config import settings
 from src.observability.tracer import pipeline_span
@@ -274,9 +275,20 @@ async def plan_and_execute(
                     elif node.agent == "RETRIEVAL":
                         res = await execute_retrieval_task(node.params.get("query", query), params=node.params, trace=trace)
                     elif node.agent == "BIODIVERSITY":
-                        from src.api.routes import correlate_species
-                        correlations = await correlate_species(species=node.params.get("species", "Sardinella longiceps"))
-                        res = {"correlations": [c.model_dump() for c in correlations], "species": node.params.get("species")}
+                        res = await execute_biodiversity_task(
+                            node.params.get("query", query),
+                            params=node.params,
+                            trace=trace,
+                        )
+                        if event_bus and res.get("rows"):
+                            await event_bus.emit("bio_rows", res["rows"][:20])
+                        if event_bus and res.get("stress_flags"):
+                            await event_bus.emit("pipeline_step", {
+                                "stage": "BIODIVERSITY",
+                                "task_id": node.task_id,
+                                "status": "DONE",
+                                "message": f"Found {len(res.get('rows',[]))} bio co-locations | {len(res.get('stress_flags',[]))} stress flags",
+                            })
                     elif node.agent == "SYNTHESIZER":
                         res = await synthesize_answer(query, task_results=task_results, trace=trace)
                     else:

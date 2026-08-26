@@ -219,14 +219,39 @@ async def synthesize_answer(
 
     primary_sql = sql_queries[0] if sql_queries else None
 
-    # Try LLM inference first
-    data_summary = {
+    # Extract biodiversity-specific outputs from BIODIVERSITY agent
+    qdrant_bio_profiles: list = []
+    stress_flags: list = []
+    for task_id, res in task_results.items():
+        if isinstance(res, dict):
+            if "qdrant_profiles" in res:
+                qdrant_bio_profiles.extend(res.get("qdrant_profiles", []))
+            if "stress_flags" in res:
+                stress_flags.extend(res.get("stress_flags", []))
+
+    # Build LLM context — include bio-fusion data when present
+    data_summary: dict = {
         "user_query": query,
         "sample_sql_rows": all_rows[:15],
         "total_rows_retrieved": len(all_rows),
         "scientific_passages": retrieved_texts[:3],
         "biodiversity_context": bio_matches,
     }
+
+    if qdrant_bio_profiles:
+        data_summary["ecological_profiles_from_cmlre"] = [
+            {
+                "text": p.get("text", ""),
+                "species": p.get("payload", {}).get("scientific_name"),
+                "habitat": p.get("payload", {}).get("habitat_zone"),
+                "temp_range": f"{p.get('payload', {}).get('temp_pref_min_c')}–{p.get('payload', {}).get('temp_pref_max_c')} °C",
+                "hypoxia_floor": p.get("payload", {}).get("hypoxia_avoidance_threshold_umol_kg"),
+            }
+            for p in qdrant_bio_profiles[:6]
+        ]
+
+    if stress_flags:
+        data_summary["habitat_stress_alerts"] = stress_flags
 
     messages = [
         {"role": "system", "content": SYNTHESIZER_PROMPT.format(data_context=json.dumps(data_summary, default=str))},

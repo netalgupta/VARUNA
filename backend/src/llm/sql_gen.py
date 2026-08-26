@@ -14,7 +14,109 @@ def generate_fallback_sql(question: str) -> str:
     """
     q = question.lower().strip()
 
-    # ── 1. Specific ARGO Float Identifiers ───────────────────────────────────
+    # ── 0. CMLRE Biodiversity Cross-Domain Queries ────────────────────────────
+    # These query public.marine_biodiversity JOINed with public.marine_data.
+
+    # 0a. Species at OMZ / hypoxia / low oxygen stress
+    if any(kw in q for kw in ["which fish", "which species", "what species", "what fish", "marine species"]) and \
+       any(kw in q for kw in ["oxygen", "omz", "hypox", "low oxygen", "dissolved oxygen"]):
+        return (
+            "SELECT DISTINCT ON (b.scientific_name) "
+            "    b.scientific_name, b.family, b.habitat_zone, "
+            "    b.minimum_depth_m, b.maximum_depth_m, "
+            "    m.platform_number AS argo_float_id, "
+            "    m.time AS argo_obs_time, "
+            "    ROUND(m.temp::numeric, 2) AS water_temp_c, "
+            "    ROUND(m.doxy::numeric, 1) AS dissolved_oxygen_umol_kg, "
+            "    ROUND((ST_Distance(b.geom::geography, m.geom::geography)/1000.0)::numeric, 1) AS dist_km "
+            "FROM public.marine_biodiversity b "
+            "JOIN public.marine_data m "
+            "  ON ST_DWithin(b.geom::geography, m.geom::geography, 50000) "
+            " AND ABS(EXTRACT(EPOCH FROM (b.event_date - m.time))) <= 7 * 86400 "
+            "WHERE m.doxy IS NOT NULL AND m.doxy < 60.0 AND m.pres <= 200 "
+            "ORDER BY b.scientific_name, dist_km ASC "
+            "LIMIT 20;"
+        )
+
+    # 0b. Coral bleaching / thermal stress on species
+    if any(kw in q for kw in ["bleach", "coral bleach", "thermal stress", "heat stress"]) or \
+       ("coral" in q and any(kw in q for kw in ["risk", "danger", "temperature", "mhw"])):
+        return (
+            "SELECT DISTINCT ON (b.scientific_name) "
+            "    b.scientific_name, b.family, b.habitat_zone, "
+            "    m.platform_number AS argo_float_id, "
+            "    m.time AS argo_obs_time, "
+            "    ROUND(m.temp::numeric, 2) AS water_temp_c, "
+            "    ROUND(m.psal::numeric, 3) AS salinity_psu, "
+            "    ROUND((ST_Distance(b.geom::geography, m.geom::geography)/1000.0)::numeric, 1) AS dist_km "
+            "FROM public.marine_biodiversity b "
+            "JOIN public.marine_data m "
+            "  ON ST_DWithin(b.geom::geography, m.geom::geography, 50000) "
+            " AND ABS(EXTRACT(EPOCH FROM (b.event_date - m.time))) <= 7 * 86400 "
+            "WHERE m.temp IS NOT NULL AND m.temp > 28.5 AND m.pres <= 10 "
+            "ORDER BY b.scientific_name, dist_km ASC "
+            "LIMIT 20;"
+        )
+
+    # 0c. General species occurrence in a named basin / region
+    if any(kw in q for kw in ["species in", "species near", "biodiversity in", "biodiversity near",
+                                "observed in", "found in", "recorded in", "occur in"]):
+        if "arabian sea" in q or "arabian" in q:
+            bbox = "b.decimal_latitude BETWEEN 8.0 AND 25.0 AND b.decimal_longitude BETWEEN 55.0 AND 77.0"
+        elif "bay of bengal" in q or "bay of bengal" in q:
+            bbox = "b.decimal_latitude BETWEEN 5.0 AND 22.0 AND b.decimal_longitude BETWEEN 80.0 AND 100.0"
+        elif "gulf of mannar" in q or "mannar" in q or "lakshadweep" in q:
+            bbox = "b.decimal_latitude BETWEEN 7.0 AND 12.0 AND b.decimal_longitude BETWEEN 76.0 AND 82.0"
+        elif "indian ocean" in q:
+            bbox = "b.decimal_latitude BETWEEN -30.0 AND 30.0 AND b.decimal_longitude BETWEEN 40.0 AND 120.0"
+        else:
+            bbox = "b.decimal_latitude BETWEEN 0.0 AND 25.0 AND b.decimal_longitude BETWEEN 60.0 AND 100.0"
+        return (
+            "SELECT b.scientific_name, b.family, b.genus, b.habitat_zone, "
+            "       b.minimum_depth_m, b.maximum_depth_m, "
+            "       b.event_date, b.decimal_latitude AS lat, b.decimal_longitude AS lon, "
+            "       b.basis_of_record "
+            "FROM public.marine_biodiversity b "
+            f"WHERE {bbox} "
+            "ORDER BY b.event_date DESC NULLS LAST "
+            "LIMIT 30;"
+        )
+
+    # 0d. Named species lookup
+    if any(kw in q for kw in ["sardine", "sardinella", "mackerel", "rastrelliger",
+                                "tuna", "thunnus", "coral", "acropora",
+                                "prawn", "penaeus", "lobster", "cuttlefish",
+                                "skipjack", "katsuwonus", "lanternfish"]):
+        if "sardine" in q or "sardinella" in q:
+            species_term = "Sardinella"
+        elif "mackerel" in q or "rastrelliger" in q:
+            species_term = "Rastrelliger"
+        elif "skipjack" in q or "katsuwonus" in q:
+            species_term = "Katsuwonus"
+        elif "tuna" in q or "thunnus" in q:
+            species_term = "Thunnus"
+        elif "coral" in q or "acropora" in q:
+            species_term = "Acropora"
+        elif "prawn" in q or "penaeus" in q:
+            species_term = "Penaeus"
+        elif "lobster" in q:
+            species_term = "Galathea"
+        else:
+            species_term = "Clupeidae"  # default to sardine family
+        return (
+            "SELECT b.scientific_name, b.family, b.genus, "
+            "       b.habitat_zone, b.event_date, "
+            "       b.decimal_latitude AS lat, b.decimal_longitude AS lon, "
+            "       b.minimum_depth_m, b.maximum_depth_m, "
+            "       b.basis_of_record, b.occurrence_status "
+            "FROM public.marine_biodiversity b "
+            f"WHERE b.scientific_name ILIKE '%{species_term}%' "
+            "   OR b.family ILIKE '%{species_term}%' "
+            "ORDER BY b.event_date DESC NULLS LAST "
+            "LIMIT 25;"
+        ).replace("%{species_term}%", f"%{species_term}%")
+
+
     if "1902751" in q:
         return (
             "SELECT platform_number, time, latitude, longitude, pres, temp, psal, doxy "
