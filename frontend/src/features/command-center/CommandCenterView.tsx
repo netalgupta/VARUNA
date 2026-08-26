@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useMemo } from "react";
+import React, { useMemo, useState } from "react";
 import dynamic from "next/dynamic";
 import {
   ChevronRight,
@@ -10,6 +10,7 @@ import {
   Radio,
   Satellite,
   Compass,
+  Search,
 } from "lucide-react";
 import { useOperationalState } from "@/providers/OperationalProvider";
 
@@ -31,7 +32,26 @@ export function CommandCenterView() {
     setSelectedFloatId,
     selectedFloatProfile,
     setActiveNav,
+    selectedSpecies,
+    setSelectedSpecies,
   } = useOperationalState();
+
+  const [speciesQuery, setSpeciesQuery] = useState("");
+  const [isSpeciesSearchOpen, setIsSpeciesSearchOpen] = useState(false);
+
+  const speciesResults = useMemo(() => {
+    const query = speciesQuery.trim().toLowerCase();
+    return biodiversity
+      .filter((species) => {
+        if (!query) return true;
+        return (
+          species.scientific_name.toLowerCase().includes(query) ||
+          species.common_name.toLowerCase().includes(query) ||
+          species.family?.toLowerCase().includes(query)
+        );
+      })
+      .slice(0, 8);
+  }, [biodiversity, speciesQuery]);
 
   // ── 1. Telemetry Calculations from Real Data ─────────────────────────────
   const targetFloat = useMemo(() => {
@@ -318,8 +338,51 @@ export function CommandCenterView() {
           {/* Top Half: Float Directory Selector (235px) */}
           <FloatDirectoryPanel />
 
-          {/* Bottom Half: Deep Dive Mode with Subsea Probe (290px) */}
-          <div className="h-[290px]">
+          {/* Bottom Half: Species Search + Deep Dive Mode with Subsea Probe */}
+          <div className="h-[290px] flex flex-col gap-2">
+            <div className="relative shrink-0">
+              <Search size={14} className="absolute left-3 top-2.5 text-cyan-400" />
+              <input
+                type="search"
+                value={speciesQuery}
+                onFocus={() => setIsSpeciesSearchOpen(true)}
+                onChange={(event) => {
+                  setSpeciesQuery(event.target.value);
+                  setIsSpeciesSearchOpen(true);
+                }}
+                placeholder="Search species by name or family..."
+                aria-label="Search species by name or family"
+                className="w-full h-9 pl-9 pr-3 rounded-lg bg-[#071526]/95 border border-sky-500/25 text-xs font-mono text-white placeholder-slate-500 outline-none focus:border-cyan-400 shadow-lg"
+              />
+              {isSpeciesSearchOpen && (
+                <div className="absolute left-0 right-0 top-10 z-50 max-h-44 overflow-y-auto rounded-lg bg-[#091a30] border border-cyan-500/35 shadow-2xl p-1 font-mono">
+                  {speciesResults.length > 0 ? speciesResults.map((species) => (
+                    <button
+                      key={species.scientific_name}
+                      type="button"
+                      onClick={() => {
+                        setSelectedSpecies(species.scientific_name);
+                        setSpeciesQuery("");
+                        setIsSpeciesSearchOpen(false);
+                      }}
+                      className={`w-full text-left px-2.5 py-1.5 rounded-md transition-colors ${
+                        species.scientific_name === selectedSpecies
+                          ? "bg-cyan-500/25 text-white"
+                          : "text-slate-300 hover:bg-cyan-500/15 hover:text-white"
+                      }`}
+                    >
+                      <span className="block text-[11px] italic font-bold">{species.scientific_name}</span>
+                      <span className="block text-[9px] text-slate-400">
+                        {species.common_name || species.family || "CMLRE catalog record"}
+                      </span>
+                    </button>
+                  )) : (
+                    <div className="px-2.5 py-2 text-[10px] text-slate-500">No matching species</div>
+                  )}
+                </div>
+              )}
+            </div>
+
             <DeepDiveModePanel
               isCollapsible={true}
               onDeselect={() => setSelectedFloatId("")}

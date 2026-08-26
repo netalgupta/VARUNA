@@ -201,16 +201,29 @@ export function DeepDiveModePanel({
       {/* ── Main Bathymetry & Sensor Readout with Subsea Probe Background ── */}
       <div className="relative flex-1 rounded-lg overflow-hidden bg-[#040914] border border-sky-500/20 p-3.5 flex items-center justify-between gap-3 min-h-[195px]">
         {/* Background Image: ARGO Float Probe In-Situ */}
-        <div className="absolute inset-0 z-0 pointer-events-none">
+        <div className="absolute inset-0 z-0 pointer-events-none deep-profile-simulation">
           <Image
             src="/assets/argo_deep_probe.jpg"
             alt="ARGO Deep Submersible Probe"
             fill
             priority
-            className="object-cover opacity-55"
+            className="object-cover opacity-55 deep-profile-probe"
           />
-          {/* Refined dark atmospheric ocean depth gradient overlay */}
-          <div className="absolute inset-0 bg-gradient-to-r from-[#040914]/95 via-[#040914]/60 to-[#040914]/85" />
+          <div className="deep-profile-rays" />
+          <div className="deep-profile-particles">
+            {Array.from({ length: 28 }, (_, index) => (
+              <span
+                key={index}
+                style={{
+                  left: `${(index * 37) % 100}%`,
+                  top: `${(index * 61) % 100}%`,
+                  animationDelay: `${-(index % 9)}s`,
+                  animationDuration: `${8 + (index % 7)}s`,
+                }}
+              />
+            ))}
+          </div>
+          <div className="absolute inset-0 bg-gradient-to-r from-[#040914]/95 via-[#040914]/55 to-[#040914]/85" />
         </div>
 
         {telemetry ? (
