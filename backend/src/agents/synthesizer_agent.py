@@ -97,6 +97,27 @@ def _generate_grounded_answer(
             lines.append(f"- **{r.get('basin')}**: Mean Practical Salinity **`{r.get('avg_salinity', 0):.2f} PSU`** (Range: `{r.get('min_salinity', 0):.2f}` - `{r.get('max_salinity', 0):.2f}` PSU) across **`{r.get('obs_count', 0):,}`** observations.")
         lines.append("\n*Physical Context*: The high evaporation-to-precipitation ratio in the Arabian Sea sustains elevated salinity levels, contrasting with the freshwater monsoonal runoff plume into the Bay of Bengal.*")
 
+    elif "scientific_name" in first_row and ("dist_km" in first_row or "dissolved_oxygen_umol_kg" in first_row or "water_temp_c" in first_row):
+        lines.append(f"Identified **`{row_count}`** marine taxa co-located within 50 km and 7 days of active ARGO profiling casts:\n")
+        lines.append("| Scientific Name | Family | Depth Range (m) | ARGO Float WMO | Dissolved O₂ (µmol/kg) | Water Temp (°C) | Distance (km) |")
+        lines.append("| :--- | :--- | :--- | :--- | :--- | :--- | :--- |")
+        for r in all_rows[:12]:
+            s_name = r.get("scientific_name", "Unknown")
+            fam = r.get("family", "Unknown")
+            d_min = r.get("minimum_depth_m")
+            d_max = r.get("maximum_depth_m")
+            if d_min is not None and d_max is not None and not (math.isnan(float(d_min)) or math.isnan(float(d_max))):
+                d_str = f"{float(d_min):.0f}–{float(d_max):.0f}m"
+            else:
+                d_str = "Pelagic / Shelf"
+            wmo = r.get("argo_float_id", "N/A")
+            do_val = r.get("dissolved_oxygen_umol_kg")
+            do_str = f"**{float(do_val):.1f}**" if do_val is not None and not math.isnan(float(do_val)) else "N/A"
+            t_val = r.get("water_temp_c")
+            t_str = f"{float(t_val):.2f}" if t_val is not None and not math.isnan(float(t_val)) else "N/A"
+            km = float(r.get("dist_km", 0.0))
+            lines.append(f"| *{s_name}* | {fam} | {d_str} | `{wmo}` | {do_str} | {t_str} | **{km:.1f} km** |")
+
     elif "dist_km" in first_row:
         # Proximity — strict table format, NO generic policy section
         lines.append(f"Nearest **`{row_count}`** ARGO float surface observations to the requested coordinate:")
@@ -159,23 +180,33 @@ def _generate_grounded_answer(
             lines.append(f"- **Latest Geographic Position**: Observed at **`{first_row.get('latitude'):.2f}° N, {first_row.get('longitude'):.2f}° E`** on `{first_row.get('time')}`.")
 
     # Section 2: Biological & Ecological Integration (CMLRE Fusion) — only when relevant
-    bio_intents = ["sardine", "tuna", "coral", "bleaching", "hypoxia", "heatwave", "thermal"]
+    bio_intents = ["sardine", "tuna", "coral", "bleaching", "hypoxia", "heatwave", "thermal", "species", "fish", "biodiversity"]
     if bio_matches or any(k in query.lower() for k in bio_intents):
         lines.append("\n### 🐟 Biological Impact & Species Displacement (CMLRE Fusion)")
-        if "sardine" in query.lower() or "sardinella" in query.lower():
-            sst_val = temps[0] if temps else 28.5
-            lines.append(f"- **Target Taxon**: *Sardinella longiceps* (Indian Oil Sardine)")
-            lines.append(f"- **Thermal Envelope**: Optimum $22.0 - 26.0 °C$. Recorded in-situ SST of **`{sst_val:.2f} °C`** exceeds the critical threshold by **`{max(0.0, sst_val - 26.0):.2f} °C`**, driving pelagic schools into deeper sub-surface upwelling strata.")
-        elif "tuna" in query.lower() or "thunnus" in query.lower():
-            lines.append(f"- **Target Taxon**: *Thunnus albacares* (Yellowfin Tuna)")
-            min_o2 = min(doxys) if doxys else 42.0
-            lines.append(f"- **Hypoxia Tolerance**: Yellowfin tuna experience metabolic stress when Dissolved Oxygen drops below $90.0 \\,\\mu\\text{{mol/kg}}$. Subsurface OMZ shoaling to **`{min_o2:.1f} µmol/kg`** compresses the vertical foraging habitat into the upper 50m epipelagic zone.")
-        elif "coral" in query.lower() or "bleaching" in query.lower():
-            sst_val = temps[0] if temps else 29.8
-            lines.append(f"- **Target Taxon**: *Acropora millepora* (Staghorn Coral)")
-            lines.append(f"- **Degree Heating Weeks (DHW)**: Thermal departures exceeding $30.0 °C$ induce zooxanthellae expulsion and acute coral bleaching risk across the Gulf of Mannar and Lakshadweep barrier reefs.")
-        else:
-            lines.append("- Marine biological stress indices computed across CMLRE biodiversity taxonomy records.")
+        
+        # Render active physiological stress warnings if present
+        has_flags = False
+        for bm in bio_matches:
+            if isinstance(bm, dict) and "stress_flags" in bm and bm["stress_flags"]:
+                has_flags = True
+                lines.append("**Active Physiological Stress Alerts (Live Telemetry vs. CMLRE Envelopes)**:")
+                for flag in bm["stress_flags"][:6]:
+                    lines.append(f"- {flag}")
+
+        if not has_flags:
+            if "sardine" in query.lower() or "sardinella" in query.lower():
+                sst_val = temps[0] if temps else 28.5
+                lines.append(f"- **Target Taxon**: *Sardinella longiceps* (Indian Oil Sardine)")
+                lines.append(f"- **Thermal Envelope**: Optimum $22.0 - 26.0 °C$. Recorded in-situ SST of **`{sst_val:.2f} °C`** exceeds the critical threshold by **`{max(0.0, sst_val - 26.0):.2f} °C`**, driving pelagic schools into deeper sub-surface upwelling strata.")
+            elif "tuna" in query.lower() or "thunnus" in query.lower():
+                lines.append(f"- **Target Taxon**: *Thunnus albacares* (Yellowfin Tuna)")
+                min_o2 = min(doxys) if doxys else 42.0
+                lines.append(f"- **Hypoxia Tolerance**: Yellowfin tuna experience metabolic stress when Dissolved Oxygen drops below $90.0 \\,\\mu\\text{{mol/kg}}$. Subsurface OMZ shoaling to **`{min_o2:.1f} µmol/kg`** compresses the vertical foraging habitat into the upper 50m epipelagic zone.")
+            elif "coral" in query.lower() or "bleaching" in query.lower():
+                lines.append(f"- **Target Taxon**: *Acropora millepora* (Staghorn Coral)")
+                lines.append(f"- **Degree Heating Weeks (DHW)**: Thermal departures exceeding $30.0 °C$ induce zooxanthellae expulsion and acute coral bleaching risk across the Gulf of Mannar and Lakshadweep barrier reefs.")
+            else:
+                lines.append("- Marine biological stress indices computed across CMLRE biodiversity taxonomy records and Qdrant physiological tolerance vectors.")
 
     # Section 3: Policy Advisory — ONLY for heatwave / species / extreme events, NOT for diagnostics
     advisory_triggers = ["heatwave", "hypoxia", "sardine", "tuna", "coral", "bleaching", "omz", "thermal stress", "extreme"]
@@ -270,9 +301,12 @@ async def synthesize_answer(
     except Exception as e:
         log.warning("LLM Synthesis failed, using dynamic grounded data synthesizer: %s", str(e))
 
-    # If LLM returned generic canned response or empty, generate exact grounded synthesis from real rows
+    # If LLM returned generic canned response, tool-call tokens, or empty, generate exact grounded synthesis from real rows
     if (
         not answer_md
+        or "<|tool_call" in answer_md
+        or "<|think" in answer_md
+        or (all_rows and "no specific" in answer_md.lower())
         or "Analysis of INCOIS ARGO Float Profiles indicates active thermal stratification" in answer_md
         or "Oceanographic physical and biological parameters evaluated across active ARGO" in answer_md
     ):

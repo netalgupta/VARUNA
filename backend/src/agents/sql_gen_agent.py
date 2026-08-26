@@ -42,14 +42,13 @@ Columns:
   longitude (DOUBLE PRECISION): Latest longitude
 * ALWAYS query public.v_latest_positions for 'current float locations', 'where are the floats now', or 'latest positions'.
 
-3. Table: public.marine_biodiversity (CMLRE Darwin Core Taxonomy)
+3. Table: public.marine_biodiversity (CMLRE In-Situ Biodiversity Occurrences — 105,866 rows on DB1)
 Columns:
-  id (INT): Primary key
-  scientific_name (VARCHAR): e.g. 'Sardinella longiceps', 'Rastrelliger kanagurta'
-  common_name (VARCHAR): e.g. 'Indian Oil Sardine'
-  latitude (DOUBLE PRECISION), longitude (DOUBLE PRECISION)
-  depth_m (NUMERIC), event_date (DATE)
-  thermal_range_min_c (NUMERIC), thermal_range_max_c (NUMERIC)
+  id (BIGINT PRIMARY KEY), occurrence_id (VARCHAR), scientific_name (VARCHAR)
+  kingdom (VARCHAR), phylum (VARCHAR), class_name (VARCHAR), order_name (VARCHAR), family (VARCHAR), genus (VARCHAR), species (VARCHAR)
+  minimum_depth_m (DOUBLE PRECISION), maximum_depth_m (DOUBLE PRECISION)
+  decimal_latitude (DOUBLE PRECISION), decimal_longitude (DOUBLE PRECISION), event_date (TIMESTAMP WITHOUT TIME ZONE), geom (GEOGRAPHY POINT 4326)
+* NOTE: Species ecological profiles (common_name, thermal/salinity/hypoxia thresholds) live in Qdrant bio_knowledge. In SQL, query scientific_name, family, genus, minimum_depth_m, maximum_depth_m, decimal_latitude, decimal_longitude, event_date.
 
 Geographic Regions:
   Arabian Sea: latitude BETWEEN 8.0 AND 25.0 AND longitude BETWEEN 55.0 AND 75.0

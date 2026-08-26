@@ -37,11 +37,15 @@ def extract_sql(text: str) -> Optional[str]:
             return None
         cand = m2.group(0).strip()
 
-    # Strip anything after role markers
-    for stop in ("\nAnswer:", "\nHuman:", "\nAssistant:", "\nExplanation:", "```"):
+    # Strip anything after role markers or tool-call tokens
+    for stop in ("\nAnswer:", "\nHuman:", "\nAssistant:", "\nExplanation:", "```", "<|tool_call", "<|im_end", "<|end", "')]"):
         cand = cand.split(stop)[0].strip()
 
-    cand = cand.rstrip(";").strip()
+    # Unescape any literal escape sequences from JSON/LLM output
+    cand = cand.replace(r"\n", "\n").replace(r"\t", " ").replace(r"\'", "'").replace(r'\"', '"')
+    # If a semicolon exists, take only the first statement
+    cand = cand.split(";")[0].strip()
+    cand = re.sub(r"['\"\)]+\]\}?$", "", cand).strip()
     low = cand.lower()
 
     if not low.lstrip().startswith("select"):
