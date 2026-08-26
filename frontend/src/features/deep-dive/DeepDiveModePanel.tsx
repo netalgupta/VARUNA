@@ -198,19 +198,19 @@ export function DeepDiveModePanel({
 
   // ── Expanded Full Deep Dive Mode Panel ─────────────────────────────────────
   return (
-    <div className="bg-gradient-to-b from-[#0d1b32]/85 to-[#081222]/90 border border-sky-500/20 backdrop-blur-md rounded-xl flex flex-col h-full overflow-hidden p-3.5 relative select-none shadow-lg">
+    <div className="bg-gradient-to-b from-[#08152c]/90 to-[#040c1a]/95 border border-sky-500/20 backdrop-blur-md rounded-xl flex flex-col h-full overflow-hidden p-3.5 relative select-none shadow-xl">
       {/* ── Header ───────────────────────────────────────────────────────── */}
       <div className="flex items-center justify-between border-b border-sky-500/15 pb-2 mb-2 shrink-0">
         <div className="flex items-center gap-2">
-          <span className="w-2 h-2 rounded-full bg-sky-400 shadow-[0_0_6px_#38bdf8] shrink-0" />
-          <span className="text-sm font-semibold text-white">
-            Deep Profile · WMO {selectedFloatId || activeFloat?.wmo_id || "2902764"}
+          <span className="w-2 h-2 rounded-full bg-cyan-400 shadow-[0_0_8px_#00e5ff] shrink-0" />
+          <span className="font-mono font-bold text-slate-200 text-xs tracking-wider uppercase truncate">
+            Deep Profile · WMO {selectedFloatId || activeFloat?.wmo_id || "1902594"}
           </span>
         </div>
 
         <div className="flex items-center gap-1.5">
-          <span className="text-xs px-2 py-0.5 bg-[#0e1c36] text-sky-300 border border-sky-500/20 rounded-md font-semibold">
-            {telemetry.phase}
+          <span className="text-[10px] px-2 py-0.5 bg-cyan-500/15 text-cyan-300 border border-cyan-400/30 rounded font-mono font-semibold uppercase">
+            Abyssal Max Cast
           </span>
           {isCollapsible && onDeselect && (
             <button
@@ -218,14 +218,14 @@ export function DeepDiveModePanel({
               className="p-1 rounded-md hover:bg-[#0e1c36] text-slate-400 hover:text-white transition-colors cursor-pointer"
               title="Close panel"
             >
-              <X size={13} />
+              <X size={12} />
             </button>
           )}
         </div>
       </div>
 
       {/* ── Main Bathymetry & Sensor Readout with Subsea Probe Background ── */}
-      <div className="relative flex-1 rounded-lg overflow-hidden bg-[#060c18] border border-sky-500/20 p-3.5 flex items-center justify-between gap-3 min-h-[195px]">
+      <div className="relative flex-1 rounded-lg overflow-hidden bg-[#040914] border border-sky-500/20 p-3.5 flex items-center justify-between gap-3 min-h-[195px]">
         {/* Background Image: ARGO Float Probe In-Situ */}
         <div className="absolute inset-0 z-0 pointer-events-none">
           <Image
@@ -233,60 +233,60 @@ export function DeepDiveModePanel({
             alt="ARGO Deep Submersible Probe"
             fill
             priority
-            className="object-cover opacity-60"
+            className="object-cover opacity-55"
           />
-          {/* Refined gradient overlay for high contrast and readability */}
-          <div className="absolute inset-0 bg-gradient-to-r from-[#060c18]/95 via-[#060c18]/55 to-[#060c18]/90" />
+          {/* Refined dark atmospheric ocean depth gradient overlay */}
+          <div className="absolute inset-0 bg-gradient-to-r from-[#040914]/95 via-[#040914]/60 to-[#040914]/85" />
         </div>
 
         {/* Left Telemetry Key-Value Pairs */}
-        <div className="relative z-10 flex-1 space-y-2.5">
+        <div className="relative z-10 flex-1 space-y-2">
           <div>
-            <span className="text-xs text-sky-300 uppercase tracking-wider font-semibold block">
+            <span className="text-[10px] text-cyan-400 uppercase tracking-wider font-mono font-bold block">
               Max Cast Depth
             </span>
             <div className="text-3xl font-bold text-white font-sans tracking-tight">
-              {telemetry.depth} <span className="text-sm font-normal text-sky-300">m</span>
+              {telemetry.depth} <span className="text-sm font-normal text-cyan-300 font-mono">m</span>
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-xs pt-2 border-t border-sky-500/20">
+          <div className="grid grid-cols-2 gap-x-3 gap-y-1.5 pt-2 border-t border-sky-500/20 text-xs">
             <div>
-              <span className="text-slate-300 text-xs font-medium block">Pressure</span>
-              <span className="text-white font-mono font-semibold text-sm">{telemetry.pressure} dbar</span>
+              <span className="text-slate-400 text-[10px] uppercase font-mono block">Pressure</span>
+              <span className="text-white font-mono font-semibold text-xs">{telemetry.pressure} dbar</span>
             </div>
             <div>
-              <span className="text-slate-300 text-xs font-medium block">Bottom Temp</span>
-              <span className="text-sky-300 font-mono font-semibold text-sm">{telemetry.temperature} °C</span>
+              <span className="text-slate-400 text-[10px] uppercase font-mono block">Bottom Temp</span>
+              <span className="text-cyan-300 font-mono font-semibold text-xs">{telemetry.temperature} °C</span>
             </div>
             <div>
-              <span className="text-slate-300 text-xs font-medium block">Deep DOXY</span>
-              <span className="text-emerald-300 font-mono font-semibold text-sm">{telemetry.doxy} µmol/kg</span>
+              <span className="text-slate-400 text-[10px] uppercase font-mono block">Deep DOXY</span>
+              <span className="text-emerald-300 font-mono font-semibold text-xs">{telemetry.doxy} µmol/kg</span>
             </div>
             <div>
-              <span className="text-slate-300 text-xs font-medium block">Deep Salinity</span>
-              <span className="text-purple-300 font-mono font-semibold text-sm">{telemetry.salinity} PSU</span>
+              <span className="text-slate-400 text-[10px] uppercase font-mono block">Deep Salinity</span>
+              <span className="text-purple-300 font-mono font-semibold text-xs">{telemetry.salinity} PSU</span>
             </div>
           </div>
         </div>
 
         {/* Right Vertical Depth Strata Gauge */}
-        <div className="relative z-10 flex items-center gap-2.5 h-full py-1 shrink-0 border-l border-sky-500/20 pl-3 bg-[#0a1426]/50 rounded-r-lg backdrop-blur-xs">
+        <div className="relative z-10 flex items-center gap-2.5 h-full py-1 shrink-0 border-l border-sky-500/20 pl-3 bg-[#061022]/60 rounded-r-lg backdrop-blur-xs">
           {/* Depth bar indicator */}
-          <div className="w-2 h-full rounded-full bg-[#0e1c36] relative overflow-hidden">
+          <div className="w-2 h-full rounded-full bg-[#0d1d36] relative overflow-hidden">
             <div
-              className="w-full bg-sky-400 rounded-full transition-all duration-500 shadow-[0_0_6px_#38bdf8]"
+              className="w-full bg-cyan-400 rounded-full transition-all duration-500 shadow-[0_0_8px_#00e5ff]"
               style={{ height: `${Math.min(100, (telemetry.depth / 2000) * 100)}%` }}
             />
           </div>
 
           {/* Strata tick labels */}
-          <div className="flex flex-col justify-between h-full text-xs font-mono text-slate-300 text-right">
-            <span className={telemetry.depth < 250 ? "text-sky-300 font-bold" : ""}>0m</span>
-            <span className={telemetry.depth >= 250 && telemetry.depth < 750 ? "text-sky-300 font-bold" : ""}>500m</span>
-            <span className={telemetry.depth >= 750 && telemetry.depth < 1250 ? "text-sky-300 font-bold" : ""}>1000m</span>
-            <span className={telemetry.depth >= 1250 && telemetry.depth < 1750 ? "text-sky-300 font-bold" : ""}>1500m</span>
-            <span className={telemetry.depth >= 1750 ? "text-sky-300 font-bold" : ""}>2000m</span>
+          <div className="flex flex-col justify-between h-full text-[10px] font-mono text-slate-400 text-right">
+            <span>0m</span>
+            <span>500m</span>
+            <span>1000m</span>
+            <span>1500m</span>
+            <span className="text-cyan-300 font-bold">2000m</span>
           </div>
         </div>
       </div>

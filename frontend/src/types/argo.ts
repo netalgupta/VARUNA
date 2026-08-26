@@ -58,6 +58,7 @@ export interface DepthProfileResponse {
   cycle?: number | null;
   measurements: DepthProfileMeasurement[];
   deepest_record?: DepthProfileMeasurement | null;
+  deepest_cast?: DepthProfileMeasurement | null;
   latest_surface?: DepthProfileMeasurement | null;
 }
 

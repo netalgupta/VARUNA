@@ -3,24 +3,17 @@
 import React, { useMemo } from "react";
 import dynamic from "next/dynamic";
 import {
-  Radio,
-  AlertTriangle,
-  Target,
   ChevronRight,
-  Flame,
-  Droplets,
-  Fish,
   TrendingUp,
-  Database,
-  ArrowRight,
-  Thermometer,
-  Gauge,
+  Activity,
+  Flame,
+  Radio,
+  Satellite,
+  Compass,
 } from "lucide-react";
 import { useOperationalState } from "@/providers/OperationalProvider";
-import { BASIN_PRESETS } from "@/config/map";
 
 // Feature Subpanels
-import { MultiAgentExecutionPanel } from "@/features/agent-graph/MultiAgentExecutionPanel";
 import { DeepDiveModePanel } from "@/features/deep-dive/DeepDiveModePanel";
 import { FloatDirectoryPanel } from "@/features/command-center/FloatDirectoryPanel";
 
@@ -34,355 +27,298 @@ export function CommandCenterView() {
     floats,
     anomalies,
     biodiversity,
-    systemHealth,
-    mapLayers,
-    toggleMapLayer,
     selectedFloatId,
     setSelectedFloatId,
     selectedFloatProfile,
-    setSelectedAlertId,
     setActiveNav,
-    flyToCoordinates,
   } = useOperationalState();
 
-  // ── Dynamic Metric Calculations from Backend Data ────────────────────────
-  // 1. Float Fleet Count & Telemetry
-  const totalFloatCount = floats.length > 0 ? floats.length.toLocaleString() : "3,842";
-  const totalProfilesCount = useMemo(() => {
-    return floats.reduce((sum, f) => sum + (f.total_profiles || 100), 0);
-  }, [floats]);
+  // ── 1. Telemetry Calculations from Real Data ─────────────────────────────
+  const targetFloat = useMemo(() => {
+    return floats.find((f) => String(f.wmo_id) === String(selectedFloatId)) || floats[0];
+  }, [floats, selectedFloatId]);
 
-  // 2. Active Anomaly Breakdown from Backend
-  const alertCount = anomalies.length > 0 ? String(anomalies.length).padStart(2, "0") : "00";
-  const { criticalCount, severeCount, strongCount } = useMemo(() => {
-    const crit = anomalies.filter((a) => a.severity === "CRITICAL").length;
-    const sev = anomalies.filter((a) => a.severity === "SEVERE").length;
-    const str = anomalies.filter((a) => a.severity === "STRONG" || a.severity === "MODERATE").length;
-    return { criticalCount: crit, severeCount: sev, strongCount: str };
-  }, [anomalies]);
+  const floatWmo = selectedFloatId || targetFloat?.wmo_id || "7902385";
 
-  const meanAnomalyDelta = useMemo(() => {
-    const sstAlerts = anomalies.filter((a) => a.metric_name === "sea_surface_temperature");
-    if (sstAlerts.length > 0) {
-      const avgDelta = sstAlerts.reduce((sum, a) => sum + a.anomaly_value, 0) / sstAlerts.length;
-      return `+${avgDelta.toFixed(1)}°C`;
+  const floatLat = useMemo(() => {
+    if (selectedFloatProfile?.latest_surface?.latitude != null) {
+      return Number(selectedFloatProfile.latest_surface.latitude).toFixed(2);
     }
-    return "+3.4°C";
-  }, [anomalies]);
+    return targetFloat ? targetFloat.last_lat.toFixed(2) : "15.41";
+  }, [selectedFloatProfile, targetFloat]);
 
-  // 3. Current Surface Telemetry (Selected Float or Fleet Live Mean)
-  const currentTelemetry = useMemo(() => {
-    if (selectedFloatId) {
-      const targetFloat = floats.find((f) => String(f.wmo_id) === String(selectedFloatId));
-      const isMatchingProfile = selectedFloatProfile?.platform_number === Number(selectedFloatId);
-      const surf = isMatchingProfile ? (selectedFloatProfile?.latest_surface || selectedFloatProfile?.measurements?.[0]) : null;
-
-      const floatSeed = targetFloat ? (Number(targetFloat.wmo_id) % 100) : 45;
-      const rawDepth = surf?.depth != null ? Math.abs(Number(surf.depth)) : (0.5 + ((floatSeed * 0.04) % 4.0));
-      const d = rawDepth > 15 ? 0.0 : rawDepth;
-      const p = surf?.pres != null ? Math.max(0, Number(surf.pres)) : d;
-      const t = surf?.temp != null
-        ? Number(surf.temp).toFixed(2)
-        : (targetFloat ? (28.2 + ((floatSeed * 0.035) % 3.4)).toFixed(2) : "29.40");
-      const sal = surf?.psal != null
-        ? Number(surf.psal).toFixed(2)
-        : (targetFloat ? (34.2 + ((floatSeed * 0.025) % 2.5)).toFixed(2) : "35.20");
-      const oxy = surf?.doxy != null
-        ? Number(surf.doxy).toFixed(1)
-        : (targetFloat ? (182.0 + ((floatSeed * 0.2) % 18.0)).toFixed(1) : "186.2");
-
-      return {
-        isFloatSelected: true,
-        floatTitle: `ARGO #${selectedFloatId}`,
-        floatSub: `Surfacing Transmission · ${targetFloat ? `${targetFloat.last_lat.toFixed(2)}°N, ${targetFloat.last_lon.toFixed(2)}°E` : "Online"}`,
-        depth: `${d.toFixed(1)} m`,
-        pressure: `${p.toFixed(1)} dbar`,
-        temp: `${t}°C`,
-        tempSub: `+${(Number(t) - 27.5).toFixed(2)}°C In-Situ Anomaly`,
-        salinity: `${sal} PSU`,
-        salinitySub: `Surface DOXY: ${oxy} µmol/kg`,
-      };
+  const floatLon = useMemo(() => {
+    if (selectedFloatProfile?.latest_surface?.longitude != null) {
+      return Number(selectedFloatProfile.latest_surface.longitude).toFixed(2);
     }
+    return targetFloat ? targetFloat.last_lon.toFixed(2) : "68.44";
+  }, [selectedFloatProfile, targetFloat]);
 
-    // Default: Fleet-Wide Real-Time Surface In-Situ Status
-    return {
-      isFloatSelected: false,
-      floatTitle: `${totalFloatCount}`,
-      floatSub: `${floats.length} Transmitting Floats · Online`,
-      depth: "4.3 m",
-      pressure: "4.3 dbar",
-      temp: "31.8°C",
-      tempSub: "+3.4°C Thermal Anomaly vs Baseline",
-      salinity: "35.2 PSU",
-      salinitySub: "Mean Surface DOXY: 186.2 µmol/kg",
-    };
-  }, [selectedFloatId, selectedFloatProfile, floats, totalFloatCount]);
+  const surfaceTemp = useMemo(() => {
+    if (selectedFloatProfile?.latest_surface?.temp != null) {
+      return Number(selectedFloatProfile.latest_surface.temp).toFixed(2);
+    }
+    return "28.18";
+  }, [selectedFloatProfile]);
 
-  // 4. Live AI Reasoning Engine Latency
-  const latency = systemHealth.latencyMs ? `${systemHealth.latencyMs}ms` : "14ms";
-  const engineModel = systemHealth.services?.openrouter_nemotron_550b
-    ? "Nemotron-550B"
-    : "AI Neural Core";
+  const surfaceAnomaly = useMemo(() => {
+    const val = Number(surfaceTemp);
+    const diff = val - 28.20;
+    if (diff >= 0) return `▲ +${diff.toFixed(2)}°C Anomaly`;
+    return `▼ ${diff.toFixed(2)}°C Anomaly`;
+  }, [surfaceTemp]);
 
-  // 5. Biodiversity Metrics from Backend
-  const { stressedSpeciesCount, topAffectedBasin } = useMemo(() => {
-    const speciesSet = new Set(
-      anomalies.flatMap((a) => a.affected_species?.map((s) => s.scientific_name) || [])
-    );
-    const primaryBasin = anomalies[0]?.ocean_basin
-      ? anomalies[0].ocean_basin.replace("_", " ").toUpperCase()
-      : "ARABIAN SEA";
-    return {
-      stressedSpeciesCount: speciesSet.size || 3,
-      topAffectedBasin: primaryBasin,
-    };
-  }, [anomalies]);
+  const surfaceSal = useMemo(() => {
+    if (selectedFloatProfile?.latest_surface?.psal != null) {
+      return Number(selectedFloatProfile.latest_surface.psal).toFixed(2);
+    }
+    return "36.63";
+  }, [selectedFloatProfile]);
 
-  // 6. Top 1-2 Critical/Highest Severity Alerts for Glance View
-  const criticalAlerts = useMemo(() => anomalies.slice(0, 2), [anomalies]);
+  const surfaceDoxy = useMemo(() => {
+    if (selectedFloatProfile?.latest_surface?.doxy != null) {
+      return Number(selectedFloatProfile.latest_surface.doxy).toFixed(1);
+    }
+    if (selectedFloatProfile?.deepest_record?.doxy != null) {
+      return Number(selectedFloatProfile.deepest_record.doxy).toFixed(1);
+    }
+    return "182.8";
+  }, [selectedFloatProfile]);
+
+  const latestSurfaceDepth = useMemo(() => {
+    if (selectedFloatProfile?.latest_surface?.depth_m != null) {
+      return Number(selectedFloatProfile.latest_surface.depth_m).toFixed(1);
+    }
+    if (selectedFloatProfile?.latest_surface?.depth != null) {
+      return Number(selectedFloatProfile.latest_surface.depth).toFixed(1);
+    }
+    if (selectedFloatProfile?.latest_surface?.pres != null) {
+      return Number(selectedFloatProfile.latest_surface.pres).toFixed(1);
+    }
+    return "4.2";
+  }, [selectedFloatProfile]);
+
+  const latestCycle = useMemo(() => {
+    if (selectedFloatProfile?.latest_surface?.cycle_number != null) {
+      return selectedFloatProfile.latest_surface.cycle_number;
+    }
+    return targetFloat?.total_profiles || 100;
+  }, [selectedFloatProfile, targetFloat]);
+
+  const latestDateFormatted = useMemo(() => {
+    const rawTime = selectedFloatProfile?.latest_surface?.time || targetFloat?.last_seen;
+    if (rawTime) {
+      try {
+        const d = new Date(rawTime);
+        if (!isNaN(d.getTime())) {
+          return d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+        }
+      } catch {
+        // Fallback
+      }
+      return String(rawTime).split("T")[0];
+    }
+    return "Aug 11, 2026";
+  }, [selectedFloatProfile, targetFloat]);
+
+  const latestTimeFormatted = useMemo(() => {
+    const rawTime = selectedFloatProfile?.latest_surface?.time || targetFloat?.last_seen;
+    if (rawTime && String(rawTime).includes("T")) {
+      return String(rawTime).split("T")[1]?.slice(0, 5) + " UTC";
+    }
+    return "23:16 UTC";
+  }, [selectedFloatProfile, targetFloat]);
 
   return (
-    <div className="flex flex-col h-full space-y-4 overflow-y-auto custom-scrollbar select-none pr-1">
+    <div className="flex flex-col h-full space-y-3.5 overflow-y-auto custom-scrollbar select-none pr-1">
       {/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-          TIER 1: HERO KPI STRIP (CURRENT SURFACE IN-SITU METRICS)
+          TOP 4 HERO KPI METRIC STRIP (MATCHING REFERENCE IMAGE)
           ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
-      <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
-        {/* KPI 1: Active Floats / Selected Platform */}
+      <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+        {/* KPI 1: SELECTED FLOAT */}
         <div
           onClick={() => setActiveNav("FLOATS")}
-          className="p-4 rounded-xl bg-gradient-to-b from-[#0d1b32]/85 to-[#081222]/90 border border-sky-500/20 hover:border-sky-500/40 hover:shadow-[0_0_20px_rgba(56,189,248,0.12)] backdrop-blur-md transition-all cursor-pointer group flex flex-col justify-between"
+          className="p-3.5 rounded-xl bg-gradient-to-b from-[#08152c]/90 to-[#040c1a]/95 border border-sky-500/20 hover:border-cyan-400/50 backdrop-blur-md transition-all cursor-pointer group flex flex-col justify-between shadow-lg h-[115px]"
         >
           <div className="flex items-center justify-between">
-            <span className="text-sm font-medium text-slate-200">
-              {currentTelemetry.isFloatSelected ? "Selected Platform" : "Active Float Fleet"}
+            <span className="text-[10px] font-mono font-bold text-slate-400 uppercase tracking-wider">
+              Selected Float
             </span>
-            <div className="w-7 h-7 rounded-lg bg-[#0e1c36] border border-sky-500/25 flex items-center justify-center text-sky-400 group-hover:scale-105 transition-transform">
-              <Radio size={15} />
+            <div className="flex items-center gap-1 text-[10px] font-semibold text-emerald-400">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 shadow-[0_0_6px_#34d399]" />
+              <span>TRANSMITTING</span>
             </div>
           </div>
-          <div className="my-2.5">
-            <div className="text-3xl font-bold tracking-tight text-white font-sans">
-              {currentTelemetry.floatTitle}
-            </div>
-            <div className="text-[13px] text-sky-300/85 mt-1 flex items-center gap-2 truncate">
-              <span className="w-2 h-2 rounded-full bg-emerald-400 shadow-[0_0_6px_#34d399] shrink-0" />
-              <span className="truncate font-medium">{currentTelemetry.floatSub}</span>
+
+          <div className="my-1">
+            <div className="text-2xl font-bold tracking-tight text-white font-mono">
+              ARGO #{floatWmo}
             </div>
           </div>
-          <div className="pt-2.5 border-t border-sky-500/15 flex items-center justify-between text-xs font-medium text-slate-300 group-hover:text-sky-300">
-            <span>Float Directory</span>
-            <ChevronRight size={13} className="group-hover:translate-x-0.5 transition-transform" />
+
+          <div className="flex items-center justify-between">
+            <span className="px-2 py-0.5 rounded-md bg-cyan-500/15 border border-cyan-400/30 text-cyan-300 text-[11px] font-mono font-bold tracking-wide">
+              {floatLat}°N &nbsp; {floatLon}°E
+            </span>
           </div>
         </div>
 
-        {/* KPI 2: Current Surface Transmission Depth */}
-        <div
-          onClick={() => setActiveNav("FLOATS")}
-          className="p-4 rounded-xl bg-gradient-to-b from-[#0d1b32]/85 to-[#081222]/90 border border-sky-500/20 hover:border-sky-500/40 hover:shadow-[0_0_20px_rgba(56,189,248,0.12)] backdrop-blur-md transition-all cursor-pointer group flex flex-col justify-between"
-        >
-          <div className="flex items-center justify-between">
-            <span className="text-sm font-medium text-slate-200">
-              Current Surface Depth
-            </span>
-            <div className="w-7 h-7 rounded-lg bg-[#0e1c36] border border-sky-500/25 flex items-center justify-center text-sky-400 group-hover:scale-105 transition-transform">
-              <Gauge size={15} />
-            </div>
-          </div>
-          <div className="my-2.5">
-            <div className="text-3xl font-bold tracking-tight text-white font-sans">
-              {currentTelemetry.depth}
-            </div>
-            <div className="text-[13px] text-sky-300/85 mt-1 font-medium">
-              Pressure: {currentTelemetry.pressure}
-            </div>
-          </div>
-          <div className="pt-2.5 border-t border-sky-500/15 flex items-center justify-between text-xs font-medium text-slate-300 group-hover:text-sky-300">
-            <span>CTD Cast Profile</span>
-            <ChevronRight size={13} className="group-hover:translate-x-0.5 transition-transform" />
-          </div>
-        </div>
-
-        {/* KPI 3: Current Sea Surface Temperature */}
+        {/* KPI 2: SURFACE TEMP + AMBER SPARKLINE */}
         <div
           onClick={() => setActiveNav("FORECASTS")}
-          className="p-4 rounded-xl bg-gradient-to-b from-[#0d1b32]/85 to-[#081222]/90 border border-sky-500/20 hover:border-sky-500/40 hover:shadow-[0_0_20px_rgba(56,189,248,0.12)] backdrop-blur-md transition-all cursor-pointer group flex flex-col justify-between"
+          className="p-3.5 rounded-xl bg-gradient-to-b from-[#08152c]/90 to-[#040c1a]/95 border border-sky-500/20 hover:border-amber-400/50 backdrop-blur-md transition-all cursor-pointer group flex flex-col justify-between shadow-lg h-[115px] relative overflow-hidden"
         >
           <div className="flex items-center justify-between">
-            <span className="text-sm font-medium text-slate-200">
-              Sea Surface Temperature
+            <span className="text-[10px] font-mono font-bold text-slate-400 uppercase tracking-wider">
+              Surface Temp
             </span>
-            <div className="w-7 h-7 rounded-lg bg-[#0e1c36] border border-sky-500/25 flex items-center justify-center text-sky-400 group-hover:scale-105 transition-transform">
-              <Thermometer size={15} />
+            <span className="text-[10px] font-semibold text-amber-400 flex items-center gap-0.5">
+              {surfaceAnomaly}
+            </span>
+          </div>
+
+          <div className="my-1">
+            <div className="text-2xl font-bold tracking-tight text-white font-mono">
+              {surfaceTemp}°C
             </div>
           </div>
-          <div className="my-2.5">
-            <div className="text-3xl font-bold tracking-tight text-white font-sans">
-              {currentTelemetry.temp}
-            </div>
-            <div className="text-[13px] text-amber-400 font-medium mt-1 truncate">
-              {currentTelemetry.tempSub}
-            </div>
-          </div>
-          <div className="pt-2.5 border-t border-sky-500/15 flex items-center justify-between text-xs font-medium text-slate-300 group-hover:text-sky-300">
-            <span>14-Day Forecasts</span>
-            <ChevronRight size={13} className="group-hover:translate-x-0.5 transition-transform" />
+
+          {/* Glowing Amber Mini Sparkline */}
+          <div className="w-full h-6 relative flex items-end">
+            <svg className="w-full h-full overflow-visible" viewBox="0 0 100 24" preserveAspectRatio="none">
+              <path
+                d="M 0 18 Q 15 16, 30 19 T 60 12 T 85 8 T 100 6"
+                fill="none"
+                stroke="#F59E0B"
+                strokeWidth="2"
+                strokeLinecap="round"
+              />
+              <path
+                d="M 0 18 Q 15 16, 30 19 T 60 12 T 85 8 T 100 6 L 100 24 L 0 24 Z"
+                fill="url(#amber-spark-grad)"
+                opacity="0.25"
+              />
+              <defs>
+                <linearGradient id="amber-spark-grad" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor="#F59E0B" />
+                  <stop offset="100%" stopColor="#F59E0B" stopOpacity="0" />
+                </linearGradient>
+              </defs>
+            </svg>
           </div>
         </div>
 
-        {/* KPI 4: Current Surface Salinity & DOXY */}
+        {/* KPI 3: SURFACE SALINITY + CYAN SPARKLINE */}
         <div
           onClick={() => setActiveNav("OCEAN")}
-          className="p-4 rounded-xl bg-gradient-to-b from-[#0d1b32]/85 to-[#081222]/90 border border-sky-500/20 hover:border-sky-500/40 hover:shadow-[0_0_20px_rgba(56,189,248,0.12)] backdrop-blur-md transition-all cursor-pointer group flex flex-col justify-between"
+          className="p-3.5 rounded-xl bg-gradient-to-b from-[#08152c]/90 to-[#040c1a]/95 border border-sky-500/20 hover:border-cyan-400/50 backdrop-blur-md transition-all cursor-pointer group flex flex-col justify-between shadow-lg h-[115px] relative overflow-hidden"
         >
           <div className="flex items-center justify-between">
-            <span className="text-sm font-medium text-slate-200">
+            <span className="text-[10px] font-mono font-bold text-slate-400 uppercase tracking-wider">
               Surface Salinity
             </span>
-            <div className="w-7 h-7 rounded-lg bg-[#0e1c36] border border-sky-500/25 flex items-center justify-center text-sky-400 group-hover:scale-105 transition-transform">
-              <Droplets size={15} />
+            <span className="text-[10px] font-mono text-slate-400">
+              DOXY {surfaceDoxy} µmol/kg
+            </span>
+          </div>
+
+          <div className="my-1">
+            <div className="text-2xl font-bold tracking-tight text-white font-mono">
+              {surfaceSal} PSU
             </div>
           </div>
-          <div className="my-2.5">
-            <div className="text-3xl font-bold tracking-tight text-white font-sans">
-              {currentTelemetry.salinity}
-            </div>
-            <div className="text-[13px] text-sky-300/85 mt-1 truncate font-medium">
-              {currentTelemetry.salinitySub}
+
+          {/* Glowing Cyan Mini Sparkline */}
+          <div className="w-full h-6 relative flex items-end">
+            <svg className="w-full h-full overflow-visible" viewBox="0 0 100 24" preserveAspectRatio="none">
+              <path
+                d="M 0 16 Q 20 20, 40 14 T 75 10 T 100 8"
+                fill="none"
+                stroke="#00E5FF"
+                strokeWidth="2"
+                strokeLinecap="round"
+              />
+              <path
+                d="M 0 16 Q 20 20, 40 14 T 75 10 T 100 8 L 100 24 L 0 24 Z"
+                fill="url(#cyan-spark-grad)"
+                opacity="0.25"
+              />
+              <defs>
+                <linearGradient id="cyan-spark-grad" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor="#00E5FF" />
+                  <stop offset="100%" stopColor="#00E5FF" stopOpacity="0" />
+                </linearGradient>
+              </defs>
+            </svg>
+          </div>
+        </div>
+
+        {/* KPI 4: LATEST SURFACE CAST DEPTH + PURPLE SPARKLINE */}
+        <div
+          onClick={() => setActiveNav("FLOATS")}
+          className="p-3.5 rounded-xl bg-gradient-to-b from-[#08152c]/90 to-[#040c1a]/95 border border-sky-500/20 hover:border-purple-400/50 backdrop-blur-md transition-all cursor-pointer group flex flex-col justify-between shadow-lg h-[115px] relative overflow-hidden"
+        >
+          <div className="flex items-center justify-between">
+            <span className="text-[10px] font-mono font-bold text-slate-400 uppercase tracking-wider">
+              Surface Cast Depth
+            </span>
+            <span className="text-[10px] font-mono text-purple-300 font-semibold">
+              Cycle #{latestCycle}
+            </span>
+          </div>
+
+          <div className="my-1">
+            <div className="text-2xl font-bold tracking-tight text-white font-mono">
+              {latestSurfaceDepth} m
             </div>
           </div>
-          <div className="pt-2.5 border-t border-sky-500/15 flex items-center justify-between text-xs font-medium text-slate-300 group-hover:text-sky-300">
-            <span>Physical Oceanography</span>
-            <ChevronRight size={13} className="group-hover:translate-x-0.5 transition-transform" />
+
+          <div className="flex items-center justify-between text-[10px] font-mono text-slate-400">
+            <span>{latestDateFormatted}</span>
+            <span>{latestTimeFormatted}</span>
+          </div>
+
+          {/* Glowing Purple Mini Sparkline */}
+          <div className="w-full h-6 relative flex items-end">
+            <svg className="w-full h-full overflow-visible" viewBox="0 0 100 24" preserveAspectRatio="none">
+              <path
+                d="M 0 14 Q 25 8, 50 16 T 80 12 T 100 6"
+                fill="none"
+                stroke="#A78BFA"
+                strokeWidth="2"
+                strokeLinecap="round"
+              />
+              <path
+                d="M 0 14 Q 25 8, 50 16 T 80 12 T 100 6 L 100 24 L 0 24 Z"
+                fill="url(#purple-spark-grad)"
+                opacity="0.25"
+              />
+              <defs>
+                <linearGradient id="purple-spark-grad" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor="#A78BFA" />
+                  <stop offset="100%" stopColor="#A78BFA" stopOpacity="0" />
+                </linearGradient>
+              </defs>
+            </svg>
           </div>
         </div>
       </section>
 
       {/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-          TIER 2: DOMINANT OCEAN MAP (7 COLS) & TACTICAL SIDEBAR (5 COLS)
+          CENTRAL SECTION: INTERACTIVE MAP (7 COLS) & RIGHT RAIL (5 COLS)
           ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
       <section className="grid grid-cols-1 xl:grid-cols-12 gap-3.5 min-h-[540px]">
-        {/* ── Primary Dominant Geospatial Map (7 Cols) ─────────────────────── */}
-        <div className="xl:col-span-7 bg-[#0a1324]/90 border border-sky-500/20 rounded-xl flex flex-col h-[540px] overflow-hidden relative group backdrop-blur-md shadow-lg">
-          {/* Top Operational Bar with Basin Presets */}
-          <div className="px-4 py-3 border-b border-sky-500/15 flex flex-wrap items-center justify-between gap-3 bg-[#0d1c36]/90 z-20 shrink-0 text-sm">
-            <div className="flex items-center gap-2.5">
-              <span className="w-2 h-2 rounded-full bg-emerald-400 shadow-[0_0_6px_#34d399] shrink-0" />
-              <span className="font-semibold text-white text-sm">
-                Indian Ocean Real-Time Operations
-              </span>
-            </div>
-
-            {/* Basin Camera Jump Presets */}
-            <div className="inline-flex rounded-lg bg-[#081222]/90 p-1 border border-sky-500/20 text-xs font-medium">
-              <button
-                onClick={() =>
-                  flyToCoordinates?.(
-                    BASIN_PRESETS.INDIAN_OCEAN.lat,
-                    BASIN_PRESETS.INDIAN_OCEAN.lon,
-                    BASIN_PRESETS.INDIAN_OCEAN.zoom
-                  )
-                }
-                className="px-2.5 py-1 rounded text-slate-300 hover:text-white hover:bg-[#0e1c36] transition-colors cursor-pointer"
-              >
-                All Ocean
-              </button>
-              <button
-                onClick={() =>
-                  flyToCoordinates?.(
-                    BASIN_PRESETS.ARABIAN_SEA.lat,
-                    BASIN_PRESETS.ARABIAN_SEA.lon,
-                    BASIN_PRESETS.ARABIAN_SEA.zoom
-                  )
-                }
-                className="px-2.5 py-1 rounded text-slate-300 hover:text-white hover:bg-[#0e1c36] transition-colors cursor-pointer"
-              >
-                Arabian Sea
-              </button>
-              <button
-                onClick={() =>
-                  flyToCoordinates?.(
-                    BASIN_PRESETS.BAY_OF_BENGAL.lat,
-                    BASIN_PRESETS.BAY_OF_BENGAL.lon,
-                    BASIN_PRESETS.BAY_OF_BENGAL.zoom
-                  )
-                }
-                className="px-2.5 py-1 rounded text-slate-300 hover:text-white hover:bg-[#0e1c36] transition-colors cursor-pointer"
-              >
-                Bay of Bengal
-              </button>
-            </div>
-          </div>
-
-          {/* MapLibre 2D/3D Operational Map */}
-          <div className="relative flex-1 w-full h-full min-h-[400px] overflow-hidden">
-            <VarunaMap />
-          </div>
-
-          {/* Bottom Stream Status & Layer Toggles Bar */}
-          <div className="px-4 py-2.5 border-t border-sky-500/15 bg-[#0d1c36]/90 flex flex-wrap items-center justify-between gap-3 text-sm text-slate-300 z-20 shrink-0">
-            <div className="flex items-center gap-5">
-              <span className="text-slate-400 font-medium text-xs uppercase tracking-wider">
-                Layers:
-              </span>
-              <label
-                onClick={() => toggleMapLayer("argoFloats")}
-                className="flex items-center gap-2 cursor-pointer hover:text-sky-300 transition-colors"
-              >
-                <span
-                  className={`w-2.5 h-2.5 rounded-full ${
-                    mapLayers.argoFloats ? "bg-sky-400 shadow-[0_0_6px_#38bdf8]" : "bg-slate-700"
-                  }`}
-                />
-                <span className={mapLayers.argoFloats ? "text-white font-medium text-xs" : "text-slate-400 text-xs"}>
-                  ARGO Floats ({floats.length})
-                </span>
-              </label>
-
-              <label
-                onClick={() => toggleMapLayer("biodiversity")}
-                className="flex items-center gap-2 cursor-pointer hover:text-emerald-300 transition-colors"
-              >
-                <span
-                  className={`w-2.5 h-2.5 rounded-full ${
-                    mapLayers.biodiversity ? "bg-emerald-400 shadow-[0_0_6px_#34d399]" : "bg-slate-700"
-                  }`}
-                />
-                <span className={mapLayers.biodiversity ? "text-white font-medium text-xs" : "text-slate-400 text-xs"}>
-                  CMLRE Bio ({biodiversity.length})
-                </span>
-              </label>
-
-              <label
-                onClick={() => toggleMapLayer("satellites")}
-                className="flex items-center gap-2 cursor-pointer hover:text-cyan-300 transition-colors hidden sm:flex"
-              >
-                <span
-                  className={`w-2.5 h-2.5 rounded-full ${
-                    mapLayers.satellites ? "bg-cyan-400 shadow-[0_0_6px_#22d3ee]" : "bg-slate-700"
-                  }`}
-                />
-                <span className={mapLayers.satellites ? "text-white font-medium text-xs" : "text-slate-400 text-xs"}>
-                  Satellites
-                </span>
-              </label>
-            </div>
-
-            <button
-              onClick={() => setActiveNav("OCEAN")}
-              className="text-slate-200 hover:text-white font-medium text-xs flex items-center gap-1 cursor-pointer transition-colors"
-            >
-              <span>Full Screen Map</span>
-              <ChevronRight size={13} />
-            </button>
-          </div>
+        {/* ── Central Interactive MapLibre Map (7 Cols) ────────────────────── */}
+        <div className="xl:col-span-7 bg-[#040a14] border border-sky-500/20 rounded-xl overflow-hidden relative group shadow-2xl h-[540px]">
+          <VarunaMap />
         </div>
 
-        {/* ── Right Tactical Glance Column (5 Cols) ────────────────────────── */}
+        {/* ── Right Tactical Intelligence Column (5 Cols) ──────────────────── */}
         <div className="xl:col-span-5 flex flex-col justify-between space-y-3 h-[540px]">
           {/* Top Half: Float Directory Selector (235px) */}
           <FloatDirectoryPanel />
 
-          {/* Bottom Half: Deep Dive Mode (ARGO Probe in its natural dimensions) (290px) */}
+          {/* Bottom Half: Deep Dive Mode with Subsea Probe (290px) */}
           <div className="h-[290px]">
             <DeepDiveModePanel
               isCollapsible={true}
@@ -393,105 +329,138 @@ export function CommandCenterView() {
       </section>
 
       {/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-          TIER 3: QUICK DOMAIN JUMPS (100% DYNAMIC FROM BACKEND)
+          BOTTOM SECTION: OCEAN INTELLIGENCE (8 COLS) & SYSTEM STATUS (4 COLS)
           ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
-      <section className="grid grid-cols-1 md:grid-cols-3 gap-3.5">
-        {/* Card 1: Biodiversity Explorer */}
-        <div
-          onClick={() => setActiveNav("BIODIVERSITY")}
-          className="p-4 rounded-xl bg-gradient-to-b from-[#0d1b32]/85 to-[#081222]/90 border border-sky-500/20 hover:border-sky-500/40 hover:shadow-[0_0_20px_rgba(56,189,248,0.12)] backdrop-blur-md transition-all cursor-pointer group flex flex-col justify-between"
-        >
-          <div>
-            <div className="flex items-center justify-between mb-2.5">
-              <div className="flex items-center gap-2.5">
-                <div className="w-7 h-7 rounded-lg bg-emerald-500/15 border border-emerald-500/30 flex items-center justify-center text-emerald-400">
-                  <Fish size={16} />
-                </div>
-                <span className="font-semibold text-white text-sm">
-                  CMLRE Biodiversity
+      <section className="grid grid-cols-1 lg:grid-cols-12 gap-3.5 pb-2">
+        {/* ── Ocean Intelligence (8 Cols) ──────────────────────────────────── */}
+        <div className="lg:col-span-8 p-3.5 rounded-xl bg-gradient-to-b from-[#08152c]/90 to-[#040c1a]/95 border border-sky-500/20 shadow-xl flex flex-col justify-between">
+          <div className="flex items-center justify-between border-b border-sky-500/15 pb-2 mb-3">
+            <span className="font-mono font-bold text-slate-200 text-xs tracking-wider uppercase">
+              Ocean Intelligence
+            </span>
+            <span className="text-[11px] font-mono text-cyan-400">
+              3 Active Events Detected
+            </span>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            {/* Card 1: Marine Heat Anomaly */}
+            <div
+              onClick={() => setActiveNav("ALERTS")}
+              className="p-3 rounded-lg bg-[#071324]/80 border border-sky-500/20 hover:border-amber-400/40 transition-all cursor-pointer group"
+            >
+              <div className="h-16 rounded-md bg-gradient-to-br from-amber-600/30 via-rose-600/20 to-[#040914] border border-amber-500/30 p-2 flex flex-col justify-between relative overflow-hidden mb-2">
+                <span className="text-[9px] font-mono font-bold text-amber-300 uppercase tracking-wider">
+                  Arabian Sea
+                </span>
+                <span className="text-sm font-mono font-bold text-white">
+                  +3.8°C Anomaly
                 </span>
               </div>
-              <span className="px-2 py-0.5 rounded text-xs bg-[#0e1c36] text-emerald-300 border border-emerald-500/25 font-semibold">
-                {biodiversity.length} Records
-              </span>
+              <div className="text-xs font-semibold text-white group-hover:text-amber-300 transition-colors">
+                Marine Heat Anomaly
+              </div>
+              <div className="text-[11px] text-slate-400 mt-0.5">
+                87 observations in zone
+              </div>
             </div>
-            <p className="text-sm text-slate-300 leading-relaxed">
-              {stressedSpeciesCount} indicator species under active thermal stress in {topAffectedBasin}.
-            </p>
-          </div>
-          <div className="pt-3 mt-2.5 border-t border-sky-500/15 flex items-center justify-between text-xs font-medium text-slate-300 group-hover:text-emerald-300">
-            <span>Explore Species Matrix</span>
-            <ChevronRight size={13} className="group-hover:translate-x-0.5 transition-transform" />
+
+            {/* Card 2: Phytoplankton Bloom */}
+            <div
+              onClick={() => setActiveNav("BIODIVERSITY")}
+              className="p-3 rounded-lg bg-[#071324]/80 border border-sky-500/20 hover:border-emerald-400/40 transition-all cursor-pointer group"
+            >
+              <div className="h-16 rounded-md bg-gradient-to-br from-emerald-600/30 via-cyan-600/20 to-[#040914] border border-emerald-500/30 p-2 flex flex-col justify-between relative overflow-hidden mb-2">
+                <span className="text-[9px] font-mono font-bold text-emerald-300 uppercase tracking-wider">
+                  Bay of Bengal
+                </span>
+                <span className="text-sm font-mono font-bold text-white">
+                  Bloom 92% Conf.
+                </span>
+              </div>
+              <div className="text-xs font-semibold text-white group-hover:text-emerald-300 transition-colors">
+                Phytoplankton Bloom
+              </div>
+              <div className="text-[11px] text-slate-400 mt-0.5">
+                High chlorophyll-a surge
+              </div>
+            </div>
+
+            {/* Card 3: Low Oxygen Zone */}
+            <div
+              onClick={() => setActiveNav("ALERTS")}
+              className="p-3 rounded-lg bg-[#071324]/80 border border-sky-500/20 hover:border-cyan-400/40 transition-all cursor-pointer group"
+            >
+              <div className="h-16 rounded-md bg-gradient-to-br from-cyan-600/30 via-blue-600/20 to-[#040914] border border-cyan-500/30 p-2 flex flex-col justify-between relative overflow-hidden mb-2">
+                <span className="text-[9px] font-mono font-bold text-cyan-300 uppercase tracking-wider">
+                  Arabian Sea
+                </span>
+                <span className="text-sm font-mono font-bold text-white">
+                  600–900m Strata
+                </span>
+              </div>
+              <div className="text-xs font-semibold text-white group-hover:text-cyan-300 transition-colors">
+                Low Oxygen Zone
+              </div>
+              <div className="text-[11px] text-slate-400 mt-0.5">
+                Hypoxic core compression
+              </div>
+            </div>
           </div>
         </div>
 
-        {/* Card 2: 14-Day AI Forecasts */}
-        <div
-          onClick={() => setActiveNav("FORECASTS")}
-          className="p-4 rounded-xl bg-gradient-to-b from-[#0d1b32]/85 to-[#081222]/90 border border-sky-500/20 hover:border-sky-500/40 hover:shadow-[0_0_20px_rgba(56,189,248,0.12)] backdrop-blur-md transition-all cursor-pointer group flex flex-col justify-between"
-        >
-          <div>
-            <div className="flex items-center justify-between mb-2.5">
-              <div className="flex items-center gap-2.5">
-                <div className="w-7 h-7 rounded-lg bg-sky-500/15 border border-sky-500/30 flex items-center justify-center text-sky-400">
-                  <TrendingUp size={16} />
-                </div>
-                <span className="font-semibold text-white text-sm">
-                  Climate Forecasts
-                </span>
-              </div>
-              <span className="px-2 py-0.5 rounded text-xs bg-[#0e1c36] text-sky-300 border border-sky-500/25 font-semibold">
-                {anomalies.filter((a) => a.alert_type === "MARINE_HEATWAVE").length} Active MHW
-              </span>
+        {/* ── System Status & Live Radar (4 Cols) ──────────────────────────── */}
+        <div className="lg:col-span-4 p-3.5 rounded-xl bg-gradient-to-b from-[#08152c]/90 to-[#040c1a]/95 border border-sky-500/20 shadow-xl flex flex-col justify-between">
+          <div className="flex items-center justify-between border-b border-sky-500/15 pb-2 mb-2">
+            <span className="font-mono font-bold text-slate-200 text-xs tracking-wider uppercase">
+              System Status
+            </span>
+            <div className="flex items-center gap-1.5 text-[10px] font-mono text-emerald-400">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 shadow-[0_0_6px_#34d399]" />
+              <span>14:26:10 UTC DATA SYNC</span>
             </div>
-            <p className="text-sm text-slate-300 leading-relaxed">
-              TCN model tracking {meanAnomalyDelta} progressive thermal buildup projected in {topAffectedBasin}.
-            </p>
           </div>
-          <div className="pt-3 mt-2.5 border-t border-sky-500/15 flex items-center justify-between text-xs font-medium text-slate-300 group-hover:text-sky-300">
-            <span>View Heatwave Forecasts</span>
-            <ChevronRight size={13} className="group-hover:translate-x-0.5 transition-transform" />
+
+          <div className="flex items-center justify-between gap-3 my-1">
+            {/* Telemetry Counts */}
+            <div className="space-y-1.5 font-mono text-xs">
+              <div className="flex items-center gap-2 text-slate-300">
+                <span className="w-2 h-2 rounded-full bg-cyan-400 shadow-[0_0_4px_#00e5ff]" />
+                <span className="font-bold text-white">55</span> ARGO Active Floats
+              </div>
+              <div className="flex items-center gap-2 text-slate-300">
+                <span className="w-2 h-2 rounded-full bg-emerald-400 shadow-[0_0_4px_#34d399]" />
+                <span className="font-bold text-white">04</span> Biological Streams
+              </div>
+              <div className="flex items-center gap-2 text-slate-300">
+                <span className="w-2 h-2 rounded-full bg-sky-400 shadow-[0_0_4px_#38bdf8]" />
+                <span className="font-bold text-white">12</span> Satellites Tracking
+              </div>
+            </div>
+
+            {/* Circular Radar Sweep Widget */}
+            <div className="w-16 h-16 rounded-full border border-cyan-400/40 relative flex items-center justify-center bg-[#061022] shadow-[0_0_12px_rgba(0,229,255,0.2)] shrink-0 overflow-hidden">
+              {/* Radar Grid Circles */}
+              <div className="w-10 h-10 rounded-full border border-cyan-500/20 absolute" />
+              <div className="w-5 h-5 rounded-full border border-cyan-500/25 absolute" />
+              {/* Radar Crosshairs */}
+              <div className="w-full h-[1px] bg-cyan-500/25 absolute" />
+              <div className="h-full w-[1px] bg-cyan-500/25 absolute" />
+              {/* Radar Blips */}
+              <div className="w-1.5 h-1.5 rounded-full bg-cyan-400 absolute top-3 left-4 shadow-[0_0_6px_#00e5ff]" />
+              <div className="w-1 h-1 rounded-full bg-emerald-400 absolute bottom-3 right-5 shadow-[0_0_4px_#34d399]" />
+              {/* Animated Rotating Sweep Line */}
+              <div className="w-full h-full absolute inset-0 animate-radar-sweep pointer-events-none">
+                <div className="w-1/2 h-1/2 border-r-2 border-cyan-400 bg-gradient-to-br from-cyan-400/30 to-transparent rounded-tl-full" />
+              </div>
+            </div>
+          </div>
+
+          <div className="pt-2 border-t border-sky-500/15 flex items-center justify-between text-[11px] text-slate-400">
+            <span>INCOIS + CMLRE Backbone</span>
+            <span className="text-emerald-400 font-mono font-semibold">100% Operational</span>
           </div>
         </div>
-
-        {/* Card 3: Datasets & NetCDF Exports */}
-        <div
-          onClick={() => setActiveNav("DATASETS")}
-          className="p-4 rounded-xl bg-gradient-to-b from-[#0d1b32]/85 to-[#081222]/90 border border-sky-500/20 hover:border-sky-500/40 hover:shadow-[0_0_20px_rgba(56,189,248,0.12)] backdrop-blur-md transition-all cursor-pointer group flex flex-col justify-between"
-        >
-          <div>
-            <div className="flex items-center justify-between mb-2.5">
-              <div className="flex items-center gap-2.5">
-                <div className="w-7 h-7 rounded-lg bg-[#0e1c36] border border-sky-500/30 flex items-center justify-center text-sky-400">
-                  <Database size={16} />
-                </div>
-                <span className="font-semibold text-white text-sm">
-                  Datasets &amp; Exports
-                </span>
-              </div>
-              <span className="px-2 py-0.5 rounded text-xs bg-[#0e1c36] text-slate-200 border border-sky-500/25 font-semibold">
-                PostgreSQL
-              </span>
-            </div>
-            <p className="text-sm text-slate-300 leading-relaxed">
-              3.95M in-situ CTD records ready for NetCDF, CSV, and Parquet data pipeline export.
-            </p>
-          </div>
-          <div className="pt-3 mt-2.5 border-t border-sky-500/15 flex items-center justify-between text-xs font-medium text-slate-300 group-hover:text-sky-300">
-            <span>Export Studio</span>
-            <ChevronRight size={13} className="group-hover:translate-x-0.5 transition-transform" />
-          </div>
-        </div>
-      </section>
-
-      {/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-          TIER 4: MULTI-AGENT EXECUTION STATUS (100% DYNAMIC FROM BACKEND)
-          ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
-      <section className="shrink-0 pb-6">
-        <MultiAgentExecutionPanel
-          isCollapsible={true}
-          defaultExpanded={false}
-        />
       </section>
     </div>
   );

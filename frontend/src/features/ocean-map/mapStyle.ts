@@ -36,6 +36,10 @@ export function getVarunaMapStyle(theme: "dark" | "voyager" = "dark"): StyleSpec
         type: "geojson",
         data: { type: "FeatureCollection", features: [] },
       },
+      "trajectory": {
+        type: "geojson",
+        data: { type: "FeatureCollection", features: [] },
+      },
     },
     layers: [
       // 1. Dark Navy Raster Base Layer
@@ -47,11 +51,35 @@ export function getVarunaMapStyle(theme: "dark" | "voyager" = "dark"): StyleSpec
         maxzoom: 19,
         paint: {
           "raster-opacity": 1.0,
-          "raster-contrast": 0.1,
-          "raster-saturation": 0.2,
+          "raster-contrast": 0.15,
+          "raster-saturation": 0.1,
         },
       },
-      // 2. Marine Heatwave / Hypoxia Polygon Fill
+      // 2. Trajectory Glow Outer Halo
+      {
+        id: "trajectory-glow-layer",
+        type: "line",
+        source: "trajectory",
+        paint: {
+          "line-color": "#00e5ff",
+          "line-width": 6,
+          "line-blur": 3,
+          "line-opacity": 0.4,
+        },
+      },
+      // 3. Trajectory Cyan Dashed Core Line
+      {
+        id: "trajectory-line-layer",
+        type: "line",
+        source: "trajectory",
+        paint: {
+          "line-color": "#00e5ff",
+          "line-width": 2,
+          "line-dasharray": [3, 2],
+          "line-opacity": 0.95,
+        },
+      },
+      // 4. Marine Heatwave / Hypoxia Polygon Fill
       {
         id: "anomalies-fill-layer",
         type: "fill",
@@ -66,7 +94,7 @@ export function getVarunaMapStyle(theme: "dark" | "voyager" = "dark"): StyleSpec
           "fill-opacity": 0.3,
         },
       },
-      // 3. Marine Heatwave / Hypoxia Dashed Alert Border
+      // 5. Marine Heatwave / Hypoxia Dashed Alert Border
       {
         id: "anomalies-line-layer",
         type: "line",
@@ -81,6 +109,57 @@ export function getVarunaMapStyle(theme: "dark" | "voyager" = "dark"): StyleSpec
           "line-width": 2.5,
           "line-dasharray": [3, 2],
           "line-opacity": 0.95,
+        },
+      },
+      // 6. ARGO Floats Outer Glow Halo
+      {
+        id: "argo-floats-halo-layer",
+        type: "circle",
+        source: "argo-floats",
+        paint: {
+          "circle-radius": [
+            "case",
+            ["get", "isSelected"],
+            14,
+            7,
+          ],
+          "circle-color": "#00e5ff",
+          "circle-opacity": 0.35,
+          "circle-blur": 0.8,
+        },
+      },
+      // 7. ARGO Floats Inner Core Dot
+      {
+        id: "argo-floats-circle-layer",
+        type: "circle",
+        source: "argo-floats",
+        paint: {
+          "circle-radius": [
+            "case",
+            ["get", "isSelected"],
+            6,
+            3.5,
+          ],
+          "circle-color": [
+            "case",
+            ["get", "isSelected"],
+            "#ffffff",
+            "#00e5ff",
+          ],
+          "circle-stroke-color": "#030a16",
+          "circle-stroke-width": 1.5,
+        },
+      },
+      // 8. Biodiversity Species Dots
+      {
+        id: "biodiversity-circle-layer",
+        type: "circle",
+        source: "biodiversity",
+        paint: {
+          "circle-radius": 4,
+          "circle-color": "#10b981",
+          "circle-stroke-color": "#030a16",
+          "circle-stroke-width": 1.5,
         },
       },
     ],

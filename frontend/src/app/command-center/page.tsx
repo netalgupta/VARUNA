@@ -48,17 +48,17 @@ function OperationsCommandCenter() {
   };
 
   return (
-    <div className="flex flex-col h-screen w-screen bg-[#020B14] text-[#D6F6FF] overflow-hidden select-none">
+    <div className="flex flex-col h-screen w-screen bg-[#030712] text-[#D6F6FF] overflow-hidden select-none">
       {/* ── 1. Global Header ──────────────────────────────────────────────── */}
       <GlobalHeader onOpenSearch={() => setPaletteOpen(true)} />
 
       {/* ── 2. Master Viewport Body ───────────────────────────────────────── */}
-      <div className="flex flex-1 w-full h-[calc(100vh-3.5rem)] overflow-hidden">
+      <div className="flex flex-1 w-full h-[calc(100vh-4rem)] overflow-hidden">
         {/* Left Navigation */}
         <LeftNav />
 
         {/* Dynamic Dedicated Operational View */}
-        <main className="flex-1 h-full overflow-hidden p-3">
+        <main className="flex-1 h-full overflow-hidden p-3.5">
           {renderActiveView()}
         </main>
       </div>

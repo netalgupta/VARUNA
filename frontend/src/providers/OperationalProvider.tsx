@@ -450,7 +450,7 @@ export function OperationalProvider({ children }: { children: React.ReactNode })
     setIsLoadingProfile(true);
     try {
       const data = await getDepthProfile(floatId);
-      if (data && data.measurements && data.measurements.length > 0) {
+      if (data) {
         setSelectedFloatProfile(data);
       } else {
         setSelectedFloatProfile(null);
