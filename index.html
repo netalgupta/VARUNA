@@ -1,0 +1,429 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <script>
+    window.addEventListener('error', function(e) {
+      var d = document.createElement('div');
+      d.style.position = 'fixed'; d.style.top = '10px'; d.style.left = '10px'; d.style.right = '10px';
+      d.style.padding = '15px'; d.style.background = '#ff5a5a'; d.style.color = '#fff';
+      d.style.zIndex = '999999'; d.style.fontFamily = 'monospace'; d.style.whiteSpace = 'pre-wrap';
+      d.style.borderRadius = '5px'; d.style.boxShadow = '0 0 20px rgba(0,0,0,0.5)';
+      d.textContent = 'RUNTIME ERROR: ' + e.message + '\nat ' + e.filename + ':' + e.lineno + ':' + e.colno;
+      document.body ? document.body.appendChild(d) : window.addEventListener('DOMContentLoaded', function() { document.body.appendChild(d); });
+    });
+    window.addEventListener('unhandledrejection', function(e) {
+      var d = document.createElement('div');
+      d.style.position = 'fixed'; d.style.top = '10px'; d.style.left = '10px'; d.style.right = '10px';
+      d.style.padding = '15px'; d.style.background = '#ff5a5a'; d.style.color = '#fff';
+      d.style.zIndex = '999999'; d.style.fontFamily = 'monospace'; d.style.whiteSpace = 'pre-wrap';
+      d.style.borderRadius = '5px'; d.style.boxShadow = '0 0 20px rgba(0,0,0,0.5)';
+      d.textContent = 'UNHANDLED REJECTION: ' + e.reason;
+      document.body ? document.body.appendChild(d) : window.addEventListener('DOMContentLoaded', function() { document.body.appendChild(d); });
+    });
+  </script>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="VARUNA — National Marine Data Backbone. Real-time oceanographic telemetry, ARGO float tracking, and marine biodiversity analytics.">
+  <title>VARUNA — Marine Telemetry Console</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&family=Plus+Jakarta+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&family=JetBrains+Mono:wght@400;500;600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="anonymous" />
+  <link rel="stylesheet" href="styles.css">
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin="anonymous"></script>
+</head>
+<body>
+
+  <!-- ═══ LEFT SIDEBAR ═══ -->
+  <aside class="sidebar" id="sidebar-nav" aria-label="Main navigation">
+    <div class="sidebar-brand">
+      <div class="brand-logo">
+        <svg class="logo-svg" viewBox="0 0 28 28" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <circle cx="14" cy="14" r="12" stroke="#38bdf8" stroke-width="1.5" opacity="0.4"/>
+          <path d="M5 16 Q14 8 23 16" stroke="#38bdf8" stroke-width="1.8" fill="none" stroke-linecap="round"/>
+          <path d="M7 20 Q14 13 21 20" stroke="#34e2a6" stroke-width="1.5" fill="none" stroke-linecap="round"/>
+          <circle cx="14" cy="10" r="2" fill="#38bdf8"/>
+        </svg>
+      </div>
+      <div class="brand-name">
+        <span class="brand-title">VARUNA</span>
+        <span class="brand-sub">INCOIS › CMLINE</span>
+      </div>
+    </div>
+
+    <nav class="sidebar-menu" aria-label="Module navigation">
+      <button class="menu-item active" id="nav-cmd" data-view="command">
+        <svg class="menu-icon-svg" viewBox="0 0 20 20" fill="currentColor"><path d="M3 4a1 1 0 011-1h12a1 1 0 011 1v2a1 1 0 01-1 1H4a1 1 0 01-1-1V4zM3 10a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H4a1 1 0 01-1-1v-6zM14 9a1 1 0 00-1 1v6a1 1 0 001 1h2a1 1 0 001-1v-6a1 1 0 00-1-1h-2z"/></svg>
+        <span class="menu-label">Command Center</span>
+        <span class="menu-active-bar"></span>
+      </button>
+
+      <div class="menu-group">
+        <button class="menu-item" id="nav-ocean-trigger">
+          <svg class="menu-icon-svg" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM4.332 8.027a6.012 6.012 0 011.912-2.706C6.512 5.73 6.974 6 7.5 6A1.5 1.5 0 019 7.5V8a2 2 0 004 0 2 2 0 011.523-1.943A5.977 5.977 0 0116 10c0 .34-.028.675-.083 1H15a2 2 0 00-2 2v2.197A5.973 5.973 0 0110 16v-2a2 2 0 00-2-2 2 2 0 01-2-2 2 2 0 00-1.668-1.973z" clip-rule="evenodd"/></svg>
+          <span class="menu-label">Ocean</span>
+          <svg class="chevron-svg" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd"/></svg>
+        </button>
+        <div class="sub-menu open" id="ocean-sub-menu">
+          <button class="sub-item active" data-region="arabian_sea">
+            <span class="sub-dot heat-dot"></span>Arabian Sea
+          </button>
+          <button class="sub-item" data-region="bay_of_bengal">
+            <span class="sub-dot warn-dot"></span>Bay of Bengal
+          </button>
+          <button class="sub-item" data-region="persian_gulf">
+            <span class="sub-dot ok-dot"></span>Persian Gulf
+          </button>
+          <button class="sub-item" data-region="laccadive_sea">
+            <span class="sub-dot warn-dot"></span>Laccadive Sea
+          </button>
+          <button class="sub-item" data-region="gulf_of_mannar">
+            <span class="sub-dot ok-dot"></span>Gulf of Mannar
+          </button>
+          <button class="sub-item" data-region="andaman_sea">
+            <span class="sub-dot ok-dot"></span>Andaman Sea
+          </button>
+          <button class="sub-item" data-region="eq_indian_ocean">
+            <span class="sub-dot ok-dot"></span>Indian Ocean
+          </button>
+        </div>
+      </div>
+
+      <button class="menu-item" id="nav-floats">
+        <svg class="menu-icon-svg" viewBox="0 0 20 20" fill="currentColor"><path d="M17.293 13.293A8 8 0 016.707 2.707a8.001 8.001 0 1010.586 10.586z"/></svg>
+        <span class="menu-label">Floats</span>
+      </button>
+
+      <button class="menu-item" id="nav-alerts">
+        <svg class="menu-icon-svg" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/></svg>
+        <span class="menu-label">Alerts</span>
+        <span class="menu-badge">07</span>
+      </button>
+
+      <button class="menu-item" id="nav-bio">
+        <svg class="menu-icon-svg" viewBox="0 0 20 20" fill="currentColor"><path d="M9 6a3 3 0 11-6 0 3 3 0 016 0zM17 6a3 3 0 11-6 0 3 3 0 016 0zM12.93 17c.046-.327.07-.66.07-1a6.97 6.97 0 00-1.5-4.33A5 5 0 0119 16v1h-6.07zM6 11a5 5 0 015 5v1H1v-1a5 5 0 015-5z"/></svg>
+        <span class="menu-label">Biodiversity</span>
+      </button>
+
+      <button class="menu-item" id="nav-analytics">
+        <svg class="menu-icon-svg" viewBox="0 0 20 20" fill="currentColor"><path d="M2 11a1 1 0 011-1h2a1 1 0 011 1v5a1 1 0 01-1 1H3a1 1 0 01-1-1v-5zM8 7a1 1 0 011-1h2a1 1 0 011 1v9a1 1 0 01-1 1H9a1 1 0 01-1-1V7zM14 4a1 1 0 011-1h2a1 1 0 011 1v12a1 1 0 01-1 1h-2a1 1 0 01-1-1V4z"/></svg>
+        <span class="menu-label">Analytics</span>
+      </button>
+
+      <button class="menu-item" id="nav-forecasts">
+        <svg class="menu-icon-svg" viewBox="0 0 20 20" fill="currentColor"><path d="M5.5 16a3.5 3.5 0 01-.369-6.98 4 4 0 117.753-1.977A4.5 4.5 0 1113.5 16h-8z"/></svg>
+        <span class="menu-label">Forecasts</span>
+      </button>
+
+      <button class="menu-item" id="nav-datasets">
+        <svg class="menu-icon-svg" viewBox="0 0 20 20" fill="currentColor"><path d="M3 12v3c0 1.657 3.134 3 7 3s7-1.343 7-3v-3c0 1.657-3.134 3-7 3s-7-1.343-7-3z"/><path d="M3 7v3c0 1.657 3.134 3 7 3s7-1.343 7-3V7c0 1.657-3.134 3-7 3S3 8.657 3 7z"/><path d="M17 5c0 1.657-3.134 3-7 3S3 6.657 3 5s3.134-3 7-3 7 1.343 7 3z"/></svg>
+        <span class="menu-label">Datasets</span>
+      </button>
+    </nav>
+
+    <div class="profile-block">
+      <div class="profile-avatar">VC</div>
+      <div class="profile-info">
+        <span class="profile-name">VARUNA Core</span>
+        <span class="profile-version">v2.4</span>
+      </div>
+      <div class="online-dot" title="Connected"></div>
+      <span class="online-label">Online</span>
+    </div>
+  </aside>
+
+  <!-- ═══ TOP BAR ═══ -->
+  <header class="top-bar" role="banner">
+    <div class="top-bar-left">
+      <span class="topbar-breadcrumb">NATIONAL MARINE DATA BACKBONE</span>
+      <span class="breadcrumb-sep">›</span>
+      <span class="topbar-sub">INCOIS › CMLINE</span>
+    </div>
+    <div class="top-bar-center">
+      <div class="search-wrap">
+        <svg class="search-icon-svg" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z" clip-rule="evenodd"/></svg>
+        <input type="text" id="global-search" placeholder="Search ecosystem, region, species, datasets…" autocomplete="off" spellcheck="false">
+        <kbd class="kbd-chip">⌘K</kbd>
+      </div>
+    </div>
+    <div class="top-bar-right">
+      <div class="time-chip">
+        <svg viewBox="0 0 20 20" fill="currentColor" width="14" height="14"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clip-rule="evenodd"/></svg>
+        <span id="system-time">14:32:08 UTC</span>
+      </div>
+      <div class="live-pill">
+        <span class="live-dot"></span>
+        <span>LIVE</span>
+      </div>
+    </div>
+  </header>
+
+  <!-- ═══ MAIN COMMAND CENTER PANEL ═══ -->
+  <main class="main-panel" aria-label="Indian Ocean operations view">
+    
+    <!-- MAP & DATA SECTION (LEFT/CENTER) -->
+    <div class="map-section">
+      
+      <!-- Top statistics bar -->
+      <div class="stats-row-top">
+        <div class="stat-chip">
+          <svg class="stat-icon-svg signal" viewBox="0 0 20 20" fill="currentColor" width="18" height="18"><path d="M10 2a6 6 0 00-6 6v3.586l-.707.707A1 1 0 004 14h12a1 1 0 00.707-1.707L16 11.586V8a6 6 0 00-6-6zM10 18a3 3 0 01-3 3z"/></svg>
+          <span class="stat-val mono" id="stat-floats">3,842</span>
+          <span class="stat-lbl">Active ARGO Floats</span>
+        </div>
+        <div class="stat-chip">
+          <svg class="stat-icon-svg critical" viewBox="0 0 20 20" fill="currentColor" width="18" height="18"><path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/></svg>
+          <span class="stat-val mono critical" id="stat-alerts">07</span>
+          <span class="stat-lbl">Active Alerts</span>
+        </div>
+        <div class="stat-chip">
+          <svg class="stat-icon-svg" viewBox="0 0 20 20" fill="currentColor" width="18" height="18"><path fill-rule="evenodd" d="M11.3 1.046A1 1 0 0112 2v5h4a1 1 0 01.82 1.573l-7 10A1 1 0 018 18v-5H4a1 1 0 01-.82-1.573l7-10a1 1 0 011.12-.38z" clip-rule="evenodd"/></svg>
+          <span class="stat-val mono" id="stat-latency">14ms</span>
+          <span class="stat-lbl">PostGIS Latency</span>
+        </div>
+        <div class="stat-chip">
+          <svg class="stat-icon-svg positive" viewBox="0 0 20 20" fill="currentColor" width="18" height="18"><path fill-rule="evenodd" d="M6.267 3.455a3.066 3.066 0 001.745-.723 3.066 3.066 0 013.976 0 3.066 3.066 0 001.745.723 3.066 3.066 0 012.812 2.812c.051.643.304 1.254.723 1.745a3.066 3.066 0 010 3.976 3.066 3.066 0 00-.723 1.745 3.066 3.066 0 01-2.812 2.812 3.066 3.066 0 00-1.745.723 3.066 3.066 0 01-3.976 0 3.066 3.066 0 00-1.745-.723 3.066 3.066 0 01-2.812-2.812 3.066 3.066 0 00-.723-1.745 3.066 3.066 0 010-3.976 3.066 3.066 0 00.723-1.745 3.066 3.066 0 012.812-2.812zm7.44 5.252a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/></svg>
+          <span class="stat-val mono positive" id="stat-accuracy">99.8%</span>
+          <span class="stat-lbl">Model Accuracy</span>
+        </div>
+      </div>
+
+      <!-- 2D Indian Ocean Map Container -->
+      <div class="map-card-container">
+        <!-- Map Header overlay inside map -->
+        <div class="map-header">
+          <h2 class="map-title" id="map-title-text">Indian Ocean Region</h2>
+          <span class="info-icon" title="Indian Ocean Marine Telemetry Area">ⓘ</span>
+        </div>
+
+        <!-- Map Controls (Top Right overlay inside map) -->
+        <div class="map-controls">
+          <button class="mc-btn" id="map-zoom-in" title="Zoom In">+</button>
+          <button class="mc-btn" id="map-zoom-out" title="Zoom Out">−</button>
+          <button class="mc-btn" id="map-reset" title="Fullscreen / Reset View">
+            <svg viewBox="0 0 20 20" fill="currentColor" width="14" height="14"><path fill-rule="evenodd" d="M3 4a1 1 0 011-1h4a1 1 0 010 2H6.414l3.293 3.293a1 1 0 01-1.414 1.414L5 6.414V8a1 1 0 01-2 0V4zm9 1a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 11-2 0V6.414l-3.293 3.293a1 1 0 11-1.414-1.414L15.586 5H14a1 1 0 01-1-1zM3 16a1 1 0 001 1h4a1 1 0 100-2H6.414l3.293-3.293a1 1 0 00-1.414-1.414L5 13.586V12a1 1 0 10-2 0v4zm14 0a1 1 0 01-1 1h-4a1 1 0 110-2h1.586l-3.293-3.293a1 1 0 111.414-1.414L17 13.586V12a1 1 0 112 0v4z" clip-rule="evenodd"/></svg>
+          </button>
+        </div>
+
+        <!-- Leaflet Map Div -->
+        <div id="leaflet-map"></div>
+
+        <!-- Legend Overlay (Bottom Left inside map) -->
+        <div class="map-legend">
+          <div class="legend-title">LEGEND</div>
+          <div class="legend-item" id="toggle-argo" data-type="argo"><span class="legend-pin argo">📍</span>ARGO Floats</div>
+          <div class="legend-item" id="toggle-mooring" data-type="mooring"><span class="legend-pin mooring">📍</span>Moorings</div>
+          <div class="legend-item" id="toggle-buoy" data-type="buoy"><span class="legend-pin buoy">📍</span>Buoys</div>
+          <div class="legend-item" id="toggle-gauge" data-type="gauge"><span class="legend-pin gauge">📍</span>Tide Gauges</div>
+        </div>
+
+        <!-- Region List Button (Bottom Left below legend) -->
+        <button class="btn-region-list-bottom" id="btn-region-list">
+          <svg viewBox="0 0 20 20" fill="currentColor" width="14" height="14"><path fill-rule="evenodd" d="M3 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1z" clip-rule="evenodd"/></svg>
+          Region List
+        </button>
+
+        <!-- Map Bottom Toolbar / Filters -->
+        <div class="map-bottom-bar">
+          <div class="time-filter-group">
+            <button class="tchip active" data-time="live">Live</button>
+            <button class="tchip" data-time="24h">24h</button>
+            <button class="tchip" data-time="7d">7d</button>
+            <button class="tchip" data-time="30d">30d</button>
+          </div>
+
+          <div class="mbar-divider"></div>
+
+          <div class="layer-filter-group">
+            <button class="lchip active" id="layer-waterbodies">● Water Bodies</button>
+            <button class="lchip" id="layer-temp">Temperature</button>
+            <button class="lchip" id="layer-chl">Chlorophyll</button>
+          </div>
+
+          <button class="mbar-btn icon-only" title="Layer Settings">⚙</button>
+        </div>
+
+        <!-- Scale chip -->
+        <div class="map-scale-chip">500 km</div>
+      </div>
+
+      <!-- Bottom Alerts Row -->
+      <div class="bottom-alerts-row">
+        <div class="alert-card-h" id="card-heatwave" data-region="arabian_sea">
+          <div class="ach-header">
+            <span class="ach-label critical">CRITICAL ALERT</span>
+            <span class="ach-close">&times;</span>
+          </div>
+          <div class="ach-type">MARINE HEATWAVE</div>
+          <div class="ach-region">Arabian Sea</div>
+          <div class="ach-body">
+            <span class="ach-val critical">+3.4°C Anomaly</span>
+            <svg class="ac-sparkline" viewBox="0 0 80 24" fill="none">
+              <polyline points="0,20 12,16 22,18 34,11 44,8 55,13 64,4 72,7 80,0" stroke="#ff5a5a" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </div>
+          <div class="ach-footer">
+            <span>Severity: <strong class="critical">CRITICAL</strong></span>
+            <button class="ach-btn">→</button>
+          </div>
+        </div>
+
+        <div class="alert-card-h" id="card-hypoxia" data-region="bay_of_bengal">
+          <div class="ach-header">
+            <span class="ach-label warning">HYPOXIA ZONE</span>
+            <span class="ach-close">&times;</span>
+          </div>
+          <div class="ach-type warning">HYPOXIA ZONE</div>
+          <div class="ach-region">Bay of Bengal</div>
+          <div class="ach-body">
+            <span class="ach-val warning">DOX &lt; 60 µmol/kg</span>
+            <svg class="ac-sparkline" viewBox="0 0 80 24" fill="none">
+              <polyline points="0,18 15,14 30,19 45,10 60,15 75,8 80,5" stroke="#ffb454" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </div>
+          <div class="ach-footer">
+            <span>Severity: <strong class="warning">HIGH</strong></span>
+            <button class="ach-btn">→</button>
+          </div>
+        </div>
+
+        <div class="alert-card-h" id="card-biodiversity" data-region="gulf_of_mannar">
+          <div class="ach-header">
+            <span class="ach-label signal">BIODIVERSITY IMPACT</span>
+            <span class="ach-close">&times;</span>
+          </div>
+          <div class="ach-type bio">12 Species Affected</div>
+          <div class="bio-icons-row">
+            <span class="bio-icon-chip">🐢</span>
+            <span class="bio-icon-chip">🦈</span>
+            <span class="bio-icon-chip">🐠</span>
+            <span class="bio-icon-chip">🪸</span>
+          </div>
+          <div class="ach-footer">
+            <span class="view-all-link">View All →</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- RIGHT SIDE PANEL: VARUNA AI MARINE ASSISTANT CHATBOT -->
+    <aside class="chatbot-panel" id="chatbot-panel" aria-label="VARUNA AI Assistant">
+      <div class="chat-header">
+        <div class="chat-title-group">
+          <div class="chat-avatar-icon">
+            <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="18" height="18">
+              <circle cx="12" cy="12" r="10" stroke="#38bdf8" stroke-width="1.5"/>
+              <path d="M4 14 Q12 7 20 14" stroke="#38bdf8" stroke-width="1.5"/>
+              <circle cx="12" cy="9" r="2" fill="#34e2a6"/>
+            </svg>
+          </div>
+          <div class="chat-meta">
+            <h3 class="chat-title">VARUNA</h3>
+            <span class="chat-sub">AI Marine Assistant</span>
+          </div>
+        </div>
+        <div class="chat-actions">
+          <button class="chat-act-btn" id="chat-reset" title="New Conversation">🔄</button>
+          <button class="chat-act-btn" id="chat-toggle" title="Collapse Panel">✕</button>
+        </div>
+      </div>
+
+      <!-- Scrollable Chat Messages -->
+      <div class="chat-messages" id="chat-messages">
+        <div class="chat-msg bot-msg">
+          <div class="msg-bubble">
+            Hello! I'm <strong>VARUNA</strong>, your AI marine intelligence assistant.<br><br>
+            Ask me anything about ocean data, marine ecosystems, anomalies, or biodiversity.
+          </div>
+          <span class="msg-time">Just now</span>
+        </div>
+      </div>
+
+      <!-- Quick Action Buttons -->
+      <div class="chat-quick-actions">
+        <button class="qaction-chip" data-action="analysis">⚡ Run Analysis</button>
+        <button class="qaction-chip" data-action="charts">📊 View Charts</button>
+        <button class="qaction-chip" data-action="alerts">⚠️ Related Alerts</button>
+        <button class="qaction-chip" data-action="species">🪸 Species Impact</button>
+      </div>
+
+      <!-- Chat Input Area -->
+      <div class="chat-input-wrapper">
+        <form id="chat-form" onsubmit="return false;">
+          <input type="text" id="chat-input" placeholder="Ask anything about oceans…" autocomplete="off" spellcheck="false">
+          <button type="submit" id="chat-send-btn" aria-label="Send message">
+            <svg viewBox="0 0 20 20" fill="currentColor" width="16" height="16">
+              <path d="M10.894 2.553a1 1 0 00-1.788 0l-7 14a1 1 0 001.169 1.409l5-1.429A1 1 0 009 15.571V11a1 1 0 112 0v4.571a1 1 0 00.725.962l5 1.428a1 1 0 001.17-1.408l-7-14z"/>
+            </svg>
+          </button>
+        </form>
+        <div class="chat-disclaimer">VARUNA may make mistakes. Verify critical info.</div>
+      </div>
+    </aside>
+  </main>
+
+  <!-- ═══ REGION DETAIL MODAL ═══ -->
+  <div id="details-modal" class="modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="modal-region-title">
+    <div class="modal-box">
+      <button class="modal-close" id="modal-close-btn" aria-label="Close modal">&times;</button>
+      <div class="modal-header">
+        <div class="modal-kicker">CONTEXT METRICS PREVIEW</div>
+        <h2 id="modal-region-title">SELECTED REGION: ARABIAN SEA</h2>
+      </div>
+      <div class="modal-tabs" role="tablist">
+        <button class="mtab active" data-tab="tab-ocean" role="tab" aria-selected="true">[Ocean Data]</button>
+        <button class="mtab" data-tab="tab-bio" role="tab" aria-selected="false">[Marine Bio]</button>
+        <button class="mtab" data-tab="tab-alerts" role="tab" aria-selected="false">[Alerts]</button>
+        <button class="mtab" data-tab="tab-ops" role="tab" aria-selected="false">[Operation View]</button>
+      </div>
+      <div class="modal-body">
+
+        <div id="tab-ocean" class="tab-pane active" role="tabpanel">
+          <div class="data-grid">
+            <div class="data-card"><span class="dc-label">Sea Surface Temp (SST)</span><span class="dc-val" id="val-sst">29.2 °C</span><span class="dc-status critical" id="sst-status">High Anomaly</span></div>
+            <div class="data-card"><span class="dc-label">Salinity Level</span><span class="dc-val" id="val-salinity">35.8 PSU</span><span class="dc-status normal" id="salinity-status">Normal</span></div>
+            <div class="data-card"><span class="dc-label">Dissolved Oxygen</span><span class="dc-val" id="val-oxygen">55 µmol/kg</span><span class="dc-status warning" id="oxygen-status">Low</span></div>
+            <div class="data-card"><span class="dc-label">Chlorophyll-a</span><span class="dc-val" id="val-current">0.68 mg/m³</span><span class="dc-status normal" id="current-status">Nominal</span></div>
+          </div>
+        </div>
+
+        <div id="tab-bio" class="tab-pane" role="tabpanel">
+          <div class="data-grid">
+            <div class="data-card full-col"><span class="dc-label">Active Key Species Tracks</span><span class="dc-val sm" id="val-species">Olive Ridley Turtles, Whale Sharks, Blue Whales</span><span class="dc-sub">Acoustic &amp; satellite telemetry paths active</span></div>
+            <div class="data-card"><span class="dc-label">Coral Reef Health Index</span><span class="dc-val" id="val-coral">68 %</span><span class="dc-status warning" id="coral-status">Stress Alert</span></div>
+            <div class="data-card"><span class="dc-label">Phytoplankton Density</span><span class="dc-val" id="val-phyto">0.68 mg/m³</span><span class="dc-status normal" id="phyto-status">Standard</span></div>
+          </div>
+        </div>
+
+        <div id="tab-alerts" class="tab-pane" role="tabpanel">
+          <div class="alert-block">
+            <div class="ab-banner critical" id="alert-main-banner">
+              <div class="ab-icon">!</div>
+              <div class="ab-detail">
+                <span class="ab-title" id="val-alert-title">MARINE HEATWAVE DETECTED</span>
+                <span class="ab-desc" id="val-alert-desc">SST deviations exceeding threshold (+3.4°C CRITICAL)</span>
+              </div>
+            </div>
+            <div class="ab-grid">
+              <div class="ab-card"><span class="ab-num" id="val-alert-count">2</span><span class="ab-sub">Active Alerts</span></div>
+              <div class="ab-card"><span class="ab-sev critical" id="val-alert-severity">CRITICAL</span><span class="ab-sub">Max Threat Level</span></div>
+            </div>
+          </div>
+        </div>
+
+        <div id="tab-ops" class="tab-pane" role="tabpanel">
+          <div class="data-grid">
+            <div class="data-card"><span class="dc-label">Regional ARGO Floats</span><span class="dc-val" id="val-ops-argo">312</span><span class="dc-sub">Active automated floats</span></div>
+            <div class="data-card"><span class="dc-label">Moorings &amp; Buoys</span><span class="dc-val" id="val-ops-satellites">42</span><span class="dc-sub">Telemetry nodes online</span></div>
+            <div class="data-card"><span class="dc-label">Tide Gauges</span><span class="dc-val" id="val-ops-bio">12</span><span class="dc-sub">Coastal tide sensors online</span></div>
+            <div class="data-card"><span class="dc-label">Last Transmission</span><span class="dc-val sm" id="val-ops-time">2 mins ago</span><span class="dc-sub">Encrypted payload sync</span></div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>

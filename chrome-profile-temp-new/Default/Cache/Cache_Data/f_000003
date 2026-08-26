@@ -1,0 +1,669 @@
+/* ═══════════════════════════════════════════════════════
+   VARUNA Marine Telemetry Console — Globe & UI Logic
+   ═══════════════════════════════════════════════════════ */
+
+// ──── Region Dataset ────────────────────────────────────
+const REGIONS = {
+  type: 'FeatureCollection',
+  features: [
+    {
+      type: 'Feature',
+      properties: {
+        id: 'arabian_sea',
+        name: 'Arabian Sea',
+        center: { lat: 15, lng: 64, alt: 1.55 },
+        data: {
+          sst: '28.4', sstStatus: 'critical',
+          salinity: '36.2', salinityStatus: 'normal',
+          oxygen: '4.8', oxygenStatus: 'normal',
+          current: '0.65', currentStatus: 'normal',
+          species: 'Whale Shark migration pathways — 8 acoustic transmitters online.',
+          coral: '68', coralStatus: 'warning',
+          phyto: '2.4', phytoStatus: 'normal',
+          alertTitle: 'MARINE HEATWAVE DETECTED',
+          alertDesc: 'SST deviation +3.4°C above seasonal baseline (CRITICAL — Category 3)',
+          alertCount: '4', alertSeverity: 'CRITICAL',
+          opsArgo: '142', opsSatellites: '3', opsBio: '84', opsTime: '0.4 s ago'
+        }
+      },
+      geometry: { type: 'Polygon', coordinates: [[[43,12],[52,26],[62,25],[73,21],[77,8],[58,4],[43,12]]] }
+    },
+    {
+      type: 'Feature',
+      properties: {
+        id: 'bay_of_bengal',
+        name: 'Bay of Bengal',
+        center: { lat: 14, lng: 88, alt: 1.55 },
+        data: {
+          sst: '29.1', sstStatus: 'warning',
+          salinity: '32.8', salinityStatus: 'warning',
+          oxygen: '4.2', oxygenStatus: 'normal',
+          current: '0.82', currentStatus: 'warning',
+          species: 'Irrawaddy Dolphin clusters — 12 active bio-acoustic monitors.',
+          coral: '42', coralStatus: 'critical',
+          phyto: '3.8', phytoStatus: 'warning',
+          alertTitle: 'SEVERE CURRENT WARNING',
+          alertDesc: 'River runoff surge driving surface currents >0.8 m/s (operational threshold breach)',
+          alertCount: '2', alertSeverity: 'WARNING',
+          opsArgo: '98', opsSatellites: '2', opsBio: '62', opsTime: '1.2 s ago'
+        }
+      },
+      geometry: { type: 'Polygon', coordinates: [[[77,8],[80,16],[86,22],[94,22],[98,8],[85,2],[77,8]]] }
+    },
+    {
+      type: 'Feature',
+      properties: {
+        id: 'eq_indian_ocean',
+        name: 'Equatorial Indian Ocean',
+        center: { lat: -4, lng: 76, alt: 1.75 },
+        data: {
+          sst: '26.8', sstStatus: 'normal',
+          salinity: '35.1', salinityStatus: 'normal',
+          oxygen: '5.1', oxygenStatus: 'normal',
+          current: '1.10', currentStatus: 'warning',
+          species: 'Blue Whale acoustic triggers — 18 transponder signals verified.',
+          coral: '85', coralStatus: 'normal',
+          phyto: '0.9', phytoStatus: 'normal',
+          alertTitle: 'EQUATORIAL JET STIMULUS',
+          alertDesc: 'Deep-ocean flow stable. Surface jet velocity nominal for season.',
+          alertCount: '0', alertSeverity: 'NONE',
+          opsArgo: '254', opsSatellites: '4', opsBio: '110', opsTime: '3.1 s ago'
+        }
+      },
+      geometry: { type: 'Polygon', coordinates: [[[50,6],[72,6],[100,-8],[90,-15],[55,-15],[45,-5],[50,6]]] }
+    },
+    {
+      type: 'Feature',
+      properties: {
+        id: 'coral_sea',
+        name: 'Coral Sea',
+        center: { lat: -18, lng: 152, alt: 1.55 },
+        data: {
+          sst: '25.3', sstStatus: 'normal',
+          salinity: '35.5', salinityStatus: 'normal',
+          oxygen: '5.4', oxygenStatus: 'normal',
+          current: '0.45', currentStatus: 'normal',
+          species: 'Green Sea Turtle — 45 nesting beach transponders active.',
+          coral: '55', coralStatus: 'warning',
+          phyto: '1.1', phytoStatus: 'normal',
+          alertTitle: 'CORAL BLEACHING ALERT',
+          alertDesc: 'Thermal stress level 1 active — GBR southern section at risk.',
+          alertCount: '3', alertSeverity: 'WARNING',
+          opsArgo: '184', opsSatellites: '3', opsBio: '140', opsTime: '0.8 s ago'
+        }
+      },
+      geometry: { type: 'Polygon', coordinates: [[[142,-10],[152,-11],[165,-22],[158,-26],[147,-25],[141,-14],[142,-10]]] }
+    },
+    {
+      type: 'Feature',
+      properties: {
+        id: 'philippine_sea',
+        name: 'Philippine Sea',
+        center: { lat: 17, lng: 132, alt: 1.55 },
+        data: {
+          sst: '27.9', sstStatus: 'normal',
+          salinity: '34.9', salinityStatus: 'normal',
+          oxygen: '4.9', oxygenStatus: 'normal',
+          current: '0.75', currentStatus: 'normal',
+          species: 'Hammerhead shark acoustic tracking — 6 reef hydrophones online.',
+          coral: '72', coralStatus: 'normal',
+          phyto: '0.7', phytoStatus: 'normal',
+          alertTitle: 'DEEP TRENCH SEISMIC UPLINK',
+          alertDesc: 'Mariana Trench sensors registering minor background activity.',
+          alertCount: '1', alertSeverity: 'WARNING',
+          opsArgo: '165', opsSatellites: '3', opsBio: '95', opsTime: '1.9 s ago'
+        }
+      },
+      geometry: { type: 'Polygon', coordinates: [[[121,12],[128,28],[148,28],[148,12],[134,5],[121,12]]] }
+    },
+    {
+      type: 'Feature',
+      properties: {
+        id: 'mediterranean_sea',
+        name: 'Mediterranean Sea',
+        center: { lat: 36, lng: 18, alt: 1.55 },
+        data: {
+          sst: '24.2', sstStatus: 'normal',
+          salinity: '38.5', salinityStatus: 'warning',
+          oxygen: '5.8', oxygenStatus: 'normal',
+          current: '0.35', currentStatus: 'normal',
+          species: 'Monk Seal nesting telemetry — 4 camera feeds active.',
+          coral: '60', coralStatus: 'warning',
+          phyto: '0.5', phytoStatus: 'normal',
+          alertTitle: 'HIGH SALINITY DETECTED',
+          alertDesc: 'Evaporation exceeding seasonal norm — levels >38.5 psu.',
+          alertCount: '2', alertSeverity: 'WARNING',
+          opsArgo: '112', opsSatellites: '5', opsBio: '130', opsTime: '2.5 s ago'
+        }
+      },
+      geometry: { type: 'Polygon', coordinates: [[[-5,36],[13,45],[22,38],[36,38],[36,31],[25,30],[-5,36]]] }
+    }
+  ]
+};
+
+// ──── Floating geo-tag labels ──────────────────────────
+const GEO_TAGS = [
+  { lat: 19,  lng: 62,  name: 'Arabian Sea',    id: 'arabian_sea' },
+  { lat: 16,  lng: 89,  name: 'Bay of Bengal',  id: 'bay_of_bengal' },
+  { lat: -3,  lng: 76,  name: 'Equatorial IO',  id: 'eq_indian_ocean' },
+  { lat: -18, lng: 152, name: 'Coral Sea',       id: 'coral_sea' },
+  { lat: 19,  lng: 133, name: 'Philippine Sea',  id: 'philippine_sea' },
+  { lat: 37,  lng: 16,  name: 'Mediterranean',   id: 'mediterranean_sea' }
+];
+
+// ──── Data generators ──────────────────────────────────
+
+/** ARGO floats: 6 current-corridor bands + noise + alert clusters */
+function buildArgoPoints() {
+  const pts = [];
+  const corridors = [
+    // [startLat, startLng, endLat, endLng, count, jitter]
+    [25, -80, 48, -38,  40, 3.5],  // Gulf Stream
+    [20, 122, 42, 152,  38, 3.0],  // Kuroshio
+    [2,  45,  16, 65,   32, 2.5],  // Somali Current / Arabian Sea feed
+    [10, 76, -10, 96,   36, 2.8],  // Equatorial IO
+    [-8, 145,-26, 160,  30, 2.2],  // GBR / Coral Sea
+    [30, -6,  42, 28,   28, 2.0],  // Mediterranean
+    [-5, -40,-35, 20,   34, 3.2],  // South Atlantic
+    [35, 135, 55, 155,  28, 2.6],  // North Pacific
+  ];
+
+  corridors.forEach(([slat, slng, elat, elng, n, jit]) => {
+    for (let i = 0; i < n; i++) {
+      const t = i / (n - 1);
+      pts.push({
+        lat: slat + (elat - slat) * t + (Math.random() - 0.5) * jit,
+        lng: slng + (elng - slng) * t + (Math.random() - 0.5) * jit,
+        type: 'argo', color: '#38bdf8',
+        radius: 0.15 + Math.random() * 0.12
+      });
+    }
+  });
+
+  // Background scatter (lower density, biased to open ocean)
+  for (let i = 0; i < 120; i++) {
+    const lat = (Math.random() - 0.5) * 130;
+    const lng = (Math.random() - 0.5) * 360;
+    pts.push({ lat, lng, type: 'argo', color: '#38bdf8', radius: 0.12 + Math.random() * 0.10 });
+  }
+
+  // ── Arabian Sea heat cluster (red/orange bloom) ──
+  for (let i = 0; i < 32; i++) {
+    const r = Math.sqrt(Math.random()) * 6;
+    const a = Math.random() * 2 * Math.PI;
+    pts.push({
+      lat: 15.3 + r * Math.sin(a),
+      lng: 63.8 + r * Math.cos(a),
+      type: 'heat',
+      color: i < 20 ? '#ff5a5a' : '#ffb454',
+      radius: 0.20 + Math.random() * 0.18
+    });
+  }
+
+  // ── Coral Sea bio-bleaching cluster (orange) ──
+  for (let i = 0; i < 22; i++) {
+    const r = Math.sqrt(Math.random()) * 5;
+    const a = Math.random() * 2 * Math.PI;
+    pts.push({
+      lat: -18 + r * Math.sin(a),
+      lng: 152 + r * Math.cos(a),
+      type: 'heat',
+      color: '#ffb454',
+      radius: 0.18 + Math.random() * 0.14
+    });
+  }
+
+  return pts;
+}
+
+/** Coastal shelf stations (larger, fixed, green) */
+function buildSensors() {
+  return [
+    { lat: 19.0, lng: 72.8 },   // Mumbai
+    { lat: 13.1, lng: 80.3 },   // Chennai
+    { lat: 35.7, lng: 139.7 },  // Tokyo
+    { lat: 35.7, lng: -75.5 },  // US East
+    { lat: 51.5, lng: -0.1 },   // UK Thames
+    { lat: -18.2, lng: 146.5 }, // GBR Hub
+    { lat: 36.1, lng: -5.3 },   // Gibraltar
+    { lat: -33.9, lng: 151.2 }, // Sydney
+    { lat: 21.3, lng: -157.8 }, // Hawaii
+    { lat: -20.3, lng: 49.4 },  // Madagascar
+    { lat: 22.5, lng: 88.4 },   // Kolkata Delta
+    { lat: 1.3,  lng: 103.8 },  // Singapore
+  ].map(s => ({ ...s, type: 'sensor', color: '#34e2a6', radius: 0.42 }));
+}
+
+/** Telemetry arcs: hub-to-float spoke pattern */
+function buildArcs() {
+  const hubs = [
+    { lat: 19.0, lng: 72.8 },
+    { lat: 34.3, lng: 137.2 },
+    { lat: 35.7, lng: -75.5 },
+    { lat: 51.5, lng: -0.1 },
+    { lat: -18.2, lng: 146.5 },
+    { lat: 21.3, lng: -157.8 },
+  ];
+  const cols = ['#38bdf8', '#34e2a6', '#38bdf8', '#1e6fd9'];
+  const arcs = [];
+  hubs.forEach(hub => {
+    for (let i = 0; i < 5; i++) {
+      const d = 9 + Math.random() * 14;
+      const a = Math.random() * 2 * Math.PI;
+      arcs.push({
+        startLat: hub.lat + d * Math.sin(a),
+        startLng: hub.lng + d * Math.cos(a),
+        endLat: hub.lat, endLng: hub.lng,
+        color: cols[Math.floor(Math.random() * cols.length)],
+        alt: 0.10 + Math.random() * 0.22
+      });
+    }
+  });
+  return arcs;
+}
+
+/** Alert pulse rings (Arabian Sea + Coral Sea) */
+const ALERT_RINGS = [
+  { lat: 15.3, lng: 63.8, color: '#ff5a5a', maxRadius: 10, speed: 1.6, period: 850 },
+  { lat: -18,  lng: 152,  color: '#ffb454', maxRadius: 7,  speed: 1.2, period: 1050 }
+];
+
+// ──── App State ────────────────────────────────────────
+let hoveredPolygon = null;
+let rotationPaused = false;
+let satelliteGroup  = null;
+const layerVis = { argo: true, satellites: true, sensors: true };
+
+// ──── Build active points based on layer toggles ───────
+function getVisiblePoints() {
+  let pts = [];
+  if (layerVis.argo)    pts = pts.concat(buildArgoPoints());
+  if (layerVis.sensors) pts = pts.concat(buildSensors());
+  return pts;
+}
+
+// ──── Globe initialisation ─────────────────────────────
+const globe = Globe()(document.getElementById('globe-viz'))
+  .width(window.innerWidth)
+  .height(window.innerHeight)
+  // Textures
+  .globeImageUrl('https://cdn.jsdelivr.net/npm/three-globe/example/img/earth-night.jpg')
+  .bumpImageUrl('https://cdn.jsdelivr.net/npm/three-globe/example/img/earth-topology.png')
+  .backgroundColor('rgba(5,11,22,1)')
+
+  // Atmosphere rim — the "glow edge" of the planet
+  .atmosphereColor('#38bdf8')
+  .atmosphereAltitude(0.20)
+
+  // Starting viewpoint — Indian Ocean centred
+  .pointOfView({ lat: 10, lng: 74, altitude: 2.05 }, 0)
+
+  // ── Arcs layer ──
+  .arcsData(buildArcs())
+  .arcStartLat('startLat').arcStartLng('startLng')
+  .arcEndLat('endLat').arcEndLng('endLng')
+  .arcColor('color')
+  .arcAltitude('alt')
+  .arcStroke(0.28)
+  .arcDashLength(0.38)
+  .arcDashGap(0.18)
+  .arcDashAnimateTime(1500)
+
+  // ── Points layer ──
+  .pointsData(getVisiblePoints())
+  .pointLat('lat').pointLng('lng')
+  .pointColor('color').pointRadius('radius')
+  .pointAltitude(0.01)
+
+  // ── Alert pulse rings ──
+  .ringsData(ALERT_RINGS)
+  .ringLat('lat').ringLng('lng')
+  .ringColor('color')
+  .ringMaxRadius('maxRadius')
+  .ringPropagationSpeed('speed')
+  .ringRepeatPeriod('period')
+
+  // ── Floating geo-tag HTML labels ──
+  .htmlElementsData(GEO_TAGS)
+  .htmlLat(d => d.lat).htmlLng(d => d.lng)
+  .htmlElement(d => {
+    const el = document.createElement('div');
+    el.className = 'geo-chip';
+    el.textContent = d.name;
+    el.style.pointerEvents = 'auto';
+    el.addEventListener('click', e => {
+      e.stopPropagation();
+      const feat = REGIONS.features.find(f => f.properties.id === d.id);
+      if (feat) focusRegion(feat.properties);
+    });
+    return el;
+  })
+
+  // ── Selectable region polygons ──
+  .polygonsData(REGIONS.features)
+  .polygonAltitude(0.018)
+  .polygonCapColor(d => d === hoveredPolygon ? 'rgba(56,189,248,0.20)' : 'rgba(56,189,248,0.025)')
+  .polygonSideColor(d => d === hoveredPolygon ? 'rgba(56,189,248,0.38)' : 'rgba(56,189,248,0.08)')
+  .polygonStrokeColor(d => d === hoveredPolygon ? '#38bdf8' : 'rgba(56,189,248,0.32)')
+
+  // ── Hover ──
+  .onPolygonHover(poly => {
+    if (hoveredPolygon === poly) return;
+    hoveredPolygon = poly;
+    globe
+      .polygonCapColor(d => d === hoveredPolygon ? 'rgba(56,189,248,0.20)' : 'rgba(56,189,248,0.025)')
+      .polygonSideColor(d => d === hoveredPolygon ? 'rgba(56,189,248,0.38)' : 'rgba(56,189,248,0.08)')
+      .polygonStrokeColor(d => d === hoveredPolygon ? '#38bdf8' : 'rgba(56,189,248,0.32)');
+    document.getElementById('globe-viz').style.cursor = poly ? 'pointer' : 'default';
+  })
+  .onPolygonClick(poly => poly && focusRegion(poly.properties));
+
+// ──── Three.js material & satellite post-init ──────────
+setTimeout(() => {
+  const mat = globe.globeMaterial();
+  mat.color     = new THREE.Color('#05111e');
+  mat.specular  = new THREE.Color('#1e6fd9');
+  mat.shininess = 18;
+
+  // Load ocean specular mask for water shimmer
+  new THREE.TextureLoader().load(
+    'https://cdn.jsdelivr.net/npm/three-globe/example/img/earth-water.png',
+    tex => { mat.specularMap = tex; mat.needsUpdate = true; }
+  );
+
+  // Directional key light (top-right) — makes coastlines glow
+  const keyLight = new THREE.DirectionalLight(0x4488ff, 0.6);
+  keyLight.position.set(200, 100, 80);
+  globe.scene().add(keyLight);
+
+  // Orbiting satellite shell
+  satelliteGroup = new THREE.Group();
+  globe.scene().add(satelliteGroup);
+
+  const satGeo = new THREE.SphereGeometry(0.36, 6, 6);
+  const satMat = new THREE.MeshBasicMaterial({ color: 0xd4eeff, transparent: true, opacity: 0.72 });
+  const R = 134;
+
+  for (let i = 0; i < 28; i++) {
+    const mesh = new THREE.Mesh(satGeo, satMat.clone());
+    const theta = Math.random() * Math.PI * 2;
+    const phi   = Math.acos((Math.random() * 2) - 1);
+    mesh.position.set(
+      R * Math.sin(phi) * Math.cos(theta),
+      R * Math.sin(phi) * Math.sin(theta),
+      R * Math.cos(phi)
+    );
+    satelliteGroup.add(mesh);
+  }
+}, 150);
+
+// Satellite animation loop
+(function animateSats() {
+  requestAnimationFrame(animateSats);
+  const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  if (!reduced && satelliteGroup && layerVis.satellites) {
+    satelliteGroup.rotation.y += 0.0008;
+    satelliteGroup.rotation.x += 0.00025;
+  }
+  if (satelliteGroup) satelliteGroup.visible = layerVis.satellites;
+})();
+
+// ──── Globe controls ───────────────────────────────────
+const controls = globe.controls();
+controls.autoRotate      = true;
+controls.autoRotateSpeed = 0.22;
+controls.enableDamping   = true;
+controls.dampingFactor   = 0.055;
+controls.minDistance     = 115;
+controls.maxDistance     = 480;
+
+// ──── Coordinate readout (raycasting) ─────────────────
+const raycaster = new THREE.Raycaster();
+const mouse2    = new THREE.Vector2();
+const gviz      = document.getElementById('globe-viz');
+
+gviz.addEventListener('mousemove', ev => {
+  try {
+    const r = gviz.getBoundingClientRect();
+    mouse2.x = ((ev.clientX - r.left) / r.width)  *  2 - 1;
+    mouse2.y = ((ev.clientY - r.top)  / r.height) * -2 + 1;
+    raycaster.setFromCamera(mouse2, globe.camera());
+    const hits = raycaster.intersectObjects(globe.scene().children, true);
+    const hit  = hits.find(h => h.object.isMesh && !h.object.parent?.isGroup);
+    if (hit) {
+      const { x, y, z } = hit.point;
+      const R   = Math.sqrt(x*x + y*y + z*z);
+      const lat = Math.asin(Math.max(-1, Math.min(1, y / R))) * 180 / Math.PI;
+      const lon = Math.atan2(x, z) * 180 / Math.PI;
+      document.getElementById('lat-val').textContent =
+        `${Math.abs(lat).toFixed(2)}°${lat >= 0 ? 'N' : 'S'}`;
+      document.getElementById('lon-val').textContent =
+        `${Math.abs(lon).toFixed(2)}°${lon >= 0 ? 'E' : 'W'}`;
+    }
+  } catch(_) {}
+});
+
+gviz.addEventListener('mouseleave', () => {
+  document.getElementById('lat-val').textContent = '18.62°N';
+  document.getElementById('lon-val').textContent = '72.36°E';
+});
+
+// ──── Modal ────────────────────────────────────────────
+const modal      = document.getElementById('details-modal');
+const modalTitle = document.getElementById('modal-region-title');
+const panelTitle = document.getElementById('main-panel-title');
+
+function focusRegion(props) {
+  // Update panel heading
+  panelTitle.textContent = `${props.name} Live Operations`;
+
+  // Fly camera to region
+  controls.autoRotate = false;
+  rotationPaused = true;
+  globe.pointOfView(props.center, 1200);
+
+  // Fill modal content
+  modalTitle.textContent = `SELECTED REGION: ${props.name.toUpperCase()}`;
+  fillModal(props.data);
+
+  // Reset tabs to [Ocean Data]
+  document.querySelectorAll('.mtab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
+  document.querySelector('.mtab[data-tab="tab-ocean"]').classList.add('active');
+  document.getElementById('tab-ocean').classList.add('active');
+
+  modal.classList.remove('hidden');
+}
+
+function fillModal(d) {
+  // Ocean tab
+  el('val-sst').textContent      = `${d.sst} °C`;
+  setStatus('sst-status',      d.sstStatus,      d.sstStatus === 'critical' ? '+3.4°C ANOMALY' : d.sstStatus.toUpperCase());
+  el('val-salinity').textContent = `${d.salinity} psu`;
+  setStatus('salinity-status', d.salinityStatus, d.salinityStatus.toUpperCase());
+  el('val-oxygen').textContent   = `${d.oxygen} ml/L`;
+  setStatus('oxygen-status',   d.oxygenStatus,   d.oxygenStatus.toUpperCase());
+  el('val-current').textContent  = `${d.current} m/s`;
+  setStatus('current-status',  d.currentStatus,  d.currentStatus.toUpperCase());
+
+  // Bio tab
+  el('val-species').textContent  = d.species;
+  el('val-coral').textContent    = `${d.coral} %`;
+  setStatus('coral-status',    d.coralStatus,    d.coralStatus.toUpperCase());
+  el('val-phyto').textContent    = `${d.phyto} mg/m³`;
+  setStatus('phyto-status',    d.phytoStatus,    d.phytoStatus.toUpperCase());
+
+  // Alerts tab
+  el('val-alert-title').textContent  = d.alertTitle;
+  el('val-alert-desc').textContent   = d.alertDesc;
+  el('val-alert-count').textContent  = d.alertCount;
+  el('val-alert-severity').textContent = d.alertSeverity;
+
+  const banner = el('alert-main-banner');
+  const icon   = banner.querySelector('.ab-icon');
+  if (d.alertSeverity === 'NONE') {
+    banner.className = 'ab-banner stable';
+    icon.style.background = 'var(--positive)';
+  } else {
+    banner.className = 'ab-banner critical';
+    icon.style.background = 'var(--critical)';
+  }
+  el('val-alert-severity').className =
+    `ab-sev ${d.alertSeverity === 'CRITICAL' ? 'critical' : d.alertSeverity === 'NONE' ? 'none' : 'critical'}`;
+
+  // Ops tab
+  el('val-ops-argo').textContent      = d.opsArgo;
+  el('val-ops-satellites').textContent= d.opsSatellites;
+  el('val-ops-bio').textContent       = d.opsBio;
+  el('val-ops-time').textContent      = d.opsTime;
+}
+
+function setStatus(id, cls, txt) {
+  const e = el(id);
+  e.className = `dc-status ${cls}`;
+  e.textContent = txt;
+}
+function el(id) { return document.getElementById(id); }
+
+// Close modal
+el('modal-close-btn').addEventListener('click', closeModal);
+modal.addEventListener('click', e => { if (e.target === modal) closeModal(); });
+function closeModal() {
+  modal.classList.add('hidden');
+  rotationPaused = false;
+  controls.autoRotate = true;
+  panelTitle.textContent = 'Indian Ocean Live Operations';
+  document.querySelectorAll('.sub-item').forEach(b => b.classList.remove('active'));
+}
+
+// Modal tabs
+document.querySelectorAll('.mtab').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.mtab').forEach(t => { t.classList.remove('active'); t.setAttribute('aria-selected','false'); });
+    document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
+    btn.classList.add('active'); btn.setAttribute('aria-selected','true');
+    el(btn.dataset.tab).classList.add('active');
+  });
+});
+
+// ──── Sidebar ──────────────────────────────────────────
+// Ocean submenu toggle
+const oceanTrigger = el('nav-ocean-trigger');
+const oceanSub     = el('ocean-sub-menu');
+oceanTrigger.addEventListener('click', () => {
+  oceanTrigger.classList.toggle('expanded');
+  oceanSub.classList.toggle('open');
+});
+
+// Sub-item click → focus region
+document.querySelectorAll('.sub-item').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.sub-item').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    const feat = REGIONS.features.find(f => f.properties.id === btn.dataset.region);
+    if (feat) focusRegion(feat.properties);
+  });
+});
+
+// Top-level nav — simple active toggle
+document.querySelectorAll('.menu-item').forEach(btn => {
+  if (btn.id === 'nav-ocean-trigger') return;
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.menu-item').forEach(m => m.classList.remove('active'));
+    btn.classList.add('active');
+  });
+});
+
+// ──── Alert cards ──────────────────────────────────────
+document.querySelectorAll('.alert-card').forEach(card => {
+  // Dismiss
+  card.querySelector('.ac-close')?.addEventListener('click', e => {
+    e.stopPropagation();
+    card.classList.add('dismissed');
+    setTimeout(() => card.remove(), 280);
+  });
+  // Goto → button
+  card.querySelector('.ac-goto-btn')?.addEventListener('click', e => {
+    e.stopPropagation();
+    clickCardRegion(card);
+  });
+  // Card body click
+  card.addEventListener('click', () => clickCardRegion(card));
+  card.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') clickCardRegion(card); });
+});
+function clickCardRegion(card) {
+  const feat = REGIONS.features.find(f => f.properties.id === card.dataset.region);
+  if (feat) focusRegion(feat.properties);
+}
+
+// ──── Legend layer toggles ─────────────────────────────
+function refreshPoints() {
+  globe.pointsData(getVisiblePoints());
+}
+el('layer-argo').addEventListener('change', e => { layerVis.argo = e.target.checked; refreshPoints(); });
+el('layer-sensors').addEventListener('change', e => { layerVis.sensors = e.target.checked; refreshPoints(); });
+el('layer-satellites').addEventListener('change', e => { layerVis.satellites = e.target.checked; });
+
+// ──── Control buttons ──────────────────────────────────
+el('ctrl-recenter').addEventListener('click', () => {
+  globe.pointOfView({ lat: 10, lng: 74, altitude: 2.05 }, 900);
+  controls.autoRotate = true;
+  rotationPaused = false;
+  panelTitle.textContent = 'Indian Ocean Live Operations';
+  document.querySelectorAll('.sub-item').forEach(b => b.classList.remove('active'));
+  modal.classList.add('hidden');
+});
+
+el('ctrl-snapshot').addEventListener('click', () => {
+  const cvs = document.querySelector('#globe-viz canvas');
+  if (!cvs) return;
+  const a = document.createElement('a');
+  a.download = `varuna-${new Date().toISOString().slice(0,10)}.png`;
+  a.href = cvs.toDataURL();
+  a.click();
+});
+
+// ──── Mobile bar ───────────────────────────────────────
+document.querySelectorAll('.mob-tab').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.mob-tab').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    if (btn.id === 'mob-ocean') {
+      const feat = REGIONS.features.find(f => f.properties.id === 'eq_indian_ocean');
+      if (feat) focusRegion(feat.properties);
+    } else if (btn.id === 'mob-alerts') {
+      const feat = REGIONS.features.find(f => f.properties.id === 'arabian_sea');
+      if (feat) focusRegion(feat.properties);
+    }
+  });
+});
+
+el('mob-alert-pill')?.addEventListener('click', () => {
+  const feat = REGIONS.features.find(f => f.properties.id === 'arabian_sea');
+  if (feat) focusRegion(feat.properties);
+});
+
+// ──── Ctrl+K shortcut ─────────────────────────────────
+window.addEventListener('keydown', e => {
+  if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
+    e.preventDefault();
+    el('global-search')?.focus();
+  }
+  if (e.key === 'Escape' && !modal.classList.contains('hidden')) closeModal();
+});
+
+// ──── UTC clock ───────────────────────────────────────
+function tickClock() {
+  const now  = new Date();
+  const hh   = String(now.getUTCHours()).padStart(2, '0');
+  const mm   = String(now.getUTCMinutes()).padStart(2, '0');
+  const ss   = String(now.getUTCSeconds()).padStart(2, '0');
+  el('system-time').textContent = `${hh}:${mm}:${ss} UTC`;
+}
+setInterval(tickClock, 1000);
+tickClock();
+
+// ──── Responsive resize ───────────────────────────────
+window.addEventListener('resize', () => {
+  globe.width(window.innerWidth).height(window.innerHeight);
+});
