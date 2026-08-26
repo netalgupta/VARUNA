@@ -146,113 +146,113 @@ export function CommandCenterView() {
       {/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
           TIER 1: HERO KPI STRIP (CURRENT SURFACE IN-SITU METRICS)
           ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
-      <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+      <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
         {/* KPI 1: Active Floats / Selected Platform */}
         <div
           onClick={() => setActiveNav("FLOATS")}
-          className="p-3.5 rounded-lg bg-[#121215] border border-white/[0.08] hover:border-white/20 transition-colors cursor-pointer group flex flex-col justify-between"
+          className="p-4 rounded-xl bg-gradient-to-b from-[#0d1b32]/85 to-[#081222]/90 border border-sky-500/20 hover:border-sky-500/40 hover:shadow-[0_0_20px_rgba(56,189,248,0.12)] backdrop-blur-md transition-all cursor-pointer group flex flex-col justify-between"
         >
           <div className="flex items-center justify-between">
-            <span className="text-xs font-medium text-zinc-400">
+            <span className="text-sm font-medium text-slate-200">
               {currentTelemetry.isFloatSelected ? "Selected Platform" : "Active Float Fleet"}
             </span>
-            <div className="w-6 h-6 rounded bg-zinc-800/80 border border-white/[0.06] flex items-center justify-center text-zinc-400 group-hover:text-zinc-200">
-              <Radio size={13} />
+            <div className="w-7 h-7 rounded-lg bg-[#0e1c36] border border-sky-500/25 flex items-center justify-center text-sky-400 group-hover:scale-105 transition-transform">
+              <Radio size={15} />
             </div>
           </div>
-          <div className="my-2">
-            <div className="text-2xl font-semibold tracking-tight text-zinc-100 font-sans">
+          <div className="my-2.5">
+            <div className="text-3xl font-bold tracking-tight text-white font-sans">
               {currentTelemetry.floatTitle}
             </div>
-            <div className="text-xs text-zinc-400 mt-0.5 flex items-center gap-1.5 truncate">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0" />
-              <span className="truncate">{currentTelemetry.floatSub}</span>
+            <div className="text-[13px] text-sky-300/85 mt-1 flex items-center gap-2 truncate">
+              <span className="w-2 h-2 rounded-full bg-emerald-400 shadow-[0_0_6px_#34d399] shrink-0" />
+              <span className="truncate font-medium">{currentTelemetry.floatSub}</span>
             </div>
           </div>
-          <div className="pt-2 border-t border-white/[0.04] flex items-center justify-between text-xs text-zinc-400 group-hover:text-zinc-200">
+          <div className="pt-2.5 border-t border-sky-500/15 flex items-center justify-between text-xs font-medium text-slate-300 group-hover:text-sky-300">
             <span>Float Directory</span>
-            <ChevronRight size={12} className="group-hover:translate-x-0.5 transition-transform" />
+            <ChevronRight size={13} className="group-hover:translate-x-0.5 transition-transform" />
           </div>
         </div>
 
         {/* KPI 2: Current Surface Transmission Depth */}
         <div
           onClick={() => setActiveNav("FLOATS")}
-          className="p-3.5 rounded-lg bg-[#121215] border border-white/[0.08] hover:border-white/20 transition-colors cursor-pointer group flex flex-col justify-between"
+          className="p-4 rounded-xl bg-gradient-to-b from-[#0d1b32]/85 to-[#081222]/90 border border-sky-500/20 hover:border-sky-500/40 hover:shadow-[0_0_20px_rgba(56,189,248,0.12)] backdrop-blur-md transition-all cursor-pointer group flex flex-col justify-between"
         >
           <div className="flex items-center justify-between">
-            <span className="text-xs font-medium text-zinc-400">
+            <span className="text-sm font-medium text-slate-200">
               Current Surface Depth
             </span>
-            <div className="w-6 h-6 rounded bg-zinc-800/80 border border-white/[0.06] flex items-center justify-center text-zinc-400 group-hover:text-zinc-200">
-              <Gauge size={13} />
+            <div className="w-7 h-7 rounded-lg bg-[#0e1c36] border border-sky-500/25 flex items-center justify-center text-sky-400 group-hover:scale-105 transition-transform">
+              <Gauge size={15} />
             </div>
           </div>
-          <div className="my-2">
-            <div className="text-2xl font-semibold tracking-tight text-zinc-100 font-sans">
+          <div className="my-2.5">
+            <div className="text-3xl font-bold tracking-tight text-white font-sans">
               {currentTelemetry.depth}
             </div>
-            <div className="text-xs text-zinc-400 mt-0.5">
+            <div className="text-[13px] text-sky-300/85 mt-1 font-medium">
               Pressure: {currentTelemetry.pressure}
             </div>
           </div>
-          <div className="pt-2 border-t border-white/[0.04] flex items-center justify-between text-xs text-zinc-400 group-hover:text-zinc-200">
+          <div className="pt-2.5 border-t border-sky-500/15 flex items-center justify-between text-xs font-medium text-slate-300 group-hover:text-sky-300">
             <span>CTD Cast Profile</span>
-            <ChevronRight size={12} className="group-hover:translate-x-0.5 transition-transform" />
+            <ChevronRight size={13} className="group-hover:translate-x-0.5 transition-transform" />
           </div>
         </div>
 
         {/* KPI 3: Current Sea Surface Temperature */}
         <div
           onClick={() => setActiveNav("FORECASTS")}
-          className="p-3.5 rounded-lg bg-[#121215] border border-white/[0.08] hover:border-white/20 transition-colors cursor-pointer group flex flex-col justify-between"
+          className="p-4 rounded-xl bg-gradient-to-b from-[#0d1b32]/85 to-[#081222]/90 border border-sky-500/20 hover:border-sky-500/40 hover:shadow-[0_0_20px_rgba(56,189,248,0.12)] backdrop-blur-md transition-all cursor-pointer group flex flex-col justify-between"
         >
           <div className="flex items-center justify-between">
-            <span className="text-xs font-medium text-zinc-400">
+            <span className="text-sm font-medium text-slate-200">
               Sea Surface Temperature
             </span>
-            <div className="w-6 h-6 rounded bg-zinc-800/80 border border-white/[0.06] flex items-center justify-center text-zinc-400 group-hover:text-zinc-200">
-              <Thermometer size={13} />
+            <div className="w-7 h-7 rounded-lg bg-[#0e1c36] border border-sky-500/25 flex items-center justify-center text-sky-400 group-hover:scale-105 transition-transform">
+              <Thermometer size={15} />
             </div>
           </div>
-          <div className="my-2">
-            <div className="text-2xl font-semibold tracking-tight text-zinc-100 font-sans">
+          <div className="my-2.5">
+            <div className="text-3xl font-bold tracking-tight text-white font-sans">
               {currentTelemetry.temp}
             </div>
-            <div className="text-xs text-amber-400/90 mt-0.5 truncate">
+            <div className="text-[13px] text-amber-400 font-medium mt-1 truncate">
               {currentTelemetry.tempSub}
             </div>
           </div>
-          <div className="pt-2 border-t border-white/[0.04] flex items-center justify-between text-xs text-zinc-400 group-hover:text-zinc-200">
+          <div className="pt-2.5 border-t border-sky-500/15 flex items-center justify-between text-xs font-medium text-slate-300 group-hover:text-sky-300">
             <span>14-Day Forecasts</span>
-            <ChevronRight size={12} className="group-hover:translate-x-0.5 transition-transform" />
+            <ChevronRight size={13} className="group-hover:translate-x-0.5 transition-transform" />
           </div>
         </div>
 
         {/* KPI 4: Current Surface Salinity & DOXY */}
         <div
           onClick={() => setActiveNav("OCEAN")}
-          className="p-3.5 rounded-lg bg-[#121215] border border-white/[0.08] hover:border-white/20 transition-colors cursor-pointer group flex flex-col justify-between"
+          className="p-4 rounded-xl bg-gradient-to-b from-[#0d1b32]/85 to-[#081222]/90 border border-sky-500/20 hover:border-sky-500/40 hover:shadow-[0_0_20px_rgba(56,189,248,0.12)] backdrop-blur-md transition-all cursor-pointer group flex flex-col justify-between"
         >
           <div className="flex items-center justify-between">
-            <span className="text-xs font-medium text-zinc-400">
+            <span className="text-sm font-medium text-slate-200">
               Surface Salinity
             </span>
-            <div className="w-6 h-6 rounded bg-zinc-800/80 border border-white/[0.06] flex items-center justify-center text-zinc-400 group-hover:text-zinc-200">
-              <Droplets size={13} />
+            <div className="w-7 h-7 rounded-lg bg-[#0e1c36] border border-sky-500/25 flex items-center justify-center text-sky-400 group-hover:scale-105 transition-transform">
+              <Droplets size={15} />
             </div>
           </div>
-          <div className="my-2">
-            <div className="text-2xl font-semibold tracking-tight text-zinc-100 font-sans">
+          <div className="my-2.5">
+            <div className="text-3xl font-bold tracking-tight text-white font-sans">
               {currentTelemetry.salinity}
             </div>
-            <div className="text-xs text-zinc-400 mt-0.5 truncate">
+            <div className="text-[13px] text-sky-300/85 mt-1 truncate font-medium">
               {currentTelemetry.salinitySub}
             </div>
           </div>
-          <div className="pt-2 border-t border-white/[0.04] flex items-center justify-between text-xs text-zinc-400 group-hover:text-zinc-200">
+          <div className="pt-2.5 border-t border-sky-500/15 flex items-center justify-between text-xs font-medium text-slate-300 group-hover:text-sky-300">
             <span>Physical Oceanography</span>
-            <ChevronRight size={12} className="group-hover:translate-x-0.5 transition-transform" />
+            <ChevronRight size={13} className="group-hover:translate-x-0.5 transition-transform" />
           </div>
         </div>
       </section>
@@ -262,18 +262,18 @@ export function CommandCenterView() {
           ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
       <section className="grid grid-cols-1 xl:grid-cols-12 gap-3.5 min-h-[540px]">
         {/* ── Primary Dominant Geospatial Map (7 Cols) ─────────────────────── */}
-        <div className="xl:col-span-7 bg-[#121215] border border-white/[0.08] rounded-lg flex flex-col h-[540px] overflow-hidden relative group">
+        <div className="xl:col-span-7 bg-[#0a1324]/90 border border-sky-500/20 rounded-xl flex flex-col h-[540px] overflow-hidden relative group backdrop-blur-md shadow-lg">
           {/* Top Operational Bar with Basin Presets */}
-          <div className="px-3.5 py-2.5 border-b border-white/[0.06] flex flex-wrap items-center justify-between gap-2.5 bg-[#141418] z-20 shrink-0 text-xs">
-            <div className="flex items-center gap-2">
-              <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0" />
-              <span className="font-medium text-zinc-200 text-xs">
+          <div className="px-4 py-3 border-b border-sky-500/15 flex flex-wrap items-center justify-between gap-3 bg-[#0d1c36]/90 z-20 shrink-0 text-sm">
+            <div className="flex items-center gap-2.5">
+              <span className="w-2 h-2 rounded-full bg-emerald-400 shadow-[0_0_6px_#34d399] shrink-0" />
+              <span className="font-semibold text-white text-sm">
                 Indian Ocean Real-Time Operations
               </span>
             </div>
 
             {/* Basin Camera Jump Presets */}
-            <div className="inline-flex rounded-md bg-zinc-900/80 p-0.5 border border-white/[0.06] text-xs font-medium">
+            <div className="inline-flex rounded-lg bg-[#081222]/90 p-1 border border-sky-500/20 text-xs font-medium">
               <button
                 onClick={() =>
                   flyToCoordinates?.(
@@ -282,7 +282,7 @@ export function CommandCenterView() {
                     BASIN_PRESETS.INDIAN_OCEAN.zoom
                   )
                 }
-                className="px-2 py-0.5 rounded text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800 transition-colors"
+                className="px-2.5 py-1 rounded text-slate-300 hover:text-white hover:bg-[#0e1c36] transition-colors cursor-pointer"
               >
                 All Ocean
               </button>
@@ -294,7 +294,7 @@ export function CommandCenterView() {
                     BASIN_PRESETS.ARABIAN_SEA.zoom
                   )
                 }
-                className="px-2 py-0.5 rounded text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800 transition-colors"
+                className="px-2.5 py-1 rounded text-slate-300 hover:text-white hover:bg-[#0e1c36] transition-colors cursor-pointer"
               >
                 Arabian Sea
               </button>
@@ -306,7 +306,7 @@ export function CommandCenterView() {
                     BASIN_PRESETS.BAY_OF_BENGAL.zoom
                   )
                 }
-                className="px-2 py-0.5 rounded text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800 transition-colors"
+                className="px-2.5 py-1 rounded text-slate-300 hover:text-white hover:bg-[#0e1c36] transition-colors cursor-pointer"
               >
                 Bay of Bengal
               </button>
@@ -319,49 +319,49 @@ export function CommandCenterView() {
           </div>
 
           {/* Bottom Stream Status & Layer Toggles Bar */}
-          <div className="px-3.5 py-2 border-t border-white/[0.06] bg-[#141418] flex flex-wrap items-center justify-between gap-3 text-xs text-zinc-400 z-20 shrink-0">
-            <div className="flex items-center gap-4">
-              <span className="text-zinc-500 font-medium">
+          <div className="px-4 py-2.5 border-t border-sky-500/15 bg-[#0d1c36]/90 flex flex-wrap items-center justify-between gap-3 text-sm text-slate-300 z-20 shrink-0">
+            <div className="flex items-center gap-5">
+              <span className="text-slate-400 font-medium text-xs uppercase tracking-wider">
                 Layers:
               </span>
               <label
                 onClick={() => toggleMapLayer("argoFloats")}
-                className="flex items-center gap-1.5 cursor-pointer hover:text-zinc-200"
+                className="flex items-center gap-2 cursor-pointer hover:text-sky-300 transition-colors"
               >
                 <span
-                  className={`w-2 h-2 rounded-full ${
-                    mapLayers.argoFloats ? "bg-blue-500" : "bg-zinc-700"
+                  className={`w-2.5 h-2.5 rounded-full ${
+                    mapLayers.argoFloats ? "bg-sky-400 shadow-[0_0_6px_#38bdf8]" : "bg-slate-700"
                   }`}
                 />
-                <span className={mapLayers.argoFloats ? "text-zinc-200 font-medium" : "text-zinc-500"}>
+                <span className={mapLayers.argoFloats ? "text-white font-medium text-xs" : "text-slate-400 text-xs"}>
                   ARGO Floats ({floats.length})
                 </span>
               </label>
 
               <label
                 onClick={() => toggleMapLayer("biodiversity")}
-                className="flex items-center gap-1.5 cursor-pointer hover:text-zinc-200"
+                className="flex items-center gap-2 cursor-pointer hover:text-emerald-300 transition-colors"
               >
                 <span
-                  className={`w-2 h-2 rounded-full ${
-                    mapLayers.biodiversity ? "bg-emerald-500" : "bg-zinc-700"
+                  className={`w-2.5 h-2.5 rounded-full ${
+                    mapLayers.biodiversity ? "bg-emerald-400 shadow-[0_0_6px_#34d399]" : "bg-slate-700"
                   }`}
                 />
-                <span className={mapLayers.biodiversity ? "text-zinc-200 font-medium" : "text-zinc-500"}>
+                <span className={mapLayers.biodiversity ? "text-white font-medium text-xs" : "text-slate-400 text-xs"}>
                   CMLRE Bio ({biodiversity.length})
                 </span>
               </label>
 
               <label
                 onClick={() => toggleMapLayer("satellites")}
-                className="flex items-center gap-1.5 cursor-pointer hover:text-zinc-200 hidden sm:flex"
+                className="flex items-center gap-2 cursor-pointer hover:text-cyan-300 transition-colors hidden sm:flex"
               >
                 <span
-                  className={`w-2 h-2 rounded-full ${
-                    mapLayers.satellites ? "bg-cyan-500" : "bg-zinc-700"
+                  className={`w-2.5 h-2.5 rounded-full ${
+                    mapLayers.satellites ? "bg-cyan-400 shadow-[0_0_6px_#22d3ee]" : "bg-slate-700"
                   }`}
                 />
-                <span className={mapLayers.satellites ? "text-zinc-200 font-medium" : "text-zinc-500"}>
+                <span className={mapLayers.satellites ? "text-white font-medium text-xs" : "text-slate-400 text-xs"}>
                   Satellites
                 </span>
               </label>
@@ -369,10 +369,10 @@ export function CommandCenterView() {
 
             <button
               onClick={() => setActiveNav("OCEAN")}
-              className="text-zinc-400 hover:text-zinc-100 font-medium flex items-center gap-1 cursor-pointer transition-colors"
+              className="text-slate-200 hover:text-white font-medium text-xs flex items-center gap-1 cursor-pointer transition-colors"
             >
               <span>Full Screen Map</span>
-              <ChevronRight size={12} />
+              <ChevronRight size={13} />
             </button>
           </div>
         </div>
@@ -395,91 +395,91 @@ export function CommandCenterView() {
       {/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
           TIER 3: QUICK DOMAIN JUMPS (100% DYNAMIC FROM BACKEND)
           ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
-      <section className="grid grid-cols-1 md:grid-cols-3 gap-3">
+      <section className="grid grid-cols-1 md:grid-cols-3 gap-3.5">
         {/* Card 1: Biodiversity Explorer */}
         <div
           onClick={() => setActiveNav("BIODIVERSITY")}
-          className="p-3.5 rounded-lg bg-[#121215] border border-white/[0.08] hover:border-white/20 transition-colors cursor-pointer group flex flex-col justify-between"
+          className="p-4 rounded-xl bg-gradient-to-b from-[#0d1b32]/85 to-[#081222]/90 border border-sky-500/20 hover:border-sky-500/40 hover:shadow-[0_0_20px_rgba(56,189,248,0.12)] backdrop-blur-md transition-all cursor-pointer group flex flex-col justify-between"
         >
           <div>
-            <div className="flex items-center justify-between mb-2">
-              <div className="flex items-center gap-2">
-                <div className="w-6 h-6 rounded bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400">
-                  <Fish size={14} />
+            <div className="flex items-center justify-between mb-2.5">
+              <div className="flex items-center gap-2.5">
+                <div className="w-7 h-7 rounded-lg bg-emerald-500/15 border border-emerald-500/30 flex items-center justify-center text-emerald-400">
+                  <Fish size={16} />
                 </div>
-                <span className="font-semibold text-zinc-100 text-xs">
+                <span className="font-semibold text-white text-sm">
                   CMLRE Biodiversity
                 </span>
               </div>
-              <span className="px-2 py-0.5 rounded text-[11px] bg-zinc-800 text-zinc-300 font-medium">
+              <span className="px-2 py-0.5 rounded text-xs bg-[#0e1c36] text-emerald-300 border border-emerald-500/25 font-semibold">
                 {biodiversity.length} Records
               </span>
             </div>
-            <p className="text-xs text-zinc-400 leading-relaxed">
+            <p className="text-sm text-slate-300 leading-relaxed">
               {stressedSpeciesCount} indicator species under active thermal stress in {topAffectedBasin}.
             </p>
           </div>
-          <div className="pt-2.5 mt-2 border-t border-white/[0.04] flex items-center justify-between text-xs text-zinc-400 group-hover:text-zinc-200">
+          <div className="pt-3 mt-2.5 border-t border-sky-500/15 flex items-center justify-between text-xs font-medium text-slate-300 group-hover:text-emerald-300">
             <span>Explore Species Matrix</span>
-            <ChevronRight size={12} className="group-hover:translate-x-0.5 transition-transform" />
+            <ChevronRight size={13} className="group-hover:translate-x-0.5 transition-transform" />
           </div>
         </div>
 
         {/* Card 2: 14-Day AI Forecasts */}
         <div
           onClick={() => setActiveNav("FORECASTS")}
-          className="p-3.5 rounded-lg bg-[#121215] border border-white/[0.08] hover:border-white/20 transition-colors cursor-pointer group flex flex-col justify-between"
+          className="p-4 rounded-xl bg-gradient-to-b from-[#0d1b32]/85 to-[#081222]/90 border border-sky-500/20 hover:border-sky-500/40 hover:shadow-[0_0_20px_rgba(56,189,248,0.12)] backdrop-blur-md transition-all cursor-pointer group flex flex-col justify-between"
         >
           <div>
-            <div className="flex items-center justify-between mb-2">
-              <div className="flex items-center gap-2">
-                <div className="w-6 h-6 rounded bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-blue-400">
-                  <TrendingUp size={14} />
+            <div className="flex items-center justify-between mb-2.5">
+              <div className="flex items-center gap-2.5">
+                <div className="w-7 h-7 rounded-lg bg-sky-500/15 border border-sky-500/30 flex items-center justify-center text-sky-400">
+                  <TrendingUp size={16} />
                 </div>
-                <span className="font-semibold text-zinc-100 text-xs">
+                <span className="font-semibold text-white text-sm">
                   Climate Forecasts
                 </span>
               </div>
-              <span className="px-2 py-0.5 rounded text-[11px] bg-zinc-800 text-zinc-300 font-medium">
+              <span className="px-2 py-0.5 rounded text-xs bg-[#0e1c36] text-sky-300 border border-sky-500/25 font-semibold">
                 {anomalies.filter((a) => a.alert_type === "MARINE_HEATWAVE").length} Active MHW
               </span>
             </div>
-            <p className="text-xs text-zinc-400 leading-relaxed">
+            <p className="text-sm text-slate-300 leading-relaxed">
               TCN model tracking {meanAnomalyDelta} progressive thermal buildup projected in {topAffectedBasin}.
             </p>
           </div>
-          <div className="pt-2.5 mt-2 border-t border-white/[0.04] flex items-center justify-between text-xs text-zinc-400 group-hover:text-zinc-200">
+          <div className="pt-3 mt-2.5 border-t border-sky-500/15 flex items-center justify-between text-xs font-medium text-slate-300 group-hover:text-sky-300">
             <span>View Heatwave Forecasts</span>
-            <ChevronRight size={12} className="group-hover:translate-x-0.5 transition-transform" />
+            <ChevronRight size={13} className="group-hover:translate-x-0.5 transition-transform" />
           </div>
         </div>
 
         {/* Card 3: Datasets & NetCDF Exports */}
         <div
           onClick={() => setActiveNav("DATASETS")}
-          className="p-3.5 rounded-lg bg-[#121215] border border-white/[0.08] hover:border-white/20 transition-colors cursor-pointer group flex flex-col justify-between"
+          className="p-4 rounded-xl bg-gradient-to-b from-[#0d1b32]/85 to-[#081222]/90 border border-sky-500/20 hover:border-sky-500/40 hover:shadow-[0_0_20px_rgba(56,189,248,0.12)] backdrop-blur-md transition-all cursor-pointer group flex flex-col justify-between"
         >
           <div>
-            <div className="flex items-center justify-between mb-2">
-              <div className="flex items-center gap-2">
-                <div className="w-6 h-6 rounded bg-zinc-800 border border-white/[0.06] flex items-center justify-center text-zinc-300">
-                  <Database size={14} />
+            <div className="flex items-center justify-between mb-2.5">
+              <div className="flex items-center gap-2.5">
+                <div className="w-7 h-7 rounded-lg bg-[#0e1c36] border border-sky-500/30 flex items-center justify-center text-sky-400">
+                  <Database size={16} />
                 </div>
-                <span className="font-semibold text-zinc-100 text-xs">
+                <span className="font-semibold text-white text-sm">
                   Datasets &amp; Exports
                 </span>
               </div>
-              <span className="px-2 py-0.5 rounded text-[11px] bg-zinc-800 text-zinc-300 font-medium">
+              <span className="px-2 py-0.5 rounded text-xs bg-[#0e1c36] text-slate-200 border border-sky-500/25 font-semibold">
                 PostgreSQL
               </span>
             </div>
-            <p className="text-xs text-zinc-400 leading-relaxed">
+            <p className="text-sm text-slate-300 leading-relaxed">
               3.95M in-situ CTD records ready for NetCDF, CSV, and Parquet data pipeline export.
             </p>
           </div>
-          <div className="pt-2.5 mt-2 border-t border-white/[0.04] flex items-center justify-between text-xs text-zinc-400 group-hover:text-zinc-200">
+          <div className="pt-3 mt-2.5 border-t border-sky-500/15 flex items-center justify-between text-xs font-medium text-slate-300 group-hover:text-sky-300">
             <span>Export Studio</span>
-            <ChevronRight size={12} className="group-hover:translate-x-0.5 transition-transform" />
+            <ChevronRight size={13} className="group-hover:translate-x-0.5 transition-transform" />
           </div>
         </div>
       </section>

@@ -41,9 +41,9 @@ export function LeftNav() {
   const alertCount = anomalies.length > 0 ? anomalies.length : 7;
 
   return (
-    <aside className="w-48 bg-[#09090b] border-r border-white/[0.08] flex flex-col justify-between p-2 z-30 shrink-0 select-none text-xs">
+    <aside className="w-60 bg-[#060c18]/95 border-r border-sky-500/20 flex flex-col justify-between p-3 z-30 shrink-0 select-none">
       {/* ── Navigation Links ──────────────────────────────────────────────── */}
-      <nav className="space-y-0.5">
+      <nav className="space-y-1">
         {NAV_ITEMS.map((item) => {
           const Icon = item.icon;
           const isActive = activeNav === item.id;
@@ -53,19 +53,19 @@ export function LeftNav() {
             <button
               key={item.id}
               onClick={() => setActiveNav(item.id)}
-              className={`w-full h-8 px-2.5 rounded-md flex items-center justify-between text-xs transition-colors group ${
+              className={`w-full h-10 px-3.5 rounded-lg flex items-center justify-between text-sm transition-all group cursor-pointer ${
                 isActive
-                  ? "bg-zinc-800 text-zinc-100 font-medium"
-                  : "text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/50"
+                  ? "bg-gradient-to-r from-sky-500/25 to-blue-600/20 text-white font-semibold border border-sky-400/40 shadow-[0_0_14px_rgba(56,189,248,0.2)]"
+                  : "text-slate-300 hover:text-white hover:bg-[#0e1c36]/75 border border-transparent font-medium"
               }`}
             >
-              <div className="flex items-center gap-2.5 min-w-0">
+              <div className="flex items-center gap-3 min-w-0">
                 <Icon
-                  size={14}
+                  size={18}
                   className={`shrink-0 ${
                     isActive
-                      ? "text-blue-400"
-                      : "text-zinc-500 group-hover:text-zinc-300 transition-colors"
+                      ? "text-sky-400"
+                      : "text-slate-400 group-hover:text-sky-300 transition-colors"
                   }`}
                 />
                 <span className="truncate">{item.label}</span>
@@ -73,10 +73,10 @@ export function LeftNav() {
 
               {displayBadge !== undefined && (
                 <span
-                  className={`px-1.5 py-0.2 rounded text-[10px] font-medium shrink-0 ${
+                  className={`px-2 py-0.5 rounded-md text-xs font-semibold shrink-0 ${
                     item.id === "ALERTS"
-                      ? "bg-rose-500/20 text-rose-400"
-                      : "bg-zinc-800 text-zinc-400"
+                      ? "bg-rose-500/25 text-rose-300 border border-rose-500/40"
+                      : "bg-[#0e1c36] text-sky-300 border border-sky-500/25"
                   }`}
                 >
                   {displayBadge}
@@ -88,23 +88,23 @@ export function LeftNav() {
       </nav>
 
       {/* ── Bottom System Status Card ─────────────────────────────────────── */}
-      <div className="pt-2 border-t border-white/[0.06]">
-        <div className="p-2 rounded-md bg-zinc-900/80 border border-white/[0.06] flex items-center justify-between">
-          <div className="flex items-center gap-2 min-w-0">
-            <div className="w-5 h-5 rounded bg-zinc-800 flex items-center justify-center shrink-0 text-zinc-400">
-              <User size={11} />
+      <div className="pt-3 border-t border-sky-500/20">
+        <div className="p-2.5 rounded-lg bg-[#0a1426]/90 border border-sky-500/25 flex items-center justify-between shadow-xs">
+          <div className="flex items-center gap-2.5 min-w-0">
+            <div className="w-8 h-8 rounded-lg bg-[#0e1c36] border border-sky-500/30 flex items-center justify-center shrink-0 text-sky-400">
+              <User size={15} />
             </div>
             <div className="min-w-0">
-              <div className="text-[11px] font-medium text-zinc-200 truncate">
+              <div className="text-xs font-semibold text-white truncate">
                 Admin Console
               </div>
-              <div className="text-[10px] text-zinc-500 flex items-center gap-1">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-                <span>Operational</span>
+              <div className="text-[11px] text-slate-300 flex items-center gap-1.5 mt-0.5">
+                <span className="w-2 h-2 rounded-full bg-emerald-400 shadow-[0_0_6px_#34d399]" />
+                <span className="font-medium">Operational</span>
               </div>
             </div>
           </div>
-          <ChevronRight size={11} className="text-zinc-500 shrink-0" />
+          <ChevronRight size={14} className="text-slate-400 shrink-0" />
         </div>
       </div>
     </aside>

@@ -45,12 +45,12 @@ export function FloatDirectoryPanel() {
   };
 
   return (
-    <div className="p-3 rounded-lg bg-[#121215] border border-white/[0.08] flex flex-col justify-between h-[235px] select-none text-xs">
+    <div className="p-3.5 rounded-xl bg-gradient-to-b from-[#0d1b32]/85 to-[#081222]/90 border border-sky-500/20 backdrop-blur-md flex flex-col justify-between h-[235px] select-none shadow-lg">
       {/* ── 1. Header with Title, Badge & Search ──────────────────────────── */}
       <div>
-        <div className="flex items-center justify-between border-b border-white/[0.06] pb-2 mb-2">
+        <div className="flex items-center justify-between border-b border-sky-500/15 pb-2 mb-2">
           <div className="flex items-center gap-2 min-w-0">
-            <span className="font-semibold text-zinc-200 text-xs truncate">
+            <span className="font-semibold text-white text-sm truncate">
               Float Directory
             </span>
           </div>
@@ -59,14 +59,14 @@ export function FloatDirectoryPanel() {
             {selectedFloatId && (
               <button
                 onClick={() => setSelectedFloatId("")}
-                className="px-1.5 py-0.5 rounded bg-zinc-800 hover:bg-zinc-700 text-zinc-400 hover:text-zinc-200 text-[11px] flex items-center gap-1 transition-colors cursor-pointer"
+                className="px-2 py-0.5 rounded-md bg-[#0e1c36] hover:bg-[#142646] text-sky-300 border border-sky-500/25 text-xs flex items-center gap-1 transition-colors cursor-pointer"
                 title="Deselect active float"
               >
                 <span>Clear</span>
-                <X size={10} />
+                <X size={11} />
               </button>
             )}
-            <span className="px-1.5 py-0.5 rounded bg-zinc-800 text-zinc-300 text-[11px] font-medium">
+            <span className="px-2 py-0.5 rounded-md bg-[#0e1c36] text-sky-300 border border-sky-500/20 text-xs font-medium">
               {floats.length} active
             </span>
           </div>
@@ -74,67 +74,65 @@ export function FloatDirectoryPanel() {
 
         {/* ── 2. Quick Search Box ─────────────────────────────────────────── */}
         <div className="relative mb-2">
-          <Search size={12} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-zinc-500" />
+          <Search size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-sky-400/70" />
           <input
             type="text"
             placeholder="Search by WMO # or location..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-7 pr-6 py-1 bg-zinc-900/90 border border-white/[0.08] focus:border-zinc-600 rounded-md text-xs text-zinc-200 placeholder-zinc-500 focus:outline-none transition-colors"
+            className="w-full pl-8 pr-7 py-1.5 bg-[#081222]/90 border border-sky-500/20 focus:border-sky-400/60 rounded-md text-xs text-white placeholder-slate-400 focus:outline-none transition-colors"
           />
           {searchQuery && (
             <button
               onClick={() => setSearchQuery("")}
-              className="absolute right-2 top-1/2 -translate-y-1/2 text-zinc-500 hover:text-zinc-300"
+              className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white cursor-pointer"
             >
-              <X size={11} />
+              <X size={12} />
             </button>
           )}
         </div>
 
         {/* ── 3. Scrollable Directory List ─────────────────────────────────── */}
-        <div className="space-y-1 overflow-y-auto max-h-[92px] custom-scrollbar pr-1">
+        <div className="space-y-1 overflow-y-auto max-h-[88px] custom-scrollbar pr-1">
           {filteredFloats.length === 0 ? (
-            <div className="text-center py-4 text-xs text-zinc-500">
+            <div className="text-center py-4 text-xs text-slate-400">
               No platforms matching &quot;{searchQuery}&quot;
             </div>
           ) : (
             filteredFloats.map((f) => {
-              const wmoStr = String(f.wmo_id);
-              const isSelected = String(selectedFloatId) === wmoStr;
-
+              const isSelected = String(selectedFloatId) === String(f.wmo_id);
               return (
                 <div
                   key={f.wmo_id}
-                  onClick={() => handleFloatClick(wmoStr, f.last_lat, f.last_lon)}
-                  className={`px-2.5 py-1.5 rounded-md text-xs flex items-center justify-between cursor-pointer transition-colors ${
+                  onClick={() => handleFloatClick(String(f.wmo_id), f.last_lat, f.last_lon)}
+                  className={`px-2.5 py-1.5 rounded-lg border flex items-center justify-between cursor-pointer transition-all ${
                     isSelected
-                      ? "bg-zinc-800 border border-zinc-600 text-zinc-100"
-                      : "bg-zinc-900/40 hover:bg-zinc-800/60 border border-transparent text-zinc-300 hover:text-zinc-100"
+                      ? "bg-sky-500/25 border-sky-400/60 text-white shadow-[0_0_10px_rgba(56,189,248,0.15)]"
+                      : "bg-[#0a1426]/70 border-transparent hover:border-sky-500/25 hover:bg-[#0e1c36]/70 text-slate-300"
                   }`}
                 >
-                  <div className="flex items-center gap-2 min-w-0 font-mono">
+                  <div className="flex items-center gap-2.5 min-w-0">
                     <span
-                      className={`w-1.5 h-1.5 rounded-full shrink-0 ${
-                        isSelected ? "bg-blue-500" : "bg-zinc-600"
+                      className={`w-2 h-2 rounded-full shrink-0 ${
+                        isSelected ? "bg-sky-300 shadow-[0_0_6px_#38bdf8]" : "bg-emerald-400 shadow-[0_0_4px_#34d399]"
                       }`}
                     />
-                    <span className="font-medium text-xs tracking-tight truncate">
-                      WMO {wmoStr}
+                    <span className="font-mono text-xs font-semibold text-white truncate">
+                      WMO {f.wmo_id}
+                    </span>
+                    <span className="text-xs text-slate-300 hidden sm:inline truncate">
+                      {f.last_lat.toFixed(1)}°N, {f.last_lon.toFixed(1)}°E
                     </span>
                   </div>
 
-                  <div className="flex items-center gap-2 shrink-0 text-[11px] text-zinc-500 font-mono">
-                    <span>
-                      {f.last_lat.toFixed(1)}°N, {f.last_lon.toFixed(1)}°E
-                    </span>
+                  <div className="flex items-center gap-1.5 shrink-0 text-slate-300">
                     {isSelected ? (
-                      <span className="px-1 py-0.2 rounded bg-blue-500/20 text-blue-400 text-[10px] font-medium">
-                        Selected
+                      <span className="text-xs text-sky-300 font-semibold bg-sky-500/20 px-1.5 py-0.2 rounded border border-sky-400/30">
+                        Active
                       </span>
                     ) : (
-                      <span>
-                        {f.total_profiles || 100} casts
+                      <span className="text-xs text-slate-400 font-mono">
+                        {f.total_profiles || 280} casts
                       </span>
                     )}
                   </div>
@@ -145,19 +143,17 @@ export function FloatDirectoryPanel() {
         </div>
       </div>
 
-      {/* ── 4. Bottom Quick Action Bar ────────────────────────────────────── */}
-      <div className="pt-2 border-t border-white/[0.04] flex items-center justify-between text-xs text-zinc-500">
-        <span className="text-[11px] truncate">
-          {selectedFloatId
-            ? `Float #${selectedFloatId} selected`
-            : "Click any float to inspect depth profile"}
+      {/* ── 4. Bottom Footer Info ─────────────────────────────────────────── */}
+      <div className="pt-2 border-t border-sky-500/15 flex items-center justify-between text-xs text-slate-300">
+        <span className="truncate">
+          {selectedFloatId ? `Selected: WMO ${selectedFloatId}` : "Click any float to select"}
         </span>
         <button
           onClick={() => setActiveNav("FLOATS")}
-          className="text-zinc-400 hover:text-zinc-200 font-medium flex items-center gap-1 shrink-0 cursor-pointer text-[11px]"
+          className="text-sky-400 hover:text-sky-300 font-medium flex items-center gap-0.5 cursor-pointer transition-colors"
         >
-          <span>Studio</span>
-          <ChevronRight size={11} />
+          <span>All ({floats.length})</span>
+          <ChevronRight size={12} />
         </button>
       </div>
     </div>

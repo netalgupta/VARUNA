@@ -5,31 +5,33 @@
 
 @layer base {
   :root {
-    /* Pure, Refined Matte Dark Tokens (Linear / Vercel Aesthetic) */
-    --bg-root: #09090b;
-    --bg-surface: #121215;
-    --bg-surface-elevated: #18181b;
-    --bg-surface-hover: #222226;
+    /* Deep Oceanic Navy & Glassmorphism Design Tokens */
+    --bg-root: #060c18;
+    --bg-surface: #0a1324;
+    --bg-surface-elevated: #0f1c34;
+    --bg-surface-hover: #142442;
+    --bg-glass: rgba(11, 21, 40, 0.75);
 
-    /* Semantic Accents */
-    --accent: #2563eb;
-    --accent-hover: #1d4ed8;
-    --accent-subtle: rgba(37, 99, 235, 0.1);
+    /* Semantic Oceanic Accents */
+    --accent: #38bdf8;
+    --accent-hover: #0ea5e9;
+    --accent-subtle: rgba(56, 189, 248, 0.12);
+    --accent-navy: #1d4ed8;
 
     --success: #10b981;
     --warning: #f59e0b;
     --danger: #ef4444;
 
-    /* High-Legibility Neutral Text */
-    --text-primary: #f4f4f5;
-    --text-secondary: #a1a1aa;
-    --text-muted: #71717a;
-    --text-dim: #52525b;
+    /* High-Legibility Oceanic Text */
+    --text-primary: #f8fafc;
+    --text-secondary: #94a3b8;
+    --text-muted: #64748b;
+    --text-dim: #475569;
 
-    /* Hairline Precision Borders */
-    --border-subtle: rgba(255, 255, 255, 0.08);
-    --border-medium: rgba(255, 255, 255, 0.12);
-    --border-active: rgba(255, 255, 255, 0.2);
+    /* Frosted Marine Borders */
+    --border-subtle: rgba(56, 189, 248, 0.12);
+    --border-medium: rgba(56, 189, 248, 0.22);
+    --border-active: rgba(56, 189, 248, 0.4);
   }
 
   html {
@@ -54,33 +56,38 @@
   }
 }
 
-/* ─── Clean Precision Panels & Cards ─────────────────────────────────────── */
+/* ─── Frosted Glass Oceanic Panels & Cards ──────────────────────────────── */
 .panel-marine {
-  background: #121215;
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: linear-gradient(180deg, rgba(14, 28, 54, 0.82) 0%, rgba(10, 19, 37, 0.88) 100%);
+  border: 1px solid rgba(56, 189, 248, 0.14);
   border-radius: 12px;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
 }
 
 .panel-marine:hover {
-  border-color: rgba(255, 255, 255, 0.14);
+  border-color: rgba(56, 189, 248, 0.25);
 }
 
 .card-marine {
-  background: #18181b;
-  border: 1px solid rgba(255, 255, 255, 0.07);
+  background: linear-gradient(180deg, rgba(15, 29, 53, 0.7) 0%, rgba(10, 20, 38, 0.75) 100%);
+  border: 1px solid rgba(56, 189, 248, 0.12);
   border-radius: 8px;
+  backdrop-filter: blur(8px);
 }
 
 .card-marine-interactive {
-  background: #18181b;
-  border: 1px solid rgba(255, 255, 255, 0.07);
+  background: linear-gradient(180deg, rgba(15, 29, 53, 0.7) 0%, rgba(10, 20, 38, 0.75) 100%);
+  border: 1px solid rgba(56, 189, 248, 0.12);
   border-radius: 8px;
-  transition: all 0.15s ease;
+  backdrop-filter: blur(8px);
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .card-marine-interactive:hover {
-  background: #222226;
-  border-color: rgba(255, 255, 255, 0.15);
+  background: linear-gradient(180deg, rgba(20, 38, 70, 0.8) 0%, rgba(14, 27, 50, 0.85) 100%);
+  border-color: rgba(56, 189, 248, 0.3);
+  transform: translateY(-1px);
 }
 
 /* ─── Subtle Status Indicators ───────────────────────────────────────────── */

@@ -29,76 +29,76 @@ export function GlobalHeader({ onOpenSearch }: GlobalHeaderProps) {
   const isLive = systemHealth.status === "LIVE";
 
   return (
-    <header className="w-full h-12 bg-[#09090b] border-b border-white/[0.08] flex items-center justify-between px-4 z-40 shrink-0 select-none text-xs">
+    <header className="w-full h-16 bg-[#060c18]/95 backdrop-blur-lg border-b border-sky-500/20 flex items-center justify-between px-6 z-40 shrink-0 select-none shadow-md">
       {/* ── Left Branding ─────────────────────────────────────────────────── */}
-      <Link href="/" className="flex items-center gap-2.5 group">
-        <div className="w-7 h-7 rounded-md bg-zinc-800 border border-white/[0.08] flex items-center justify-center text-zinc-100">
-          <Globe size={14} className="text-blue-500" />
+      <Link href="/" className="flex items-center gap-3.5 group">
+        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#0e1c36] to-[#0a1324] border border-sky-500/35 flex items-center justify-center text-sky-400 shadow-[0_0_15px_rgba(56,189,248,0.2)] group-hover:scale-105 transition-transform shrink-0">
+          <Globe size={20} className="text-sky-400" />
         </div>
 
-        <div className="flex flex-col">
-          <div className="flex items-center gap-2">
-            <span className="text-sm font-semibold tracking-tight text-zinc-100 group-hover:text-white transition-colors">
+        <div className="flex flex-col justify-center">
+          <div className="flex items-center gap-2.5">
+            <span className="text-xl font-bold tracking-tight text-white group-hover:text-sky-300 transition-colors font-sans">
               Varuna
             </span>
-            <span className="text-[10px] px-1.5 py-0.2 bg-zinc-800 text-zinc-400 rounded font-medium">
+            <span className="text-xs px-2 py-0.5 bg-sky-500/15 text-sky-300 border border-sky-500/30 rounded-md font-semibold tracking-wide">
               v2.4
             </span>
           </div>
-          <span className="text-[10px] text-zinc-500 font-medium">
+          <span className="text-xs text-slate-300 font-medium tracking-normal mt-0.5">
             National Marine Data Backbone · INCOIS & CMLRE
           </span>
         </div>
       </Link>
 
       {/* ── Center Global Search / Command Bar ─────────────────────────────── */}
-      <div className="flex-1 max-w-md mx-6 hidden md:block">
+      <div className="flex-1 max-w-xl mx-8 hidden md:block">
         <button
           onClick={onOpenSearch}
-          className="w-full h-8 rounded-md bg-zinc-900/90 border border-white/[0.08] hover:border-zinc-700 flex items-center justify-between px-2.5 text-xs text-zinc-500 transition-colors group"
+          className="w-full h-10 rounded-lg bg-[#0a1426]/90 border border-sky-500/25 hover:border-sky-400/60 flex items-center justify-between px-3.5 text-sm text-slate-300 transition-all group backdrop-blur-md shadow-inner"
         >
-          <div className="flex items-center gap-2">
-            <Search size={13} className="text-zinc-500 group-hover:text-zinc-300" />
-            <span className="text-xs text-zinc-400">
-              Search floats, regions, species, datasets...
+          <div className="flex items-center gap-2.5">
+            <Search size={16} className="text-sky-400 group-hover:text-sky-300 transition-colors" />
+            <span className="text-sm text-slate-300 font-normal">
+              Search floats, marine regions, species, datasets...
             </span>
           </div>
-          <kbd className="px-1.5 py-0.5 rounded bg-zinc-800 border border-white/[0.06] text-[10px] font-mono text-zinc-400">
+          <kbd className="px-2 py-0.5 rounded-md bg-[#0e1c36] border border-sky-500/30 text-xs font-mono text-sky-300 font-medium shadow-xs">
             ⌘K
           </kbd>
         </button>
       </div>
 
       {/* ── Right Telemetry & Status ──────────────────────────────────────── */}
-      <div className="flex items-center gap-2.5">
+      <div className="flex items-center gap-3">
         {/* Chatbot Button */}
         <button
           onClick={() => setCopilotOpen(!copilotOpen)}
-          className={`h-7 px-2.5 rounded-md border text-xs font-medium flex items-center gap-1.5 transition-colors ${
+          className={`h-10 px-4 rounded-lg border text-sm font-semibold flex items-center gap-2 transition-all cursor-pointer ${
             copilotOpen
-              ? "bg-blue-600 text-white border-blue-500"
-              : "bg-zinc-900 hover:bg-zinc-800 text-zinc-300 border-white/[0.08]"
+              ? "bg-sky-500 text-white border-sky-400 shadow-[0_0_16px_rgba(56,189,248,0.45)]"
+              : "bg-[#0a1426]/90 hover:bg-[#0e1c36] text-sky-200 border-sky-500/30 hover:border-sky-400/60"
           }`}
         >
-          <Bot size={13} />
+          <Bot size={16} />
           <span>Assistant</span>
         </button>
 
         {/* UTC Clock */}
-        <div className="hidden sm:flex items-center gap-1.5 px-2 py-1 rounded-md bg-zinc-900/80 border border-white/[0.06] text-xs font-mono text-zinc-400">
-          <Clock size={12} className="text-zinc-500" />
-          <span>{timeStr}</span>
+        <div className="hidden sm:flex items-center gap-2 h-10 px-3.5 rounded-lg bg-[#0a1426]/90 border border-sky-500/20 text-sm font-mono text-slate-200">
+          <Clock size={15} className="text-sky-400" />
+          <span className="font-medium">{timeStr}</span>
         </div>
 
         {/* Live System Indicator */}
-        <div className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-zinc-900/80 border border-white/[0.06]">
+        <div className="flex items-center gap-2 h-10 px-3.5 rounded-lg bg-[#0a1426]/90 border border-sky-500/20">
           <span
-            className={`w-1.5 h-1.5 rounded-full ${
-              isLive ? "bg-emerald-500" : "bg-red-500"
+            className={`w-2 h-2 rounded-full ${
+              isLive ? "bg-emerald-400 shadow-[0_0_8px_#34d399]" : "bg-red-500 shadow-[0_0_8px_#f87171]"
             }`}
           />
-          <span className="text-[11px] font-medium text-zinc-300">
-            {isLive ? "Live" : "Offline"}
+          <span className="text-xs font-semibold text-slate-200 tracking-wide uppercase">
+            {isLive ? "Live System" : "Offline"}
           </span>
         </div>
       </div>
