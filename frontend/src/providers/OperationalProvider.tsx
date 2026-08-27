@@ -47,10 +47,14 @@ interface OperationalContextValue {
   setCopilotOpen: (val: boolean) => void;
 
   // Selected Entities
+  selectedEntityType: "FLOAT" | "BIODIVERSITY";
+  setSelectedEntityType: (type: "FLOAT" | "BIODIVERSITY") => void;
   selectedFloatId: string;
   setSelectedFloatId: (id: string) => void;
   selectedSpecies: string;
   setSelectedSpecies: (species: string) => void;
+  selectedBioRecord: BiodiversityRecord | null;
+  setSelectedBioRecord: (record: BiodiversityRecord | null) => void;
   selectedAlertId: number | null;
   setSelectedAlertId: (id: number | null) => void;
 
@@ -277,8 +281,10 @@ export function OperationalProvider({ children }: { children: React.ReactNode })
   const [activeNav, setActiveNav] = useState<NavItem>("COMMAND_CENTER");
   const [copilotOpen, setCopilotOpen] = useState<boolean>(false);
 
-  const [selectedFloatId, setSelectedFloatId] = useState<string>("2902764");
-  const [selectedSpecies, setSelectedSpecies] = useState<string>("Sardinella longiceps");
+  const [selectedEntityType, setSelectedEntityType] = useState<"FLOAT" | "BIODIVERSITY">("FLOAT");
+  const [selectedFloatId, setSelectedFloatIdState] = useState<string>("2902764");
+  const [selectedSpecies, setSelectedSpeciesState] = useState<string>("Sardinella longiceps");
+  const [selectedBioRecord, setSelectedBioRecordState] = useState<BiodiversityRecord | null>(null);
   const [selectedAlertId, setSelectedAlertId] = useState<number | null>(101);
 
   const [floats, setFloats] = useState<ActiveFloatSummary[]>(INITIAL_FLOATS);
@@ -286,6 +292,39 @@ export function OperationalProvider({ children }: { children: React.ReactNode })
   const [biodiversity, setBiodiversity] = useState<BiodiversityRecord[]>(INITIAL_BIODIVERSITY);
   const [correlations, setCorrelations] = useState<SpatialCorrelationRecord[]>([]);
   const [selectedFloatProfile, setSelectedFloatProfile] = useState<DepthProfileResponse | null>(null);
+
+  // Smart Setter for Float Selection
+  const setSelectedFloatId = useCallback((id: string) => {
+    setSelectedFloatIdState(id);
+    if (id) {
+      setSelectedEntityType("FLOAT");
+    }
+  }, []);
+
+  // Smart Setter for Bio Record Selection
+  const setSelectedBioRecord = useCallback((record: BiodiversityRecord | null) => {
+    setSelectedBioRecordState(record);
+    if (record) {
+      setSelectedEntityType("BIODIVERSITY");
+      setSelectedSpeciesState(record.scientific_name);
+    }
+  }, []);
+
+  // Smart Setter for Species Name Selection
+  const setSelectedSpecies = useCallback((speciesName: string) => {
+    setSelectedSpeciesState(speciesName);
+    setSelectedEntityType("BIODIVERSITY");
+    setBiodiversity((currentBio) => {
+      const match = currentBio.find(
+        (b) => b.scientific_name.toLowerCase() === speciesName.toLowerCase() ||
+               b.common_name.toLowerCase() === speciesName.toLowerCase()
+      );
+      if (match) {
+        setSelectedBioRecordState(match);
+      }
+      return currentBio;
+    });
+  }, []);
 
   const [isLoadingFloats, setIsLoadingFloats] = useState(true);
   const [isLoadingAnomalies, setIsLoadingAnomalies] = useState(true);
@@ -366,7 +405,7 @@ export function OperationalProvider({ children }: { children: React.ReactNode })
   const loadBiodiversityOccurrences = useCallback(async () => {
     setIsLoadingBio(true);
     try {
-      const data = await getBiodiversity({ limit: 100000 });
+      const data = await getBiodiversity({ limit: 5629 });
       if (data && data.length > 0) {
         setBiodiversity(data);
       }
@@ -467,10 +506,14 @@ export function OperationalProvider({ children }: { children: React.ReactNode })
       setActiveNav,
       copilotOpen,
       setCopilotOpen,
+      selectedEntityType,
+      setSelectedEntityType,
       selectedFloatId,
       setSelectedFloatId,
       selectedSpecies,
       setSelectedSpecies,
+      selectedBioRecord,
+      setSelectedBioRecord,
       selectedAlertId,
       setSelectedAlertId,
       floats,
@@ -497,10 +540,14 @@ export function OperationalProvider({ children }: { children: React.ReactNode })
       setActiveNav,
       copilotOpen,
       setCopilotOpen,
+      selectedEntityType,
+      setSelectedEntityType,
       selectedFloatId,
       setSelectedFloatId,
       selectedSpecies,
       setSelectedSpecies,
+      selectedBioRecord,
+      setSelectedBioRecord,
       selectedAlertId,
       setSelectedAlertId,
       floats,

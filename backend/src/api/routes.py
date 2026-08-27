@@ -231,6 +231,7 @@ class AnomalyAlert(BaseModel):
 class BiodiversityRecord(BaseModel):
     id: int = Field(..., examples=[501])
     occurrence_id: Optional[str] = Field(None, examples=["IO/SS/ANO/00161"])
+    species_id: Optional[str] = Field(None, examples=["SARDINELLA_LONGICEPS"])
     scientific_name: str = Field(..., examples=["Sardinella longiceps"])
     common_name: str = Field(..., examples=["Indian Oil Sardine"])
     aphia_id: int = Field(0, description="World Register of Marine Species (WoRMS) Taxon Identifier", examples=[218659])
@@ -241,6 +242,11 @@ class BiodiversityRecord(BaseModel):
     latitude: float = Field(..., examples=[15.42])
     longitude: float = Field(..., examples=[73.81])
     depth_m: Optional[float] = Field(15.0, examples=[15.0])
+    depth_min_m: Optional[float] = Field(None, examples=[0.0])
+    depth_max_m: Optional[float] = Field(None, examples=[100.0])
+    habitat_zone: Optional[str] = Field("pelagic-neritic", examples=["pelagic-neritic"])
+    ecological_response: Optional[str] = Field(None, examples=["..."])
+    evidence_source: Optional[str] = Field("CMLRE", examples=["CMLRE"])
     event_date: str = Field(..., examples=["2026-04-14"])
     thermal_range_min_c: float = Field(22.0, examples=[22.0])
     thermal_range_max_c: float = Field(26.0, examples=[26.0])
@@ -841,6 +847,7 @@ def get_cmlre_biodiversity_dataset() -> List[Dict[str, Any]]:
         mapped = pd.DataFrame({
             "id": np.arange(1, len(occ) + 1, dtype=int),
             "occurrence_id": occ["occurrence_id"].astype(str) if "occurrence_id" in occ.columns else [f"CMLRE_{i}" for i in range(1, len(occ) + 1)],
+            "species_id": text_coalesce("species_id", default="").where(occ["scientific_name"].ne(""), occ["scientific_name"].astype(str).str.upper().str.replace(" ", "_")),
             "scientific_name": occ["scientific_name"].astype(str),
             "common_name": common_name,
             "aphia_id": _safe_aphia_id(aphia_source),
@@ -851,6 +858,11 @@ def get_cmlre_biodiversity_dataset() -> List[Dict[str, Any]]:
             "latitude": pd.to_numeric(occ["decimal_latitude"], errors="coerce").fillna(0.0),
             "longitude": pd.to_numeric(occ["decimal_longitude"], errors="coerce").fillna(0.0),
             "depth_m": coalesce("maximum_depth_m", "minimum_depth_m", "depth_max_m", "depth_min_m").fillna(15.0),
+            "depth_min_m": coalesce("depth_min_m", "minimum_depth_m").fillna(0.0),
+            "depth_max_m": coalesce("depth_max_m", "maximum_depth_m").fillna(100.0),
+            "habitat_zone": text_coalesce("habitat_zone", default="pelagic-neritic"),
+            "ecological_response": text_coalesce("ecological_response", default="Marine taxa documented across the Indian Ocean basin."),
+            "evidence_source": text_coalesce("evidence_source", default="CMLRE / WoRMS"),
             "event_date": event_dates,
             "thermal_range_min_c": coalesce("temp_pref_min_c").fillna(22.0),
             "thermal_range_max_c": coalesce("temp_pref_max_c").fillna(28.0),
@@ -864,6 +876,7 @@ def get_cmlre_biodiversity_dataset() -> List[Dict[str, Any]]:
         raw_records = mapped.to_json(orient="records") or "[]"
         _cmlre_bio_dataset = json.loads(raw_records)
         log.info("Loaded %d CMLRE biodiversity occurrence records into memory", len(_cmlre_bio_dataset))
+        return _cmlre_bio_dataset
         return _cmlre_bio_dataset
 
     except Exception as e:
