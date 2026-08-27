@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useRef } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { ArrowUpRight, Bot, Globe2, Radio, Waves, ShieldCheck, Sparkles, Activity } from "lucide-react";
@@ -9,6 +9,23 @@ import * as THREE from "three";
 export function LandingPageView() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const shipContainerRef = useRef<HTMLDivElement>(null);
+  const [istTime, setIstTime] = useState<string>("00:00:00 IST");
+
+  useEffect(() => {
+    const updateTime = () => {
+      const time = new Intl.DateTimeFormat("en-IN", {
+        timeZone: "Asia/Kolkata",
+        hour: "2-digit",
+        minute: "2-digit",
+        second: "2-digit",
+        hour12: false,
+      }).format(new Date());
+      setIstTime(`${time} IST`);
+    };
+    updateTime();
+    const interval = setInterval(updateTime, 1000);
+    return () => clearInterval(interval);
+  }, []);
 
   // ── 1. WebGL Procedural Ocean Surface Shader ──────────────────────────────
   useEffect(() => {
@@ -332,7 +349,7 @@ export function LandingPageView() {
         <div className="flex items-center gap-3 font-mono text-xs">
           <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-lg bg-[#12212E]/80 border border-[#2EE6C6]/30 text-[#2EE6C6]">
             <span className="w-2 h-2 rounded-full bg-[#00FFC6] animate-ping" />
-            <span>LIVE 14:32:08 UTC</span>
+            <span>LIVE {istTime}</span>
           </div>
 
           <Link
