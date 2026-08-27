@@ -21,6 +21,10 @@ export const metadata: Metadata = {
   description:
     "National Marine Data Backbone fusing INCOIS ARGO Physical Oceanography with CMLRE Marine Living Resources.",
   keywords: ["Varuna", "INCOIS", "CMLRE", "ARGO floats", "marine biodiversity", "oceanography", "MoES"],
+  icons: {
+    icon: "/favicon.png",
+    apple: "/favicon.png",
+  },
 };
 
 export default function RootLayout({

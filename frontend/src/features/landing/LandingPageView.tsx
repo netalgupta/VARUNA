@@ -2,6 +2,7 @@
 
 import React, { useEffect, useRef } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { ArrowUpRight, Bot, Globe2, Radio, Waves, ShieldCheck, Sparkles, Activity } from "lucide-react";
 import * as THREE from "three";
 
@@ -307,8 +308,15 @@ export function LandingPageView() {
       {/* ── 1. Master Top Header ──────────────────────────────────────────── */}
       <header className="relative z-30 w-full h-16 px-6 sm:px-12 flex items-center justify-between backdrop-blur-md bg-[#051422]/70 border-b border-white/10">
         <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-[#2EE6C6] to-[#00BFA5] flex items-center justify-center shadow-[0_0_15px_rgba(46,230,198,0.5)]">
-            <Waves size={20} className="text-[#051422] font-black" />
+          <div className="w-11 h-11 rounded-xl overflow-hidden border border-[#2EE6C6]/50 shadow-[0_0_20px_rgba(46,230,198,0.55)] shrink-0 bg-[#040914]">
+            <Image
+              src="/assets/varuna_logo.png"
+              alt="Varuna Logo"
+              width={44}
+              height={44}
+              className="w-full h-full object-cover"
+              priority
+            />
           </div>
           <div>
             <h1 className="text-xl font-black tracking-tight text-white font-mono leading-none">

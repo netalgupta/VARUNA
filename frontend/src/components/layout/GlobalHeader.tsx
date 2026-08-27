@@ -2,7 +2,8 @@
 
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
-import { Search, Globe, Activity, Clock, ShieldCheck, ChevronDown, Radio, Sparkles, Bot } from "lucide-react";
+import Image from "next/image";
+import { Search, Activity, Clock, ShieldCheck, ChevronDown, Radio, Sparkles, Bot } from "lucide-react";
 import { useOperationalState } from "@/providers/OperationalProvider";
 
 interface GlobalHeaderProps {
@@ -35,8 +36,15 @@ export function GlobalHeader({ onOpenSearch }: GlobalHeaderProps) {
     <header className="w-full h-16 bg-[#040914]/95 backdrop-blur-xl border-b border-sky-500/15 flex items-center justify-between px-6 z-40 shrink-0 select-none">
       {/* ── Left Branding ─────────────────────────────────────────────────── */}
       <Link href="/" className="flex items-center gap-3.5 group">
-        <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-[#0c2246] to-[#061224] border border-cyan-400/40 flex items-center justify-center text-cyan-300 shadow-[0_0_16px_rgba(0,229,255,0.25)] group-hover:scale-105 transition-transform shrink-0">
-          <Globe size={20} className="text-cyan-300" />
+        <div className="w-10 h-10 rounded-xl overflow-hidden border border-cyan-400/30 shadow-[0_0_18px_rgba(0,229,255,0.3)] group-hover:scale-105 group-hover:shadow-[0_0_28px_rgba(0,229,255,0.5)] transition-all shrink-0 bg-[#040914]">
+          <Image
+            src="/assets/varuna_logo.png"
+            alt="Varuna Logo"
+            width={40}
+            height={40}
+            className="w-full h-full object-cover"
+            priority
+          />
         </div>
 
         <div className="flex flex-col justify-center">
