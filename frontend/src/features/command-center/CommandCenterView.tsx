@@ -10,12 +10,18 @@ import {
   Radio,
   Satellite,
   Compass,
+  Fish,
+  Thermometer,
+  Droplets,
+  Layers,
+  ShieldAlert,
 } from "lucide-react";
 import { useOperationalState } from "@/providers/OperationalProvider";
 
 // Feature Subpanels
 import { DeepDiveModePanel } from "@/features/deep-dive/DeepDiveModePanel";
 import { FloatDirectoryPanel } from "@/features/command-center/FloatDirectoryPanel";
+import { SpeciesTaxonomicProfilePanel } from "@/features/command-center/SpeciesTaxonomicProfilePanel";
 
 const VarunaMap = dynamic(
   () => import("@/features/ocean-map/VarunaMap").then((m) => ({ default: m.VarunaMap })),
@@ -30,10 +36,17 @@ export function CommandCenterView() {
     selectedFloatId,
     setSelectedFloatId,
     selectedFloatProfile,
+    selectedSpecies,
+    setSelectedSpecies,
+    selectedBioRecord,
+    setSelectedBioRecord,
+    selectedEntityType,
+    setSelectedEntityType,
     setActiveNav,
+    flyToCoordinates,
   } = useOperationalState();
 
-  // ── 1. Telemetry Calculations from Real Data ─────────────────────────────
+  // ── 1. Telemetry Calculations from Real Data (ARGO FLOAT MODE) ───────────
   const targetFloat = useMemo(() => {
     return floats.find((f) => String(f.wmo_id) === String(selectedFloatId)) || floats[0];
   }, [floats, selectedFloatId]);
@@ -140,57 +153,123 @@ export function CommandCenterView() {
     return "09:56 UTC";
   }, [selectedFloatProfile, targetFloat]);
 
+  // ── 2. Telemetry Calculations from Real Data (BIODIVERSITY MODE) ─────────
+  const activeBio = useMemo(() => {
+    if (selectedBioRecord) return selectedBioRecord;
+    const match = biodiversity.find(
+      (b) =>
+        b.scientific_name.toLowerCase() === selectedSpecies.toLowerCase() ||
+        b.common_name.toLowerCase() === selectedSpecies.toLowerCase()
+    );
+    return match || biodiversity[0] || null;
+  }, [selectedBioRecord, selectedSpecies, biodiversity]);
+
+  const bioScientificName = activeBio?.scientific_name || selectedSpecies || "Sardinella longiceps";
+  const bioCommonName =
+    activeBio?.common_name && activeBio?.common_name !== bioScientificName
+      ? activeBio.common_name
+      : bioScientificName;
+  const bioLat = activeBio?.latitude != null ? Number(activeBio.latitude).toFixed(2) : "15.42";
+  const bioLon = activeBio?.longitude != null ? Number(activeBio.longitude).toFixed(2) : "73.81";
+  const bioTempMin = activeBio?.thermal_range_min_c != null ? Number(activeBio.thermal_range_min_c).toFixed(1) : "22.0";
+  const bioTempMax = activeBio?.thermal_range_max_c != null ? Number(activeBio.thermal_range_max_c).toFixed(1) : "26.0";
+  const bioSalMin = activeBio?.salinity_min_psu != null ? Number(activeBio.salinity_min_psu).toFixed(1) : "32.0";
+  const bioSalMax = activeBio?.salinity_max_psu != null ? Number(activeBio.salinity_max_psu).toFixed(1) : "36.5";
+  const bioHypoxia = activeBio?.hypoxia_avoidance_threshold_umol_kg != null ? Number(activeBio.hypoxia_avoidance_threshold_umol_kg).toFixed(0) : "45";
+  const bioDepthStr = useMemo(() => {
+    if (!activeBio) return "0–100 m";
+    if (activeBio.depth_min_m != null && activeBio.depth_max_m != null) {
+      return `${Number(activeBio.depth_min_m).toFixed(0)}–${Number(activeBio.depth_max_m).toFixed(0)} m`;
+    }
+    if (activeBio.depth_m != null) {
+      return `${Number(activeBio.depth_m).toFixed(0)} m`;
+    }
+    return "0–100 m";
+  }, [activeBio]);
+
+  const isBioMode = selectedEntityType === "BIODIVERSITY";
+
   return (
     <div className="flex flex-col h-full space-y-3.5 overflow-y-auto custom-scrollbar select-none pr-1">
       {/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-          TOP 4 HERO KPI METRIC STRIP (MATCHING REFERENCE IMAGE)
+          TOP 4 HERO KPI METRIC STRIP (DUAL-MODE: FLOAT ⇄ BIODIVERSITY)
           ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
       <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-        {/* KPI 1: SELECTED FLOAT */}
+        {/* KPI 1: SELECTED ENTITY (FLOAT OR BIODIVERSITY) */}
         <div
-          onClick={() => setActiveNav("FLOATS")}
-          className="p-3.5 rounded-xl bg-gradient-to-b from-[#08152c]/90 to-[#040c1a]/95 border border-sky-500/20 hover:border-cyan-400/50 backdrop-blur-md transition-all cursor-pointer group flex flex-col justify-between shadow-lg h-[115px]"
+          onClick={() => setActiveNav(isBioMode ? "BIODIVERSITY" : "FLOATS")}
+          className={`p-3.5 rounded-xl bg-gradient-to-b from-[#08152c]/90 to-[#040c1a]/95 border backdrop-blur-md transition-all cursor-pointer group flex flex-col justify-between shadow-lg h-[115px] ${
+            isBioMode
+              ? "border-emerald-500/30 hover:border-emerald-400/60 shadow-[0_0_16px_rgba(52,211,153,0.15)]"
+              : "border-sky-500/20 hover:border-cyan-400/50"
+          }`}
         >
           <div className="flex items-center justify-between">
             <span className="text-[10px] font-mono font-bold text-slate-400 uppercase tracking-wider">
-              Selected Float
+              {isBioMode ? "Selected Species" : "Selected Float"}
             </span>
-            <div className="flex items-center gap-1 text-[10px] font-semibold text-emerald-400">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 shadow-[0_0_6px_#34d399]" />
-              <span>TRANSMITTING</span>
+            <div
+              className={`flex items-center gap-1 text-[10px] font-semibold ${
+                isBioMode ? "text-emerald-400" : "text-cyan-400"
+              }`}
+            >
+              <span
+                className={`w-1.5 h-1.5 rounded-full ${
+                  isBioMode
+                    ? "bg-emerald-400 shadow-[0_0_6px_#34d399]"
+                    : "bg-emerald-400 shadow-[0_0_6px_#34d399]"
+                }`}
+              />
+              <span>{isBioMode ? "CMLRE RECORD" : "TRANSMITTING"}</span>
             </div>
           </div>
 
-          <div className="my-1">
-            <div className="text-2xl font-bold tracking-tight text-white font-mono">
-              ARGO #{floatWmo}
+          <div className="my-1 truncate">
+            <div className="text-xl font-bold tracking-tight text-white font-mono truncate" title={isBioMode ? bioCommonName : `ARGO #${floatWmo}`}>
+              {isBioMode ? bioCommonName : `ARGO #${floatWmo}`}
             </div>
+            {isBioMode && (
+              <div className="text-[11px] font-mono text-emerald-400/90 italic truncate">
+                {bioScientificName}
+              </div>
+            )}
           </div>
 
           <div className="flex items-center justify-between">
-            <span className="px-2 py-0.5 rounded-md bg-cyan-500/15 border border-cyan-400/30 text-cyan-300 text-[11px] font-mono font-bold tracking-wide">
-              {floatLat}°N &nbsp; {floatLon}°E
+            <span
+              className={`px-2 py-0.5 rounded-md text-[11px] font-mono font-bold tracking-wide ${
+                isBioMode
+                  ? "bg-emerald-500/15 border border-emerald-400/30 text-emerald-300"
+                  : "bg-cyan-500/15 border border-cyan-400/30 text-cyan-300"
+              }`}
+            >
+              {isBioMode ? `${bioLat}°N  ${bioLon}°E` : `${floatLat}°N  ${floatLon}°E`}
             </span>
+            {isBioMode && (
+              <span className="text-[10px] font-mono text-slate-400">
+                Aphia #{activeBio?.aphia_id || "WoRMS"}
+              </span>
+            )}
           </div>
         </div>
 
-        {/* KPI 2: SURFACE TEMP + AMBER SPARKLINE */}
+        {/* KPI 2: SURFACE TEMP / PREFERRED TEMPERATURE ENVELOPE */}
         <div
-          onClick={() => setActiveNav("FORECASTS")}
+          onClick={() => setActiveNav(isBioMode ? "BIODIVERSITY" : "FORECASTS")}
           className="p-3.5 rounded-xl bg-gradient-to-b from-[#08152c]/90 to-[#040c1a]/95 border border-sky-500/20 hover:border-amber-400/50 backdrop-blur-md transition-all cursor-pointer group flex flex-col justify-between shadow-lg h-[115px] relative overflow-hidden"
         >
           <div className="flex items-center justify-between">
             <span className="text-[10px] font-mono font-bold text-slate-400 uppercase tracking-wider">
-              Surface Temp
+              {isBioMode ? "Preferred Temp Range" : "Surface Temp"}
             </span>
             <span className="text-[10px] font-semibold text-amber-400 flex items-center gap-0.5">
-              {surfaceAnomaly}
+              {isBioMode ? "Thermal Window" : surfaceAnomaly}
             </span>
           </div>
 
           <div className="my-1">
             <div className="text-2xl font-bold tracking-tight text-white font-mono">
-              {surfaceTemp}°C
+              {isBioMode ? `${bioTempMin}–${bioTempMax}°C` : `${surfaceTemp}°C`}
             </div>
           </div>
 
@@ -219,23 +298,23 @@ export function CommandCenterView() {
           </div>
         </div>
 
-        {/* KPI 3: SURFACE SALINITY + CYAN SPARKLINE */}
+        {/* KPI 3: SURFACE SALINITY / PREFERRED SALINITY & HYPOXIA FLOOR */}
         <div
-          onClick={() => setActiveNav("OCEAN")}
+          onClick={() => setActiveNav(isBioMode ? "BIODIVERSITY" : "OCEAN")}
           className="p-3.5 rounded-xl bg-gradient-to-b from-[#08152c]/90 to-[#040c1a]/95 border border-sky-500/20 hover:border-cyan-400/50 backdrop-blur-md transition-all cursor-pointer group flex flex-col justify-between shadow-lg h-[115px] relative overflow-hidden"
         >
           <div className="flex items-center justify-between">
             <span className="text-[10px] font-mono font-bold text-slate-400 uppercase tracking-wider">
-              Surface Salinity
+              {isBioMode ? "Salinity Tolerance" : "Surface Salinity"}
             </span>
             <span className="text-[10px] font-mono text-slate-400">
-              DOXY {surfaceDoxy} µmol/kg
+              {isBioMode ? `DOXY Floor: ≥ ${bioHypoxia} µmol/kg` : `DOXY ${surfaceDoxy} µmol/kg`}
             </span>
           </div>
 
           <div className="my-1">
             <div className="text-2xl font-bold tracking-tight text-white font-mono">
-              {surfaceSal} PSU
+              {isBioMode ? `${bioSalMin}–${bioSalMax} PSU` : `${surfaceSal} PSU`}
             </div>
           </div>
 
@@ -264,29 +343,29 @@ export function CommandCenterView() {
           </div>
         </div>
 
-        {/* KPI 4: LATEST SURFACE CAST DEPTH + PURPLE SPARKLINE */}
+        {/* KPI 4: SURFACE CAST DEPTH / DEPTH RANGE & HABITAT */}
         <div
-          onClick={() => setActiveNav("FLOATS")}
+          onClick={() => setActiveNav(isBioMode ? "BIODIVERSITY" : "FLOATS")}
           className="p-3.5 rounded-xl bg-gradient-to-b from-[#08152c]/90 to-[#040c1a]/95 border border-sky-500/20 hover:border-purple-400/50 backdrop-blur-md transition-all cursor-pointer group flex flex-col justify-between shadow-lg h-[115px] relative overflow-hidden"
         >
           <div className="flex items-center justify-between">
             <span className="text-[10px] font-mono font-bold text-slate-400 uppercase tracking-wider">
-              Surface Cast Depth
+              {isBioMode ? "Depth Range" : "Surface Cast Depth"}
             </span>
-            <span className="text-[10px] font-mono text-purple-300 font-semibold">
-              Cycle #{latestCycle}
+            <span className="text-[10px] font-mono text-purple-300 font-semibold capitalize">
+              {isBioMode ? activeBio?.habitat_zone || "Pelagic" : `Cycle #${latestCycle}`}
             </span>
           </div>
 
           <div className="my-1">
             <div className="text-2xl font-bold tracking-tight text-white font-mono">
-              {latestSurfaceDepth} m
+              {isBioMode ? bioDepthStr : `${latestSurfaceDepth} m`}
             </div>
           </div>
 
           <div className="flex items-center justify-between text-[10px] font-mono text-slate-400">
-            <span>{latestDateFormatted}</span>
-            <span>{latestTimeFormatted}</span>
+            <span>{isBioMode ? activeBio?.event_date || "2024-04-14" : latestDateFormatted}</span>
+            <span>{isBioMode ? `Inst: ${activeBio?.institution_code || "CMLRE"}` : latestTimeFormatted}</span>
           </div>
 
           {/* Glowing Purple Mini Sparkline */}
@@ -326,15 +405,21 @@ export function CommandCenterView() {
 
         {/* ── Right Tactical Intelligence Column (5 Cols) ──────────────────── */}
         <div className="xl:col-span-5 flex flex-col justify-between space-y-3 h-[540px]">
-          {/* Top Half: Float Directory Selector (235px) */}
+          {/* Top Half: Directory Selector with Floats ⇄ Biodiversity Switcher (235px) */}
           <FloatDirectoryPanel />
 
-          {/* Bottom Half: Deep Dive Mode with Subsea Probe (290px) */}
+          {/* Bottom Half: Deep Dive Mode (Float Probe) OR Species Taxonomic Profile (290px) */}
           <div className="h-[290px]">
-            <DeepDiveModePanel
-              isCollapsible={true}
-              onDeselect={() => setSelectedFloatId("")}
-            />
+            {isBioMode ? (
+              <SpeciesTaxonomicProfilePanel
+                onDeselect={() => setSelectedEntityType("FLOAT")}
+              />
+            ) : (
+              <DeepDiveModePanel
+                isCollapsible={true}
+                onDeselect={() => setSelectedFloatId("")}
+              />
+            )}
           </div>
         </div>
       </section>
@@ -458,14 +543,14 @@ export function CommandCenterView() {
               <div className="w-1 h-1 rounded-full bg-emerald-400 absolute bottom-3 right-5 shadow-[0_0_4px_#34d399]" />
               {/* Animated Rotating Sweep Line */}
               <div className="w-full h-full absolute inset-0 animate-radar-sweep pointer-events-none">
-                <div className="w-1/2 h-1/2 border-r-2 border-cyan-400 bg-gradient-to-br from-cyan-400/30 to-transparent rounded-tl-full" />
+                <div className="w-1/2 h-full bg-gradient-to-l from-cyan-400/40 to-transparent transform origin-right" />
               </div>
             </div>
           </div>
 
-          <div className="pt-2 border-t border-sky-500/15 flex items-center justify-between text-[11px] text-slate-400">
-            <span>INCOIS + CMLRE Backbone</span>
-            <span className="text-emerald-400 font-mono font-semibold">100% Operational</span>
+          <div className="pt-2 border-t border-sky-500/15 flex items-center justify-between text-[11px] font-mono text-slate-400">
+            <span>Telemetry Pipeline</span>
+            <span className="text-emerald-400 font-semibold">ALL SENSORS NOMINAL</span>
           </div>
         </div>
       </section>

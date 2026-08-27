@@ -37,8 +37,20 @@ export function VarunaMap({ onHoverCoords, is3DMode }: VarunaMapProps) {
     toggleMapLayer,
     selectedFloatId,
     setSelectedFloatId,
+    setSelectedSpecies,
+    setSelectedBioRecord,
+    setSelectedEntityType,
     registerFlyToHandler,
   } = useOperationalState();
+
+  const setSelectedSpeciesRef = useRef(setSelectedSpecies);
+  setSelectedSpeciesRef.current = setSelectedSpecies;
+
+  const setSelectedBioRecordRef = useRef(setSelectedBioRecord);
+  setSelectedBioRecordRef.current = setSelectedBioRecord;
+
+  const setSelectedEntityTypeRef = useRef(setSelectedEntityType);
+  setSelectedEntityTypeRef.current = setSelectedEntityType;
 
   // Always keep fresh references to prevent stale closures during map lifecycle events
   const biodiversityRef = useRef(biodiversity);
@@ -368,6 +380,47 @@ export function VarunaMap({ onHoverCoords, is3DMode }: VarunaMapProps) {
     map.on("move", renderBioCanvas);
     map.on("zoom", renderBioCanvas);
     map.on("resize", renderBioCanvas);
+    // Click detection on Biodiversity Points to update Dashboard
+    map.on("click", (e) => {
+      if (!mapLayersRef.current.biodiversity) return;
+      const currentBio = biodiversityRef.current;
+      if (!currentBio || currentBio.length === 0) return;
+
+      const clickPt = e.point;
+      let nearestBio: any = null;
+      let minD2 = 256; // 16px click radius
+
+      for (let i = 0; i < currentBio.length; i++) {
+        const b: any = currentBio[i];
+        const lon = Number(b.longitude ?? b.lon ?? b.decimal_longitude);
+        const lat = Number(b.latitude ?? b.lat ?? b.decimal_latitude);
+        if (isNaN(lon) || isNaN(lat)) continue;
+
+        const p = map.project([lon, lat]);
+        const dx = p.x - clickPt.x;
+        const dy = p.y - clickPt.y;
+        const d2 = dx * dx + dy * dy;
+        if (d2 < minD2) {
+          minD2 = d2;
+          nearestBio = b;
+        }
+      }
+
+      if (nearestBio) {
+        setSelectedBioRecordRef.current(nearestBio);
+        setSelectedSpeciesRef.current(nearestBio.scientific_name);
+        setSelectedEntityTypeRef.current("BIODIVERSITY");
+        const lon = Number(nearestBio.longitude ?? nearestBio.lon ?? nearestBio.decimal_longitude);
+        const lat = Number(nearestBio.latitude ?? nearestBio.lat ?? nearestBio.decimal_latitude);
+        map.flyTo({
+          center: [lon, lat],
+          zoom: Math.max(map.getZoom(), 5.5),
+          essential: true,
+          duration: 1000,
+        });
+      }
+    });
+
     map.on("idle", () => {
       syncMapData();
     });

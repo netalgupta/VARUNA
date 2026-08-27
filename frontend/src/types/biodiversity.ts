@@ -6,6 +6,7 @@
 export interface BiodiversityRecord {
   id: number;
   occurrence_id?: string;
+  species_id?: string;
   scientific_name: string;
   common_name: string;
   aphia_id: number;
@@ -16,6 +17,11 @@ export interface BiodiversityRecord {
   latitude: number;
   longitude: number;
   depth_m?: number | null;
+  depth_min_m?: number | null;
+  depth_max_m?: number | null;
+  habitat_zone?: string;
+  ecological_response?: string;
+  evidence_source?: string;
   event_date: string;
   thermal_range_min_c: number;
   thermal_range_max_c: number;

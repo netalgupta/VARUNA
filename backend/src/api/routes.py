@@ -231,6 +231,7 @@ class AnomalyAlert(BaseModel):
 class BiodiversityRecord(BaseModel):
     id: int = Field(..., examples=[501])
     occurrence_id: Optional[str] = Field(None, examples=["IO/SS/ANO/00161"])
+    species_id: Optional[str] = Field(None, examples=["SARDINELLA_LONGICEPS"])
     scientific_name: str = Field(..., examples=["Sardinella longiceps"])
     common_name: str = Field(..., examples=["Indian Oil Sardine"])
     aphia_id: int = Field(0, description="World Register of Marine Species (WoRMS) Taxon Identifier", examples=[218659])
@@ -241,6 +242,11 @@ class BiodiversityRecord(BaseModel):
     latitude: float = Field(..., examples=[15.42])
     longitude: float = Field(..., examples=[73.81])
     depth_m: Optional[float] = Field(15.0, examples=[15.0])
+    depth_min_m: Optional[float] = Field(None, examples=[0.0])
+    depth_max_m: Optional[float] = Field(None, examples=[100.0])
+    habitat_zone: Optional[str] = Field("pelagic-neritic", examples=["pelagic-neritic"])
+    ecological_response: Optional[str] = Field(None, examples=["..."])
+    evidence_source: Optional[str] = Field("CMLRE", examples=["CMLRE"])
     event_date: str = Field(..., examples=["2026-04-14"])
     thermal_range_min_c: float = Field(22.0, examples=[22.0])
     thermal_range_max_c: float = Field(26.0, examples=[26.0])
@@ -806,6 +812,7 @@ def get_cmlre_biodiversity_dataset() -> List[Dict[str, Any]]:
             records.append({
                 "id": int(idx + 1),
                 "occurrence_id": str(row.get("occurrence_id", f"CMLRE_{idx+1}")),
+                "species_id": str(prof.get("species_id") or s_name.upper().replace(" ", "_")),
                 "scientific_name": s_name,
                 "common_name": str(prof.get("common_name") or s_name),
                 "aphia_id": aphia_id or int(prof.get("aphia_id", 0) or 0),
@@ -816,6 +823,11 @@ def get_cmlre_biodiversity_dataset() -> List[Dict[str, Any]]:
                 "latitude": safe_float(row.get("decimal_latitude"), 10.0),
                 "longitude": safe_float(row.get("decimal_longitude"), 75.0),
                 "depth_m": safe_float(depth, 15.0),
+                "depth_min_m": safe_float(prof.get("depth_min_m"), 0.0) if prof.get("depth_min_m") is not None else None,
+                "depth_max_m": safe_float(prof.get("depth_max_m"), 100.0) if prof.get("depth_max_m") is not None else None,
+                "habitat_zone": str(prof.get("habitat_zone") or "pelagic-neritic"),
+                "ecological_response": str(prof.get("ecological_response") or f"Marine taxa ({row.get('family') or 'General'}) documented across the Indian Ocean basin."),
+                "evidence_source": str(prof.get("evidence_source") or "CMLRE / WoRMS"),
                 "event_date": event_dt.split()[0],
                 "thermal_range_min_c": safe_float(prof.get("temp_pref_min_c"), 22.0),
                 "thermal_range_max_c": safe_float(prof.get("temp_pref_max_c"), 28.0),
