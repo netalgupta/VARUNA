@@ -88,21 +88,24 @@ LIMIT 25;
 
 # Template 5: Species-specific physical exposure join (Penaeus, Sardinella, Thunnus, etc.)
 _SQL_SPECIES_STRESS = """
-SELECT DISTINCT ON (b.scientific_name)
+SELECT DISTINCT ON (b.scientific_name, m.platform_number)
     b.scientific_name, b.family, b.genus,
     b.minimum_depth_m, b.maximum_depth_m,
+    b.decimal_latitude AS lat, b.decimal_longitude AS lon,
     m.platform_number AS argo_float_id,
-    m.time  AS argo_obs_time,
-    ROUND(m.temp::numeric, 2) AS water_temp_c,
-    ROUND(m.doxy::numeric, 1) AS dissolved_oxygen_umol_kg,
-    ROUND(m.psal::numeric, 3) AS salinity_psu,
+    m.time AS argo_obs_time,
+    m.pres,
+    ROUND(m.temp::numeric, 2) AS temp,
+    ROUND(m.doxy::numeric, 1) AS doxy,
+    ROUND(m.psal::numeric, 3) AS psal,
     ROUND((ST_Distance(b.geom, m.geom) / 1000.0)::numeric, 1) AS dist_km
 FROM public.marine_biodiversity b
 JOIN public.marine_data m
   ON ST_DWithin(b.geom, m.geom, 100000)
 WHERE b.scientific_name ILIKE '%{species_term}%'
-ORDER BY b.scientific_name, dist_km ASC
-LIMIT 25;
+  AND (m.temp IS NOT NULL OR m.doxy IS NOT NULL)
+ORDER BY b.scientific_name, m.platform_number, dist_km ASC
+LIMIT 30;
 """
 
 

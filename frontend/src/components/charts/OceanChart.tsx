@@ -84,17 +84,31 @@ export function OceanChart({ rows, vizSpecs, title }: OceanChartProps) {
 
   // 3. Process sanitized points (Horizontal mode: X = Depth / Pressure, Y = Sensor Reading)
   const points: DataPoint[] = useMemo(() => {
-    if (data.length === 0) return [];
-    return data
+    if (data.length === 0 || availableVars.length === 0) return [];
+    
+    // Only map rows that actually have this active numeric variable
+    const validRows = data.filter((d: Record<string, any>) => {
+      const v = d[activeVar.key] ?? (activeVar.key === 'temp' ? d.water_temp_c : null);
+      return v !== null && v !== undefined && !isNaN(Number(v)) && isFinite(Number(v));
+    });
+
+    if (validRows.length === 0) return [];
+
+    const hasRealDepth = validRows.some((d) => d.pres != null || d.pressure != null || d.depth != null || d.depth_m != null || d.maximum_depth_m != null);
+
+    return validRows
       .map((d: Record<string, any>, index: number) => {
-        const pres = Number(d.pres ?? d.pressure ?? d.depth ?? index * 20);
-        const val = Number(d[activeVar.key] ?? d.temp ?? d.temperature ?? 0);
-        const time = String(d.time ?? d.date ?? '');
+        const pres = hasRealDepth
+          ? Number(d.pres ?? d.pressure ?? d.depth ?? d.depth_m ?? d.maximum_depth_m ?? 0)
+          : index;
+        const rawVal = d[activeVar.key] ?? (activeVar.key === 'temp' ? d.water_temp_c : 0);
+        const val = Number(rawVal);
+        const time = String(d.time ?? d.date ?? d.argo_obs_time ?? '');
         return { pres, val, time, raw: d };
       })
       .filter((d: DataPoint) => !isNaN(d.pres) && !isNaN(d.val) && isFinite(d.pres) && isFinite(d.val))
       .sort((a: DataPoint, b: DataPoint) => a.pres - b.pres);
-  }, [data, activeVar]);
+  }, [data, activeVar, availableVars]);
 
   // 4. Statistics Calculation
   const stats = useMemo(() => {
@@ -111,7 +125,8 @@ export function OceanChart({ rows, vizSpecs, title }: OceanChartProps) {
   // Hover state
   const [hoverIndex, setHoverIndex] = useState<number | null>(null);
 
-  if (points.length === 0) return null;
+  // If no available variables or no real data points, do not render a dummy graph
+  if (availableVars.length === 0 || points.length === 0) return null;
 
   // SVG Geometry Settings
   const svgWidth = 640;
