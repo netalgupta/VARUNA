@@ -90,7 +90,7 @@ export function SpeciesTaxonomicProfilePanel({
   const evidence = activeRecord.evidence_source || "CMLRE / WoRMS";
 
   return (
-    <div className="p-3.5 rounded-xl bg-gradient-to-b from-[#08152c]/95 to-[#040c1a]/98 border border-emerald-500/30 backdrop-blur-md shadow-2xl flex flex-col justify-between h-full select-none relative transition-all">
+    <div className="p-3.5 rounded-xl bg-gradient-to-b from-[#08152c]/95 to-[#040c1a]/98 border border-emerald-500/30 backdrop-blur-md shadow-2xl flex flex-col justify-between h-full select-none relative overflow-hidden transition-all">
       {/* ── 1. Top Header with Species Title & Deselect ─────────────────────── */}
       <div className="flex items-center justify-between border-b border-emerald-500/20 pb-2 shrink-0">
         <div className="flex items-center gap-2">
@@ -207,8 +207,8 @@ export function SpeciesTaxonomicProfilePanel({
         </div>
       </div>
 
-      {/* ── 4. Biology & Ecological Response Excerpt ───────────────────────── */}
-      <div className="p-2.5 rounded-lg bg-[#061120] border border-emerald-500/20 text-[11px] font-mono text-slate-300 leading-relaxed my-1 shrink-0">
+      {/* ── 4. Biology & Ecological Response Excerpt (Scrolls ONLY if exceeding generous bounds) ─ */}
+      <div className="p-2.5 rounded-lg bg-[#061120] border border-emerald-500/20 text-[11px] font-mono text-slate-300 leading-relaxed max-h-[110px] overflow-y-auto custom-scrollbar my-1">
         <span className="text-emerald-400 font-semibold">Ecological Context: </span>
         {ecoNotes}
       </div>
