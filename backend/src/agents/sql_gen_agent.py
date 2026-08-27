@@ -117,6 +117,18 @@ async def execute_sql_task(
     if clean_sql:
         try:
             rows = run_sql(clean_sql, limit=200)
+            # If 0 rows and query has a specific platform_number + spatial bounds, auto-relax bounding box
+            if not rows and "platform_number" in clean_sql and ("latitude" in clean_sql or "longitude" in clean_sql):
+                import re as _re
+                relaxed_sql = _re.sub(r"\s+AND\s+latitude\s+BETWEEN\s+[\d\.\-]+\s+AND\s+[\d\.\-]+", "", clean_sql, flags=_re.IGNORECASE)
+                relaxed_sql = _re.sub(r"\s+AND\s+longitude\s+BETWEEN\s+[\d\.\-]+\s+AND\s+[\d\.\-]+", "", relaxed_sql, flags=_re.IGNORECASE)
+                relaxed_sql = _re.sub(r"\s+AND\s+ST_[\w]+\([^)]+\)", "", relaxed_sql, flags=_re.IGNORECASE)
+                if relaxed_sql != clean_sql:
+                    log.info("Auto-relaxing geographic bounds for platform query: %s", relaxed_sql)
+                    relaxed_rows = run_sql(relaxed_sql, limit=200)
+                    if relaxed_rows:
+                        rows = relaxed_rows
+                        clean_sql = relaxed_sql
         except Exception as e:
             log.error("PostgreSQL execution failed on generated SQL: %s", str(e))
             error_msg = f"Database Error: {str(e)}"

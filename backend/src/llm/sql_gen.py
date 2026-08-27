@@ -56,6 +56,10 @@ Geographic Bounding Box Standards:
 - Equatorial Indian Ocean: latitude BETWEEN -5.0 AND 5.0 AND longitude BETWEEN 50.0 AND 100.0
 - Gulf of Mannar: latitude BETWEEN 7.0 AND 11.0 AND longitude BETWEEN 77.0 AND 80.5
 - SW Coast of India / Malabar: latitude BETWEEN 8.0 AND 15.0 AND longitude BETWEEN 72.0 AND 78.0
+
+CRITICAL RULES FOR FLOAT QUERIES:
+1. When the question asks for a specific float (e.g. float 7901023, 2902758, 1902303), filter ONLY by `WHERE platform_number = <wmo_id>`. Do NOT add bounding box filters (latitude/longitude) because the float moves dynamically across basin boundaries!
+2. When querying vertical depth profiles for a float, select `platform_number, time, latitude, longitude, pres, temp, psal, doxy` ORDER BY `time DESC, pres ASC LIMIT 200`.
 """
 
 FEW_SHOT_PATTERNS = """
