@@ -226,9 +226,13 @@ async def synthesize_answer(
     query: str,
     task_results: Dict[str, Any],
     trace: Optional[Any] = None,
+    aegis_context: Optional[Dict[str, Any]] = None,
 ) -> Dict[str, Any]:
     """
     Synthesizes a grounded response from all upstream sub-agent task outputs.
+    When aegis_context is provided (from VARUNA AEGIS), only AEGIS-approved
+    claims reach the LLM. Background-only claims are flagged with explicit
+    epistemic labels. Rejected claims are silently suppressed.
     """
     sql_queries = []
     all_rows = []
@@ -319,6 +323,62 @@ async def synthesize_answer(
             retrieved_texts=retrieved_texts,
             sql=primary_sql,
         )
+
+    # ── AEGIS Epistemic Provenance Annotation ─────────────────────────────────
+    if aegis_context:
+        rejected_count = aegis_context.get("rejected_count", 0)
+        background_claims = aegis_context.get("background_claims", [])
+        guardrails = aegis_context.get("guardrails_activated", [])
+        flags = aegis_context.get("flags", [])
+
+        aegis_footer_lines = ["\n---", "### 🛡️ AEGIS Provenance & Epistemic Integrity Report"]
+
+        # Epistemic summary
+        ep_summary = aegis_context.get("epistemic_summary", {})
+        if ep_summary:
+            aegis_footer_lines.append("\n**Evidence Classification:**")
+            label_icons = {
+                "OBSERVED": "🟢",
+                "DERIVED": "🟡",
+                "OBSERVED_EXPOSURE": "🟠",
+                "INFERRED": "🟠",
+                "BACKGROUND": "⬜",
+                "HYPOTHESIS": "🔴",
+            }
+            for label, count in sorted(ep_summary.items()):
+                icon = label_icons.get(label, "⚪")
+                aegis_footer_lines.append(f"- {icon} **{label}**: {count} claim(s)")
+
+        # Background-only historical associations (not co-location)
+        if background_claims:
+            aegis_footer_lines.append("\n**⚠️ Historical Context (Not Verified Co-location):**")
+            for bg in background_claims[:3]:
+                aegis_footer_lines.append(f"> {bg.get('warning', '')}")
+                aegis_footer_lines.append(f"> *{bg.get('text', '')[:120]}...*")
+
+        # Rejected count
+        if rejected_count > 0:
+            aegis_footer_lines.append(
+                f"\n**⛔ {rejected_count} claim(s) rejected** by AEGIS firewall "
+                f"(BIO-001/002/003, forbidden inference, or escalation ceiling exceeded)."
+            )
+
+        # L4 flag
+        if "L4_FLAG" in flags or "HIGH_RISK_CLAIM" in flags:
+            aegis_footer_lines.append(
+                "\n> [!CAUTION]\n"
+                "> **HIGH-STAKES ECOLOGICAL CLAIM DETECTED**: Any assertion about population trends, "
+                "conservation status, or causal ecosystem change has been suppressed. "
+                "Insufficient longitudinal evidence is available to support L4-level claims."
+            )
+
+        # Active guardrails
+        if guardrails:
+            aegis_footer_lines.append(
+                f"\n*Active AEGIS guardrails: {', '.join(guardrails)}*"
+            )
+
+        answer_md = answer_md + "\n" + "\n".join(aegis_footer_lines)
 
     # Suggested Plotly visualization configuration
     viz_specs = {
