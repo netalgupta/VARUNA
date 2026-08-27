@@ -401,19 +401,21 @@ export function CommandCenterView() {
       {/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
           CENTRAL SECTION: INTERACTIVE MAP (7 COLS) & RIGHT RAIL (5 COLS)
           ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
-      <section className="grid grid-cols-1 xl:grid-cols-12 gap-3.5 min-h-[610px]">
+      <section className="grid grid-cols-1 xl:grid-cols-12 gap-3.5 min-h-[630px]">
         {/* ── Central Interactive MapLibre Map (7 Cols) ────────────────────── */}
-        <div className="xl:col-span-7 bg-[#040a14] border border-sky-500/20 rounded-xl overflow-hidden relative group shadow-2xl h-[610px]">
+        <div className="xl:col-span-7 bg-[#040a14] border border-sky-500/20 rounded-xl overflow-hidden relative group shadow-2xl h-[630px]">
           <VarunaMap />
         </div>
 
         {/* ── Right Tactical Intelligence Column (5 Cols) ──────────────────── */}
-        <div className="xl:col-span-5 flex flex-col justify-between space-y-3.5 h-[610px]">
-          {/* Top Half: Directory Selector with Floats ⇄ Biodiversity Switcher (235px) */}
-          <FloatDirectoryPanel />
+        <div className="xl:col-span-5 flex flex-col gap-3 h-[630px]">
+          {/* Top Half: Directory Selector with Floats ⇄ Biodiversity Switcher (225px) */}
+          <div className="h-[225px] shrink-0">
+            <FloatDirectoryPanel />
+          </div>
 
-          {/* Bottom Half: Deep Dive Mode (Float Probe) OR Species Taxonomic Profile (360px) */}
-          <div className="h-[360px]">
+          {/* Bottom Half: Deep Dive Mode (Float Probe) OR Species Taxonomic Profile (Flexible Auto Fill) */}
+          <div className="flex-1 min-h-0">
             {isBioMode ? (
               <SpeciesTaxonomicProfilePanel
                 onDeselect={() => setSelectedEntityType("FLOAT")}

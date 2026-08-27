@@ -93,7 +93,7 @@ export function FloatDirectoryPanel() {
   };
 
   return (
-    <div className="p-3.5 rounded-xl bg-gradient-to-b from-[#08152c]/90 to-[#040c1a]/95 border border-sky-500/20 backdrop-blur-md flex flex-col justify-between h-[235px] select-none shadow-xl">
+    <div className="p-3.5 rounded-xl bg-gradient-to-b from-[#08152c]/90 to-[#040c1a]/95 border border-sky-500/20 backdrop-blur-md flex flex-col justify-between h-full select-none shadow-xl">
       {/* ── 1. Header with Tab Switcher & View All ─────────────────────────── */}
       <div>
         <div className="flex items-center justify-between border-b border-sky-500/15 pb-2 mb-2">
