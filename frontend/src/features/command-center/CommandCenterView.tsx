@@ -165,10 +165,11 @@ export function CommandCenterView() {
   }, [selectedBioRecord, selectedSpecies, biodiversity]);
 
   const bioScientificName = activeBio?.scientific_name || selectedSpecies || "Sardinella longiceps";
-  const bioCommonName =
-    activeBio?.common_name && activeBio?.common_name !== bioScientificName
-      ? activeBio.common_name
-      : bioScientificName;
+  const hasDistinctBioCommon = Boolean(
+    activeBio?.common_name &&
+    activeBio.common_name.trim().toLowerCase() !== bioScientificName.trim().toLowerCase()
+  );
+  const bioPrimaryTitle = hasDistinctBioCommon ? activeBio.common_name : bioScientificName;
   const bioLat = activeBio?.latitude != null ? Number(activeBio.latitude).toFixed(2) : "15.42";
   const bioLon = activeBio?.longitude != null ? Number(activeBio.longitude).toFixed(2) : "73.81";
   const bioTempMin = activeBio?.thermal_range_min_c != null ? Number(activeBio.thermal_range_min_c).toFixed(1) : "22.0";
@@ -224,13 +225,16 @@ export function CommandCenterView() {
             </div>
           </div>
 
-          <div className="my-1 truncate">
-            <div className="text-xl font-bold tracking-tight text-white font-mono truncate" title={isBioMode ? bioCommonName : `ARGO #${floatWmo}`}>
-              {isBioMode ? bioCommonName : `ARGO #${floatWmo}`}
+          <div className="my-0.5 truncate">
+            <div
+              className="text-lg font-bold tracking-tight text-white font-mono truncate"
+              title={isBioMode ? (hasDistinctBioCommon ? `${bioPrimaryTitle} (${bioScientificName})` : bioScientificName) : `ARGO #${floatWmo}`}
+            >
+              {isBioMode ? bioPrimaryTitle : `ARGO #${floatWmo}`}
             </div>
             {isBioMode && (
               <div className="text-[11px] font-mono text-emerald-400/90 italic truncate">
-                {bioScientificName}
+                {hasDistinctBioCommon ? bioScientificName : `Family: ${activeBio?.family || "Marine Taxa"}`}
               </div>
             )}
           </div>
