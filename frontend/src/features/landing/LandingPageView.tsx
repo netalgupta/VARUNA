@@ -354,10 +354,10 @@ export function LandingPageView() {
       </header>
 
       {/* ── 2. Main Hero Text & Triple Catchphrase ────────────────────────── */}
-      <main className="relative z-20 flex-1 flex flex-col justify-center items-end px-6 sm:px-16 lg:px-24 text-right">
-        <div className="max-w-2xl w-full flex flex-col items-end">
+      <main className="relative z-20 flex-1 flex flex-col justify-center items-start px-6 sm:px-14 lg:px-20 text-left">
+        <div className="max-w-xl w-full flex flex-col items-start">
           {/* Tactical Badge */}
-          <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-[#051224]/80 border border-[#2EE6C6]/50 text-[#83FFE3] text-xs font-mono mb-4 shadow-xl backdrop-blur-md">
+          <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-[#051224]/85 border border-[#2EE6C6]/50 text-[#83FFE3] text-xs font-mono mb-4 shadow-xl backdrop-blur-md">
             <span className="w-2 h-2 rounded-full bg-[#00FFC6] shadow-[0_0_8px_#00FFC6] animate-pulse" />
             <span className="uppercase tracking-widest font-bold">
               National Marine Intelligence Backbone
@@ -365,7 +365,7 @@ export function LandingPageView() {
           </div>
 
           {/* Title */}
-          <h1 className="text-5xl sm:text-7xl lg:text-8xl font-black uppercase tracking-tight leading-[0.95] mb-4 drop-shadow-[0_6px_24px_rgba(0,0,0,1)] bg-gradient-to-br from-white via-[#E8F4FF] to-[#83FFE3] bg-clip-text text-transparent">
+          <h1 className="text-4xl sm:text-6xl lg:text-7xl font-black uppercase tracking-tight leading-[1.0] mb-4 drop-shadow-[0_6px_24px_rgba(0,0,0,1)] bg-gradient-to-br from-white via-[#E8F4FF] to-[#83FFE3] bg-clip-text text-transparent">
             Understand.<br />
             Predict. Protect.
           </h1>
@@ -376,18 +376,18 @@ export function LandingPageView() {
           </p>
 
           {/* Basin Tags */}
-          <div className="flex flex-wrap justify-end gap-2 mb-8 text-[10px] font-mono text-[#809AAB]">
-            <span className="px-2 py-0.5 rounded bg-black/40 border border-white/10">Arabian Sea</span>
-            <span className="px-2 py-0.5 rounded bg-black/40 border border-white/10">Bay of Bengal</span>
-            <span className="px-2 py-0.5 rounded bg-black/40 border border-white/10">Equatorial Indian Ocean</span>
-            <span className="px-2 py-0.5 rounded bg-black/40 border border-white/10">Gulf of Mannar</span>
+          <div className="flex flex-wrap justify-start gap-2 mb-8 text-[10px] font-mono text-[#809AAB]">
+            <span className="px-2 py-0.5 rounded bg-black/50 border border-white/10">Arabian Sea</span>
+            <span className="px-2 py-0.5 rounded bg-black/50 border border-white/10">Bay of Bengal</span>
+            <span className="px-2 py-0.5 rounded bg-black/50 border border-white/10">Equatorial Indian Ocean</span>
+            <span className="px-2 py-0.5 rounded bg-black/50 border border-white/10">Gulf of Mannar</span>
           </div>
 
           {/* CTA Action Row */}
           <div className="flex items-center gap-3 font-mono text-xs">
             <Link
               href="/chatbot"
-              className="px-6 py-3 rounded-xl bg-[#0B1D2C]/90 hover:bg-[#2EE6C6]/20 border border-[#2EE6C6]/50 text-[#83FFE3] font-bold flex items-center gap-2 shadow-2xl backdrop-blur-xl transition-all"
+              className="px-5 py-2.5 rounded-xl bg-[#0B1D2C]/90 hover:bg-[#2EE6C6]/20 border border-[#2EE6C6]/50 text-[#83FFE3] font-bold flex items-center gap-2 shadow-2xl backdrop-blur-xl transition-all"
             >
               <Bot size={15} />
               <span>Ask AI Chatbot</span>
@@ -395,7 +395,7 @@ export function LandingPageView() {
 
             <Link
               href="/command-center"
-              className="px-6 py-3 rounded-xl bg-gradient-to-r from-[#2EE6C6] to-[#00FFC6] text-black font-black flex items-center gap-2 shadow-[0_0_35px_rgba(46,230,198,0.6)] hover:scale-105 transition-all"
+              className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-[#2EE6C6] to-[#00FFC6] text-black font-black flex items-center gap-2 shadow-[0_0_35px_rgba(46,230,198,0.6)] hover:scale-105 transition-all"
             >
               <span>Launch Command Center</span>
               <ArrowUpRight size={16} />
@@ -405,23 +405,23 @@ export function LandingPageView() {
       </main>
 
       {/* ── 3. Bottom Live Statistics Row ─────────────────────────────────── */}
-      <footer className="relative z-20 w-full px-6 sm:px-16 lg:px-24 pb-8 flex flex-wrap items-center justify-end gap-4 font-mono text-xs">
-        <div className="bg-[#051224]/80 backdrop-blur-xl border border-white/10 px-4 py-2.5 rounded-xl border-l-4 border-l-[#83FFE3] shadow-xl">
+      <footer className="relative z-20 w-full px-6 sm:px-14 lg:px-20 pb-8 flex flex-wrap items-center justify-start gap-4 font-mono text-xs">
+        <div className="bg-[#051224]/85 backdrop-blur-xl border border-white/10 px-4 py-2.5 rounded-xl border-l-4 border-l-[#83FFE3] shadow-xl">
           <div className="text-xl sm:text-2xl font-black text-[#83FFE3] leading-tight">3,842</div>
           <div className="text-[10px] text-[#A0B8C8] uppercase tracking-wider">Active ARGO Floats</div>
         </div>
 
-        <div className="bg-[#051224]/80 backdrop-blur-xl border border-white/10 px-4 py-2.5 rounded-xl border-l-4 border-l-[#FFA500] shadow-xl">
+        <div className="bg-[#051224]/85 backdrop-blur-xl border border-white/10 px-4 py-2.5 rounded-xl border-l-4 border-l-[#FFA500] shadow-xl">
           <div className="text-xl sm:text-2xl font-black text-[#FFA500] leading-tight">07</div>
           <div className="text-[10px] text-[#A0B8C8] uppercase tracking-wider">Active Alerts (MHW &amp; OMZ)</div>
         </div>
 
-        <div className="bg-[#051224]/80 backdrop-blur-xl border border-white/10 px-4 py-2.5 rounded-xl border-l-4 border-l-[#00FFC6] shadow-xl">
+        <div className="bg-[#051224]/85 backdrop-blur-xl border border-white/10 px-4 py-2.5 rounded-xl border-l-4 border-l-[#00FFC6] shadow-xl">
           <div className="text-xl sm:text-2xl font-black text-[#00FFC6] leading-tight">99.8%</div>
           <div className="text-[10px] text-[#A0B8C8] uppercase tracking-wider">Model Accuracy</div>
         </div>
 
-        <div className="bg-[#051224]/80 backdrop-blur-xl border border-white/10 px-4 py-2.5 rounded-xl border-l-4 border-l-[#4ADE80] shadow-xl">
+        <div className="bg-[#051224]/85 backdrop-blur-xl border border-white/10 px-4 py-2.5 rounded-xl border-l-4 border-l-[#4ADE80] shadow-xl">
           <div className="text-xl sm:text-2xl font-black text-[#4ADE80] leading-tight">14ms</div>
           <div className="text-[10px] text-[#A0B8C8] uppercase tracking-wider">PostGIS Query Latency</div>
         </div>

@@ -43,17 +43,20 @@ import json
 import os
 import threading
 import time
-from datetime import date, datetime, timedelta
+import zlib
+from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
-
+from typing import Any, Callable, Dict, List, Optional, Tuple, cast
 import numpy as np
 
 try:
-    import psycopg
-    from psycopg.rows import dict_row
-except ImportError as _exc:  # pragma: no cover - psycopg is a hard runtime dep
-    raise ImportError("argo_store requires psycopg>=3 ; pip install psycopg[binary]") from _exc
+    import psycopg  # type: ignore
+    from psycopg.rows import dict_row  # type: ignore
+    _HAS_PSYCOPG = True
+except ImportError:
+    psycopg = None  # type: ignore
+    dict_row = None  # type: ignore
+    _HAS_PSYCOPG = False
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Configuration
@@ -123,12 +126,16 @@ _LOCK = threading.Lock()
 _RANGE_CACHE: Dict[str, Tuple[Optional[datetime], Optional[datetime]]] = {}
 
 
-def _connect(dsn: str) -> "psycopg.Connection":
+def _connect(dsn: str) -> Any:
+    if not _HAS_PSYCOPG or psycopg is None:
+        raise RuntimeError("psycopg is not installed. Live ARGO database query skipped.")
     return psycopg.connect(dsn, connect_timeout=15, sslmode="require")
 
 
 def probe_range(dsn: str) -> Tuple[Optional[datetime], Optional[datetime]]:
     """Actual [min(time), max(time)] of marine_data on one project (cached)."""
+    if not _HAS_PSYCOPG:
+        return (None, None)
     with _LOCK:
         if dsn in _RANGE_CACHE:
             return _RANGE_CACHE[dsn]
@@ -170,7 +177,7 @@ class RoutedWindow:
             seg_params["seg_start"] = seg_start
             seg_params["seg_end"] = seg_end + timedelta(seconds=1)
             with _connect(dsn) as conn, conn.cursor(row_factory=dict_row) as cur:
-                cur.execute(sql_template, seg_params)
+                cur.execute(cast(Any, sql_template), seg_params)
                 rows.extend(cur.fetchall())
         return rows
 
@@ -659,8 +666,8 @@ def clean_real_profiles(
         deep_s = float(np.mean(s[-n_deep:]))
         if not (33.0 <= deep_s <= 37.5):
             continue
-        ti = np.interp(p_grid, p, t)
-        si = np.interp(p_grid, p, s)
+        ti = np.asarray(np.interp(p_grid, p, t), dtype=np.float64)
+        si = np.asarray(np.interp(p_grid, p, s), dtype=np.float64)
         keep.append((ti, si))
     if max_casts is not None and len(keep) > max_casts:
         sel = rng.choice(len(keep), size=max_casts, replace=False)

@@ -91,33 +91,47 @@ export function OceanChart({ rows, vizSpecs, title }: OceanChartProps) {
     };
   }, [availableVars, selectedVarKey]);
 
-  // 3. Process sanitized points (Horizontal mode: X = Depth / Pressure, Y = Sensor Reading)
+  // 3. Process sanitized points (Deduplicate & average duplicate X coords to eliminate sawtooth oscillations)
+  const isDistanceMode = useMemo(() => {
+    return data.some((d) => typeof d.dist_km === 'number' || (d.dist_km !== undefined && d.dist_km !== null));
+  }, [data]);
+
   const points: DataPoint[] = useMemo(() => {
-    if (data.length === 0 || availableVars.length === 0) return [];
-    
-    // Only map rows that actually have this active numeric variable
-    const validRows = data.filter((d: Record<string, any>) => {
-      const v = d[activeVar.key] ?? (activeVar.key === 'temp' ? d.water_temp_c : null);
-      return v !== null && v !== undefined && !isNaN(Number(v)) && isFinite(Number(v));
-    });
+    if (data.length === 0) return [];
 
-    if (validRows.length === 0) return [];
-
-    const hasRealDepth = validRows.some((d) => d.pres != null || d.pressure != null || d.depth != null || d.depth_m != null || d.maximum_depth_m != null);
-
-    return validRows
+    const mapped = data
       .map((d: Record<string, any>, index: number) => {
-        const pres = hasRealDepth
-          ? Number(d.pres ?? d.pressure ?? d.depth ?? d.depth_m ?? d.maximum_depth_m ?? 0)
-          : index;
-        const rawVal = d[activeVar.key] ?? (activeVar.key === 'temp' ? d.water_temp_c : 0);
-        const val = Number(rawVal);
-        const time = String(d.time ?? d.date ?? d.argo_obs_time ?? '');
+        const pres = isDistanceMode
+          ? Number(d.dist_km ?? index * 50)
+          : Number(d.pres ?? d.pressure ?? d.depth ?? index * 20);
+        const val = Number(d[activeVar.key] ?? d.temp ?? d.temperature ?? 0);
+        const time = String(d.time ?? d.date ?? '');
         return { pres, val, time, raw: d };
       })
-      .filter((d: DataPoint) => !isNaN(d.pres) && !isNaN(d.val) && isFinite(d.pres) && isFinite(d.val))
-      .sort((a: DataPoint, b: DataPoint) => a.pres - b.pres);
-  }, [data, activeVar, availableVars]);
+      .filter((d: DataPoint) => !isNaN(d.pres) && !isNaN(d.val) && isFinite(d.pres) && isFinite(d.val));
+
+    // Group & average duplicate/near-identical X values to eliminate sawtooth/zigzag artifacts
+    const grouped = new Map<number, { sumVal: number; count: number; raw: any; time: string }>();
+    for (const p of mapped) {
+      const bucketX = isDistanceMode ? Math.round(p.pres * 10) / 10 : Math.round(p.pres * 2) / 2;
+      const existing = grouped.get(bucketX);
+      if (existing) {
+        existing.sumVal += p.val;
+        existing.count += 1;
+      } else {
+        grouped.set(bucketX, { sumVal: p.val, count: 1, raw: p.raw, time: p.time });
+      }
+    }
+
+    return Array.from(grouped.entries())
+      .map(([x, g]) => ({
+        pres: x,
+        val: g.sumVal / g.count,
+        time: g.time,
+        raw: g.raw,
+      }))
+      .sort((a, b) => a.pres - b.pres);
+  }, [data, activeVar, isDistanceMode]);
 
   // 4. Statistics Calculation
   const stats = useMemo(() => {
@@ -352,7 +366,7 @@ export function OceanChart({ rows, vizSpecs, title }: OceanChartProps) {
             fontSize="10"
             fontWeight="bold"
           >
-            Ocean Depth / Pressure Level (0 ➔ 2000 dbar)
+            {isDistanceMode ? "Offshore Distance from Shore (km)" : "Ocean Depth / Pressure Level (0 ➔ 2000 dbar)"}
           </text>
         </svg>
 
@@ -362,10 +376,10 @@ export function OceanChart({ rows, vizSpecs, title }: OceanChartProps) {
             className="absolute top-2 right-2 bg-[#0B1D2C]/95 border border-[#2EE6C6]/40 p-2 rounded-lg text-[10px] text-white shadow-xl backdrop-blur-md animate-in fade-in duration-100 flex flex-col gap-0.5 pointer-events-none"
           >
             <div className="text-[#00FFC6] font-bold">
-              Level {hoverIndex! + 1} of {points.length}
+              {isDistanceMode ? `Float #${hoverIndex! + 1}` : `Level ${hoverIndex! + 1} of ${points.length}`}
             </div>
             <div>
-              Depth: <b className="text-white">{hoveredPoint.pres.toFixed(1)} dbar</b>
+              {isDistanceMode ? "Distance" : "Depth"}: <b className="text-white">{hoveredPoint.pres.toFixed(1)} {isDistanceMode ? "km" : "dbar"}</b>
             </div>
             <div>
               {activeVar.label}: <b className="text-[#FF6B4A]">{hoveredPoint.val.toFixed(2)} {activeVar.unit}</b>
