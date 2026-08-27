@@ -770,13 +770,24 @@ def get_cmlre_biodiversity_dataset() -> List[Dict[str, Any]]:
     try:
         occ = get_occurrence_frame()
         if occ.empty:
-            _cmlre_bio_dataset = MOCK_BIODIVERSITY
-            return _cmlre_bio_dataset
+            root_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", ".."))
+            csv_candidates = [
+                os.path.join(root_dir, "cmlre_occurrence_clean-dataset1.csv"),
+                os.path.join(root_dir, "cmlre_occurrence_clean.csv"),
+                os.path.join(root_dir, "dataset1_fixed.csv"),
+                "cmlre_occurrence_clean-dataset1.csv",
+            ]
+            csv_path = next((p for p in csv_candidates if os.path.exists(p)), None)
+
+            if not csv_path:
+                log.warning("CMLRE CSV dataset not found; falling back to mock dataset")
+                _cmlre_bio_dataset = MOCK_BIODIVERSITY
+                return _cmlre_bio_dataset
 
         root_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", ".."))
         d2_candidates = [
-            os.path.join(root_dir, "data", "species_ecological_profiles_master.csv"),
             os.path.join(root_dir, "species_ecological_profiles_master----dataset2final.csv"),
+            os.path.join(root_dir, "data", "species_ecological_profiles_master.csv"),
             os.path.join(root_dir, "species_ecological_profiles.csv"),
             os.path.join(root_dir, "species_ecological_profiles-dataset2.csv"),
             "data/species_ecological_profiles_master.csv",
@@ -1083,9 +1094,11 @@ async def get_profile(
         [r for r in rows if float(r.get("depth_m") or r.get("pres") or 0) < 25][0] if [r for r in rows if float(r.get("depth_m") or r.get("pres") or 0) < 25] else (rows[0] if rows else None)
     )
 
+    resolved_cycle = cycle or (rows[0].get("cycle_number") if rows else None)
+
     result = {
         "platform_number": platform_number,
-        "cycle": cycle,
+        "cycle": resolved_cycle,
         "measurements": rows,
         "deepest_record": deepest,
         "latest_surface": latest_surface,
