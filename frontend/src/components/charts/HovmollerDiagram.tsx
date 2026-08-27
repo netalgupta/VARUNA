@@ -20,74 +20,94 @@ export function HovmollerDiagram({ data, variable = 'temp', title }: HovmollerDi
   const plotData = useMemo((): Partial<PlotData>[] => {
     if (!data || data.length === 0) return [];
 
-    // Sort and pivot data for Heatmap
-    // Simplified: assume data is already bucketed or we just plot as a Scatter/Heatmap
-    // For a true Hovmoller, we'd need a grid. Let's use a 3D Mesh or Heatmap.
-    
     // Extract unique times and pressures
-    const times = Array.from(new Set(data.map(d => new Date(d.time).getTime()))).sort();
-    const pressures = Array.from(new Set(data.map(d => d.pres))).sort((a,b) => a - b);
+    const times = Array.from(new Set(data.map((d) => new Date(d.time).getTime()))).sort();
+    const pressures = Array.from(new Set(data.map((d) => Number(d.pres ?? d.pressure ?? d.depth ?? 0)))).sort((a, b) => a - b);
 
     // Create Z grid
-    const z: any[][] = pressures.map(p => {
-      return times.map(t => {
-        const found = data.find(d => new Date(d.time).getTime() === t && d.pres === p);
-        return found ? found[variable] : null;
+    const z: any[][] = pressures.map((p) => {
+      return times.map((t) => {
+        const found = data.find(
+          (d) =>
+            new Date(d.time).getTime() === t &&
+            Number(d.pres ?? d.pressure ?? d.depth ?? 0) === p
+        );
+        if (!found) return null;
+        const v = found[variable] ?? found.val ?? found.value;
+        return v !== undefined && v !== null && !isNaN(Number(v)) ? Number(v) : null;
       });
     });
 
-    return [{
-      z,
-      x: times.map(t => new Date(t).toISOString().split('T')[0]),
-      y: pressures,
-      type: 'heatmap',
-      colorscale: variable === 'temp' ? 'YlOrRd' : 'Blues',
-      colorbar: {
-        title: { 
-          text: variable.toUpperCase(),
-          font: { color: '#94A3B8' }
+    const isTemp = variable === 'temp' || variable === 'temperature';
+    const isPsal = variable === 'psal' || variable === 'salinity';
+    const isDoxy = variable === 'doxy' || variable === 'oxygen';
+
+    let colorscale = 'YlOrRd';
+    if (isPsal) colorscale = 'Viridis';
+    if (isDoxy) colorscale = 'Tealgrn';
+
+    return [
+      {
+        z,
+        x: times.map((t) => new Date(t).toISOString().split('T')[0]),
+        y: pressures,
+        type: 'heatmap',
+        zsmooth: 'best',
+        colorscale: colorscale as any,
+        colorbar: {
+          title: {
+            text: isTemp ? 'Temp (°C)' : isPsal ? 'Salinity (PSU)' : 'DOXY (µmol/kg)',
+            font: { color: '#94A3B8', size: 10 },
+          },
+          tickfont: { color: '#94A3B8', size: 9 },
+          len: 0.8,
         },
-        tickfont: { color: '#94A3B8' },
-      }
-    }];
+      },
+    ];
   }, [data, variable]);
+
+  const isTemp = variable === 'temp' || variable === 'temperature';
+  const isPsal = variable === 'psal' || variable === 'salinity';
 
   const layout: Partial<Layout> = {
     title: {
-      text: title || `Hovmöller Diagram: ${variable.toUpperCase()} Evolution`,
-      font: { color: '#E2E8F0', family: 'Inter, sans-serif' },
+      text: title || `Hovmöller Spatio-Temporal Depth Evolution (${isTemp ? 'SST & Thermocline °C' : isPsal ? 'Salinity PSU' : 'DOXY µmol/kg'})`,
+      font: { color: '#E2E8F0', family: 'Inter, sans-serif', size: 12 },
     },
     paper_bgcolor: 'transparent',
-    plot_bgcolor: 'rgba(15, 23, 42, 0.5)',
+    plot_bgcolor: 'rgba(11, 29, 44, 0.4)',
+    height: 310,
+    autosize: true,
     xaxis: {
-      title: { 
-        text: 'Time',
-        font: { color: '#94A3B8' }
+      title: {
+        text: 'Observation Timeline (2026)',
+        font: { color: '#94A3B8', size: 11 },
       },
-      gridcolor: 'rgba(255,255,255,0.05)',
-      tickfont: { color: '#94A3B8' },
+      gridcolor: 'rgba(255,255,255,0.06)',
+      tickfont: { color: '#94A3B8', size: 10 },
     },
     yaxis: {
-      title: { 
-        text: 'Pressure (dbar)',
-        font: { color: '#94A3B8' }
+      title: {
+        text: 'Depth / Pressure (dbar)',
+        font: { color: '#94A3B8', size: 11 },
       },
       autorange: 'reversed',
-      gridcolor: 'rgba(255,255,255,0.05)',
-      tickfont: { color: '#94A3B8' },
+      gridcolor: 'rgba(255,255,255,0.06)',
+      tickfont: { color: '#94A3B8', size: 10 },
     },
-    margin: { l: 60, r: 20, t: 60, b: 60 },
+    margin: { l: 55, r: 25, t: 40, b: 45 },
     hovermode: 'closest',
-    autosize: true,
   };
 
+  if (plotData.length === 0) return null;
+
   return (
-    <div className="w-full h-full min-h-[400px] glass-card rounded-2xl overflow-hidden p-4">
+    <div className="w-full h-[320px] rounded-xl overflow-hidden bg-[#061422]/90 border border-white/10 p-2">
       <Plot
         data={plotData}
         layout={layout}
         useResizeHandler
-        className="w-full h-full"
+        style={{ width: '100%', height: '310px' }}
         config={{ displayModeBar: false, responsive: true }}
       />
     </div>

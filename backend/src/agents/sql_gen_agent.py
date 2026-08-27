@@ -42,14 +42,13 @@ Columns:
   longitude (DOUBLE PRECISION): Latest longitude
 * ALWAYS query public.v_latest_positions for 'current float locations', 'where are the floats now', or 'latest positions'.
 
-3. Table: public.marine_biodiversity (CMLRE Darwin Core Taxonomy)
+3. Table: public.marine_biodiversity (CMLRE In-Situ Biodiversity Occurrences — 105,866 rows on DB1)
 Columns:
-  id (INT): Primary key
-  scientific_name (VARCHAR): e.g. 'Sardinella longiceps', 'Rastrelliger kanagurta'
-  common_name (VARCHAR): e.g. 'Indian Oil Sardine'
-  latitude (DOUBLE PRECISION), longitude (DOUBLE PRECISION)
-  depth_m (NUMERIC), event_date (DATE)
-  thermal_range_min_c (NUMERIC), thermal_range_max_c (NUMERIC)
+  id (BIGINT PRIMARY KEY), occurrence_id (VARCHAR), scientific_name (VARCHAR)
+  kingdom (VARCHAR), phylum (VARCHAR), class_name (VARCHAR), order_name (VARCHAR), family (VARCHAR), genus (VARCHAR), species (VARCHAR)
+  minimum_depth_m (DOUBLE PRECISION), maximum_depth_m (DOUBLE PRECISION)
+  decimal_latitude (DOUBLE PRECISION), decimal_longitude (DOUBLE PRECISION), event_date (TIMESTAMP WITHOUT TIME ZONE), geom (GEOGRAPHY POINT 4326)
+* NOTE: Species ecological profiles (common_name, thermal/salinity/hypoxia thresholds) live in Qdrant bio_knowledge. In SQL, query scientific_name, family, genus, minimum_depth_m, maximum_depth_m, decimal_latitude, decimal_longitude, event_date.
 
 Geographic Regions:
   Arabian Sea: latitude BETWEEN 8.0 AND 25.0 AND longitude BETWEEN 55.0 AND 75.0
@@ -85,51 +84,69 @@ async def execute_sql_task(
 
     latency = {}
 
-    # ALWAYS generate SQL from the natural language task description.
-    # Never accept pre-built SQL from upstream plan params — the SQL_GEN agent
-    # is responsible for translating NL → SQL via LLM or rule-based fallback.
-    prompt = f"Generate SQL query for: {task_desc}"
+    from src.llm.sql_gen import build_nl2sql_messages
+
     t_llm = _time.perf_counter()
-    messages = [
-        {"role": "system", "content": SYSTEM_PROMPT},
-        {"role": "user", "content": prompt},
-    ]
+    messages = build_nl2sql_messages(task_desc)
     raw_output = await chat_complete(messages, temperature=0.0, task_tag="sql_gen", trace=trace)
     latency["llm_nl2sql_ms"] = round((_time.perf_counter() - t_llm) * 1000.0, 1)
     sql_candidate = extract_sql(raw_output)
 
-    # Enforce strict AST validation; fall back to rule-based SQL if LLM output is bad
+    # Pure LLM NL2SQL with AST sanitization
     t_san = _time.perf_counter()
-    from src.llm.sql_gen import generate_fallback_sql
-    try:
-        if not sql_candidate or "SELECT" not in sql_candidate.upper():
-            clean_sql = generate_fallback_sql(task_desc)
-            latency["sql_source"] = "rule_engine"
-        else:
+    clean_sql: Optional[str] = None
+    error_msg: Optional[str] = None
+
+    if sql_candidate and "SELECT" in sql_candidate.upper():
+        try:
             clean_sql = sanitize_sql(sql_candidate)
             latency["sql_source"] = "llm"
-    except Exception as e:
-        log.warning("SQL Sanitization failed, applying dynamic precision fallback: %s", str(e))
-        clean_sql = generate_fallback_sql(task_desc)
-        latency["sql_source"] = "rule_engine_fallback"
+        except Exception as e:
+            log.warning("SQL Sanitization failed on LLM candidate: %s", str(e))
+            error_msg = f"Sanitization Error: {str(e)}"
+            clean_sql = None
+    else:
+        error_msg = f"LLM failed to produce valid SELECT query (Raw output: {raw_output[:100]})"
+        clean_sql = None
+
     latency["sql_sanitize_ms"] = round((_time.perf_counter() - t_san) * 1000.0, 1)
 
-    # Execute against database pool
+    # Execute against database pool if valid SQL was generated
     t_db = _time.perf_counter()
-    rows = run_sql(clean_sql, limit=200)
+    rows = []
+    if clean_sql:
+        try:
+            rows = run_sql(clean_sql, limit=200)
+            # If 0 rows and query has a specific platform_number + spatial bounds, auto-relax bounding box
+            if not rows and "platform_number" in clean_sql and ("latitude" in clean_sql or "longitude" in clean_sql):
+                import re as _re
+                relaxed_sql = _re.sub(r"\s+AND\s+latitude\s+BETWEEN\s+[\d\.\-]+\s+AND\s+[\d\.\-]+", "", clean_sql, flags=_re.IGNORECASE)
+                relaxed_sql = _re.sub(r"\s+AND\s+longitude\s+BETWEEN\s+[\d\.\-]+\s+AND\s+[\d\.\-]+", "", relaxed_sql, flags=_re.IGNORECASE)
+                relaxed_sql = _re.sub(r"\s+AND\s+ST_[\w]+\([^)]+\)", "", relaxed_sql, flags=_re.IGNORECASE)
+                if relaxed_sql != clean_sql:
+                    log.info("Auto-relaxing geographic bounds for platform query: %s", relaxed_sql)
+                    relaxed_rows = run_sql(relaxed_sql, limit=200)
+                    if relaxed_rows:
+                        rows = relaxed_rows
+                        clean_sql = relaxed_sql
+        except Exception as e:
+            log.error("PostgreSQL execution failed on generated SQL: %s", str(e))
+            error_msg = f"Database Error: {str(e)}"
     latency["db_execute_ms"] = round((_time.perf_counter() - t_db) * 1000.0, 1)
 
-    # If DB returns no rows, report it honestly — do NOT inject fabricated data
-    if not rows:
-        log.info("SQL query returned 0 rows for: %s", task_desc[:80])
-        rows = []
+    status = "OK"
+    if error_msg:
+        status = "ERROR"
+    elif not rows:
+        status = "NO_DATA"
 
     return {
-        "sql": clean_sql,
+        "sql": clean_sql or "",
         "rows": rows,
         "row_count": len(rows),
         "columns": list(rows[0].keys()) if rows else [],
-        "status": "NO_DATA" if not rows else "OK",
+        "status": status,
+        "error": error_msg,
         "latency": latency,
     }
 

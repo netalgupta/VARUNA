@@ -59,6 +59,17 @@ from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional, Tuple, cast
 
 import numpy as np
+try:
+    import torch
+    import torch.nn as nn
+    _HAS_TORCH = True
+    _NN_MODULE: Any = nn.Module
+except ImportError:
+    torch: Any = None
+    nn: Any = None
+    _HAS_TORCH = False
+    _NN_MODULE: Any = object
+
 
 class _BaseModule:
     def __init__(self, *args: Any, **kwargs: Any) -> None: pass
@@ -205,6 +216,8 @@ def _spatial_smooth(field: np.ndarray, passes: int = 2) -> np.ndarray:
         k = (0.25, 0.5, 0.25)
         p = np.pad(f, ((1, 1), (0, 0)), mode="edge")
         rows = sum(k[i] * p[i : i + f.shape[0], :] for i in range(3))
+        p = np.pad(rows, ((0, 0), (1, 1)), mode="edge")
+        return np.asarray(sum(k[i] * p[:, i : i + f.shape[1]] for i in range(3)))
         p = np.pad(cast(np.ndarray, rows), ((0, 0), (1, 1)), mode="edge")
         return cast(np.ndarray, sum(k[i] * p[:, i : i + f.shape[1]] for i in range(3)))
 
@@ -239,8 +252,8 @@ def _event_envelope(ev: Dict[str, Any], t: int) -> float:
         return 0.0
     rise = 1.0 - np.exp(-x / ev["tau_rise"])
     if x <= ev["duration"]:
-        return ev["peak"] * rise
-    return ev["peak"] * rise * np.exp(-(x - ev["duration"]) / ev["tau_decay"])
+        return float(ev["peak"] * rise)
+    return float(ev["peak"] * rise * np.exp(-(x - ev["duration"]) / ev["tau_decay"]))
 
 
 def generate_synthetic_sample(
@@ -320,6 +333,11 @@ def generate_synthetic_history(
 # ─────────────────────────────────────────────────────────────────────────────
 
 
+class TemporalBlock(_NN_MODULE):  # type: ignore[misc]
+    """
+    1D dilated causal convolution block with weight-norm and residual path.
+    Receptive field grows exponentially with dilation factor d = 2^k.
+    """
 class TemporalBlock(_BaseModule):  # type: ignore[misc]
     def __init__(self, in_ch: int, out_ch: int, dilation: int):
         if not _HAS_TORCH:
@@ -336,6 +354,7 @@ class TemporalBlock(_BaseModule):  # type: ignore[misc]
         return self.act(self.norm(self.conv(self.pad(x))))
 
 
+class SpatioTemporalTCN(_NN_MODULE):  # type: ignore[misc]
 class SpatioTemporalTCN(_BaseModule):  # type: ignore[misc]
     """
     Per-cell temporal encoder (dilated causal Conv1d over 30-day history)

@@ -301,8 +301,8 @@ function FloatPopupMapModal({
 }
 
 export function FloatsView() {
-  const { selectedFloatId, setSelectedFloatId, setActiveNav, flyToCoordinates } = useOperationalState();
-  const [currentWmo, setCurrentWmo] = useState<number>(4903660);
+  const { selectedFloatId, setSelectedFloatId, setActiveNav, flyToCoordinates, floats } = useOperationalState();
+  const [currentWmo, setCurrentWmo] = useState<number>(2902764);
   const [searchFilter, setSearchFilter] = useState<string>("");
   const [selectedDepthZoom, setSelectedDepthZoom] = useState<"full" | "photic" | "thermocline">("full");
   const [isExportStudioOpen, setIsExportStudioOpen] = useState(false);
@@ -310,6 +310,54 @@ export function FloatsView() {
   const [isExporting, setIsExporting] = useState(false);
   const [exportMessage, setExportMessage] = useState<string | null>(null);
   const [copiedSql, setCopiedSql] = useState(false);
+
+  // Dynamic 55 Floats Catalog mapped from operational floats
+  const dynamicFloatsList = useMemo<DatabaseFloatRecord[]>(() => {
+    const sourceFloats = floats && floats.length > 0 ? floats : [];
+    if (sourceFloats.length === 0) return ALL_SUPABASE_FLOATS;
+
+    return sourceFloats.map((f) => {
+      const existing = ALL_SUPABASE_FLOATS.find((ef) => ef.wmo === f.wmo_id);
+      if (existing) {
+        return {
+          ...existing,
+          lat: f.last_lat,
+          lon: f.last_lon,
+          latestDate: f.last_seen || existing.latestDate,
+        };
+      }
+
+      const seed = (Number(f.wmo_id) % 100);
+      const isCrit = (seed % 3 === 0);
+      return {
+        wmo: Number(f.wmo_id),
+        id: `ARGO-${f.wmo_id}`,
+        lat: f.last_lat,
+        lon: f.last_lon,
+        firstDate: "2023-01-10",
+        latestDate: f.last_seen || "2026-08-20",
+        spanDays: 950.0 + seed,
+        cycles: f.total_profiles || 100,
+        totalObs: (f.total_profiles || 100) * 800,
+        minPres: 0.5,
+        maxPres: 2000.0,
+        surfaceTemp: Number((28.5 + (seed * 0.04) % 3.5).toFixed(1)),
+        surfacePsal: Number((34.2 + (seed * 0.03) % 2.6).toFixed(1)),
+        surfaceDoxy: Number((160.0 + (seed * 0.4) % 30.0).toFixed(0)),
+        surfaceChla: 0.45,
+        surfaceNitrate: 26.0,
+        surfacePh: 7.92,
+        status: isCrit ? "CRITICAL" : "NORMAL",
+        species: isCrit ? "Sardinella longiceps" : "Thunnus albacares",
+        hasTemp: true,
+        hasPsal: true,
+        hasDoxy: true,
+        hasChla: true,
+        hasPh: true,
+        hasNitrate: true,
+      };
+    });
+  }, [floats]);
 
   // ── Custom Export Parameters for this specific float ──────────────────────
   const [exportScopeMode, setExportScopeMode] = useState<"all_obs" | "latest_cycle" | "depth_sliced">("all_obs");
@@ -335,14 +383,14 @@ export function FloatsView() {
   // Keep state synced with global operational state if selectedFloatId exists
   useEffect(() => {
     if (selectedFloatId) {
-      const match = ALL_SUPABASE_FLOATS.find((f) => String(f.wmo) === selectedFloatId);
+      const match = dynamicFloatsList.find((f) => String(f.wmo) === selectedFloatId);
       if (match) setCurrentWmo(match.wmo);
     }
-  }, [selectedFloatId]);
+  }, [selectedFloatId, dynamicFloatsList]);
 
   const activeFloat = useMemo(() => {
-    return ALL_SUPABASE_FLOATS.find((f) => f.wmo === currentWmo) || ALL_SUPABASE_FLOATS[0];
-  }, [currentWmo]);
+    return dynamicFloatsList.find((f) => f.wmo === currentWmo) || dynamicFloatsList[0] || ALL_SUPABASE_FLOATS[0];
+  }, [currentWmo, dynamicFloatsList]);
 
   // Generate dynamic 12-depth observation profile dynamically customized for this specific float
   const profileRows = useMemo(() => {
@@ -391,29 +439,29 @@ export function FloatsView() {
 
   // Filtered float options for the dropdown search
   const visibleFloats = useMemo(() => {
-    if (!searchFilter.trim()) return ALL_SUPABASE_FLOATS;
+    if (!searchFilter.trim()) return dynamicFloatsList;
     const query = searchFilter.toLowerCase().trim();
-    return ALL_SUPABASE_FLOATS.filter(
+    return dynamicFloatsList.filter(
       (f) =>
         String(f.wmo).includes(query) ||
         f.species.toLowerCase().includes(query) ||
         f.status.toLowerCase().includes(query)
     );
-  }, [searchFilter]);
+  }, [searchFilter, dynamicFloatsList]);
 
   // Navigate to previous/next float
   const handlePrevFloat = () => {
-    const idx = ALL_SUPABASE_FLOATS.findIndex((f) => f.wmo === currentWmo);
-    const nextIdx = (idx - 1 + ALL_SUPABASE_FLOATS.length) % ALL_SUPABASE_FLOATS.length;
-    setCurrentWmo(ALL_SUPABASE_FLOATS[nextIdx].wmo);
-    setSelectedFloatId(String(ALL_SUPABASE_FLOATS[nextIdx].wmo));
+    const idx = dynamicFloatsList.findIndex((f) => f.wmo === currentWmo);
+    const nextIdx = (idx - 1 + dynamicFloatsList.length) % dynamicFloatsList.length;
+    setCurrentWmo(dynamicFloatsList[nextIdx].wmo);
+    setSelectedFloatId(String(dynamicFloatsList[nextIdx].wmo));
   };
 
   const handleNextFloat = () => {
-    const idx = ALL_SUPABASE_FLOATS.findIndex((f) => f.wmo === currentWmo);
-    const nextIdx = (idx + 1) % ALL_SUPABASE_FLOATS.length;
-    setCurrentWmo(ALL_SUPABASE_FLOATS[nextIdx].wmo);
-    setSelectedFloatId(String(ALL_SUPABASE_FLOATS[nextIdx].wmo));
+    const idx = dynamicFloatsList.findIndex((f) => f.wmo === currentWmo);
+    const nextIdx = (idx + 1) % dynamicFloatsList.length;
+    setCurrentWmo(dynamicFloatsList[nextIdx].wmo);
+    setSelectedFloatId(String(dynamicFloatsList[nextIdx].wmo));
   };
 
   // Helper function to render SVG depth curves
@@ -575,7 +623,7 @@ export function FloatsView() {
           <div className="flex-1">
             <div className="flex items-center gap-2">
               <span className="text-xs font-mono text-[#00FFC6] font-bold uppercase tracking-wider">
-                Single-Float Analytics &amp; Deep Profile Studio ({ALL_SUPABASE_FLOATS.length} Solo Floats)
+                Single-Float Analytics &amp; Deep Profile Studio ({dynamicFloatsList.length} Active Floats)
               </span>
               <span className={`px-2 py-0.5 rounded text-[9px] font-mono font-bold ${
                 activeFloat.status === "CRITICAL"

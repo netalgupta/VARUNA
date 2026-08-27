@@ -53,16 +53,25 @@ export function OceanChart({ rows, vizSpecs, title }: OceanChartProps) {
     }
 
     if (vars.length === 0) {
-      // Fallback: any numeric key that is not depth/pressure/lat/lon/id/time
-      keys.forEach((k) => {
-        const lk = k.toLowerCase();
-        if (
-          !['pres', 'pressure', 'depth', 'lat', 'latitude', 'lon', 'longitude', 'time', 'date', 'id', 'cycle', 'float_id'].includes(lk) &&
-          typeof sample[k] === 'number'
-        ) {
-          vars.push({ key: k, label: k.toUpperCase(), unit: '', color: '#00FFC6', icon: Activity });
-        }
-      });
+      // Check for distance in co-location queries
+      const distKey = findKey(['dist_km', 'distance_km', 'distance']);
+      if (distKey && typeof sample[distKey] === 'number') {
+        vars.push({ key: distKey, label: 'Co-location Distance', unit: 'km', color: '#2EE6C6', icon: Activity });
+      } else {
+        // Fallback: any genuine numeric measurement key (excluding all identifiers and metadata)
+        const EXCLUDED_KEYS = new Set([
+          'pres', 'pressure', 'depth', 'depth_m', 'maximum_depth_m', 'minimum_depth_m',
+          'lat', 'latitude', 'lon', 'longitude', 'time', 'date', 'id', 'cycle', 'cycle_number',
+          'float_id', 'argo_float_id', 'platform_number', 'wmo', 'record_id', 'occurrence_id',
+          'tax_id', 'species_id', 'cluster_id', 'index',
+        ]);
+        keys.forEach((k) => {
+          const lk = k.toLowerCase();
+          if (!EXCLUDED_KEYS.has(lk) && typeof sample[k] === 'number') {
+            vars.push({ key: k, label: k.replace(/_/g, ' ').toUpperCase(), unit: '', color: '#00FFC6', icon: Activity });
+          }
+        });
+      }
     }
 
     return vars;
@@ -139,7 +148,8 @@ export function OceanChart({ rows, vizSpecs, title }: OceanChartProps) {
   // Hover state
   const [hoverIndex, setHoverIndex] = useState<number | null>(null);
 
-  if (points.length === 0) return null;
+  // If no available variables or no real data points, do not render a dummy graph
+  if (availableVars.length === 0 || points.length === 0) return null;
 
   // SVG Geometry Settings
   const svgWidth = 640;

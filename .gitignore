@@ -49,3 +49,16 @@ Thumbs.db
 .next/
 # VARUNA ML runtime caches (machine-local DB snapshots; rebuild automatically)
 backend/src/ml/cache/
+apps/backend/data/cache/
+backend/data/cache/
+*.tsbuildinfo
+
+cmlre_dataset_1/
+Dataset1_CMLRE/
+dataset2_obis/
+dataset2_test/
+chrome-profile-temp-new/
+*chrome-profile*
+
+pyrightconfig.json
+

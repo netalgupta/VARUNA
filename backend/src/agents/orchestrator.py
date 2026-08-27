@@ -18,9 +18,11 @@ from pydantic import BaseModel, Field
 from src.agents.sql_gen_agent import execute_sql_task
 from src.agents.retrieval_agent import execute_retrieval_task
 from src.agents.synthesizer_agent import synthesize_answer
+from src.agents.biodiversity_agent import execute_biodiversity_task
 from src.llm.openrouter_client import chat_complete
 from src.config import settings
 from src.observability.tracer import pipeline_span
+from src.aegis.aegis_engine import run_aegis, build_evidence_context_for_synthesizer
 
 log = logging.getLogger("varuna.orchestrator")
 
@@ -274,9 +276,20 @@ async def plan_and_execute(
                     elif node.agent == "RETRIEVAL":
                         res = await execute_retrieval_task(node.params.get("query", query), params=node.params, trace=trace)
                     elif node.agent == "BIODIVERSITY":
-                        from src.api.routes import correlate_species
-                        correlations = await correlate_species(species=node.params.get("species", "Sardinella longiceps"))
-                        res = {"correlations": [c.model_dump() for c in correlations], "species": node.params.get("species")}
+                        res = await execute_biodiversity_task(
+                            node.params.get("query", query),
+                            params=node.params,
+                            trace=trace,
+                        )
+                        if event_bus and res.get("rows"):
+                            await event_bus.emit("bio_rows", res["rows"][:20])
+                        if event_bus and res.get("stress_flags"):
+                            await event_bus.emit("pipeline_step", {
+                                "stage": "BIODIVERSITY",
+                                "task_id": node.task_id,
+                                "status": "DONE",
+                                "message": f"Found {len(res.get('rows',[]))} bio co-locations | {len(res.get('stress_flags',[]))} stress flags",
+                            })
                     elif node.agent == "SYNTHESIZER":
                         res = await synthesize_answer(query, task_results=task_results, trace=trace)
                     else:
@@ -315,7 +328,50 @@ async def plan_and_execute(
                     step_entry["latency_breakdown"] = result_data["latency"]
                 execution_steps.append(step_entry)
 
-        # Step 3: Extract final synthesized result
+        # Step 3: Run AEGIS guardrail engine before synthesis
+        _sql_rows: list = []
+        _bio_rows: list = []
+        _species_profiles: list = []
+        _taxonomy_records: list = []
+        _rag_texts: list = []
+        for _res in task_results.values():
+            if isinstance(_res, dict):
+                _sql_rows.extend(_res.get("rows") or [])
+                _bio_rows.extend(_res.get("bio_matches") or [])
+                _species_profiles.extend(_res.get("species_profiles") or [])
+                _taxonomy_records.extend(_res.get("taxonomy_records") or [])
+                _rag_texts.extend(_res.get("retrieved_texts") or [])
+
+        t_aegis = time.perf_counter()
+        aegis_result = await run_aegis(
+            question=query,
+            sql_rows=_sql_rows,
+            bio_matches=_bio_rows,
+            species_profiles=_species_profiles,
+            taxonomy_records=_taxonomy_records,
+            rag_texts=_rag_texts,
+        )
+        aegis_context = build_evidence_context_for_synthesizer(aegis_result)
+        aegis_latency_ms = round((time.perf_counter() - t_aegis) * 1000.0, 1)
+        log.info(
+            "AEGIS completed in %.0fms — %d approved, %d rejected, %d background, %d warnings",
+            aegis_latency_ms,
+            len(aegis_result.approved_claims),
+            len(aegis_result.rejected_claims),
+            len(aegis_result.background_claims),
+            len(aegis_result.warnings),
+        )
+        if event_bus:
+            await event_bus.emit("pipeline_step", {
+                "stage": "AEGIS",
+                "status": "DONE",
+                "message": aegis_result.summary_line(),
+                "duration_ms": aegis_latency_ms,
+                "flags": aegis_result.flags,
+                "rejected_count": len(aegis_result.rejected_claims),
+            })
+
+        # Step 4: Extract final synthesized result (AEGIS-gated)
         final_synth = None
         for tid, res in task_results.items():
             if isinstance(res, dict) and "answer_markdown" in res:
@@ -325,7 +381,12 @@ async def plan_and_execute(
         synthesizer_latency_ms = 0.0
         if not final_synth:
             t_synth = time.perf_counter()
-            final_synth = await synthesize_answer(query, task_results=task_results, trace=trace)
+            final_synth = await synthesize_answer(
+                query,
+                task_results=task_results,
+                aegis_context=aegis_context,
+                trace=trace,
+            )
             synthesizer_latency_ms = round((time.perf_counter() - t_synth) * 1000.0, 1)
 
         total_ms = (time.perf_counter() - start_total) * 1000.0

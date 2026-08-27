@@ -92,7 +92,8 @@ export function CommandPalette({ isOpen, onClose }: CommandPaletteProps) {
               <div className="space-y-1">
                 <button
                   onClick={() => {
-                    setCopilotOpen(true);
+                    setActiveNav("COPILOT");
+                    setCopilotOpen(false);
                     onClose();
                   }}
                   className="w-full p-2 rounded-lg hover:bg-white/5 flex items-center justify-between text-zinc-300 hover:text-white group"

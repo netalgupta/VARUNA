@@ -408,6 +408,59 @@ function SqlInspectorDrawer({
   );
 }
 
+// Message Copy Button with animated feedback
+function MessageCopyButton({ text, role }: { text: string; role: "user" | "assistant" }) {
+  const [copied, setCopied] = useState(false);
+
+  const handleCopy = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!text) return;
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      // Fallback for non-secure contexts
+      const ta = document.createElement("textarea");
+      ta.value = text;
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand("copy");
+      document.body.removeChild(ta);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    }
+  };
+
+  return (
+    <button
+      type="button"
+      onClick={handleCopy}
+      title={copied ? "Copied to clipboard!" : role === "user" ? "Copy prompt" : "Copy response"}
+      className={`
+        p-1.5 rounded-lg text-xs flex items-center gap-1 transition-all duration-150 backdrop-blur-sm border shadow-sm
+        ${
+          copied
+            ? "bg-[#00FFC6]/20 border-[#00FFC6]/40 text-[#00FFC6]"
+            : "bg-black/40 hover:bg-black/70 border-white/10 text-zinc-400 hover:text-white"
+        }
+      `}
+    >
+      {copied ? (
+        <>
+          <Check size={12} className="text-[#00FFC6]" />
+          <span className="text-[10px] font-mono text-[#00FFC6]">Copied</span>
+        </>
+      ) : (
+        <>
+          <Copy size={12} />
+          <span className="text-[10px] font-mono opacity-80">Copy</span>
+        </>
+      )}
+    </button>
+  );
+}
+
 // Typing skeleton for streaming
 function TypingSkeleton() {
   return (
@@ -625,7 +678,7 @@ export function ChatPanel({
               {/* Message Bubble Container */}
               <div
                 className={`
-                  max-w-[92%] rounded-2xl p-4 text-[13.5px] leading-relaxed font-sans
+                  group relative max-w-[92%] rounded-2xl p-4 text-[13.5px] leading-relaxed font-sans
                   ${
                     m.role === "user"
                       ? "bg-[#0E2C42] border border-[#2EE6C6]/30 text-white rounded-tr-sm shadow-md"
@@ -633,6 +686,15 @@ export function ChatPanel({
                   }
                 `}
               >
+                {/* Message Quick Actions: Copy Button */}
+                <div
+                  className={`
+                    absolute top-2.5 right-2.5 opacity-0 group-hover:opacity-100 transition-opacity duration-150 flex items-center gap-1 z-10
+                  `}
+                >
+                  <MessageCopyButton text={m.content || ""} role={m.role} />
+                </div>
+
                 {m.role === "assistant" ? (
                   <>
                     {/* Live Multi-Agent Task DAG Execution Graph */}
@@ -690,7 +752,7 @@ export function ChatPanel({
                     )}
                   </>
                 ) : (
-                  <p className="whitespace-pre-wrap text-sm leading-relaxed font-sans">
+                  <p className="whitespace-pre-wrap text-sm leading-relaxed font-sans pr-6">
                     {m.content}
                   </p>
                 )}

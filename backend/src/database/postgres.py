@@ -75,7 +75,7 @@ def get_pool(db: str = "db2") -> Optional[Any]:
                     dsn,
                     min_size=1,
                     max_size=8,
-                    timeout=2.0,
+                    timeout=6.0,
                     kwargs=kwargs_dict,
                 )
             except Exception as e:
@@ -98,7 +98,7 @@ def get_pool(db: str = "db2") -> Optional[Any]:
                 dsn,
                 min_size=1,
                 max_size=8,
-                timeout=2.0,
+                timeout=6.0,
                 kwargs=kwargs_dict2,
             )
         except Exception as e:
@@ -147,6 +147,10 @@ def route_query(sql: str) -> List[str]:
     # 1. Latest positions view -> always in DB2
     if "v_latest_positions" in s_lower:
         return ["db2"]
+
+    # 1b. Marine biodiversity (CMLRE) & Species Ecological Profiles -> live in DB1
+    if "marine_biodiversity" in s_lower or "species_ecological_profiles" in s_lower or "species_profiles" in s_lower:
+        return ["db1"]
 
     # 2. Relative recent time expressions (NOW() - INTERVAL 'X days/months') -> DB2
     if any(k in s_lower for k in ("now()", "current_timestamp", "current_date")):
@@ -201,11 +205,18 @@ def _execute_single_db(db_name: str, sql: str, params: Optional[dict] = None) ->
     try:
         with _conn(db_name) as conn:
             with conn.cursor() as cur:
-                cur.execute(sql, params or {})  # type: ignore[arg-type]
+                if params:
+                    cur.execute(sql, params)  # type: ignore[arg-type]
+                else:
+                    cur.execute(sql)
                 rows = cur.fetchall()
                 return [dict(r) for r in rows]
     except Exception as e:
-        log.warning("Query execution failed on %s: %s", db_name, str(e))
+        err_msg = str(e)
+        if "does not exist" in err_msg or "UndefinedTable" in err_msg:
+            log.debug("Table not present on %s: %s", db_name, err_msg)
+        else:
+            log.warning("Query execution failed on %s: %s", db_name, err_msg)
         return []
 
 
@@ -221,14 +232,16 @@ def run_sql(sql: str, params: Optional[dict] = None, limit: int = 500) -> List[D
     if "limit" not in s.lower():
         s = f"{s} LIMIT {limit}"
 
-    target_dbs = route_query(s)
+    s_lower = s.lower()
+    is_bio_query = "marine_biodiversity" in s_lower or "species_ecological_profiles" in s_lower or "species_profiles" in s_lower
+    target_dbs = ["db1"] if is_bio_query else route_query(s)
 
     # 1. Single database path -> Fast zero-overhead execution
     if len(target_dbs) == 1:
         rows = _execute_single_db(target_dbs[0], s, params)
-        if rows:
+        if rows or is_bio_query:
             return rows
-        # If DB returned nothing or failed, try the other DB before fallback
+        # If DB returned nothing or failed and is not a bio-only query, try other DB before fallback
         other_db = "db1" if target_dbs[0] == "db2" else "db2"
         rows_other = _execute_single_db(other_db, s, params)
         if rows_other:
@@ -390,9 +403,22 @@ def depth_profile(
     target_time: Optional[datetime] = None,
     radius_deg: float = 0.05,
 ) -> List[Dict[str, Any]]:
-    """Get full vertical depth profile (0-2000m) for a float observation."""
+    """Get full vertical depth profile (0-2000m) for a single ARGO float cycle cast."""
     conditions = [f"platform_number = {platform_number}"]
     params: dict = {}
+
+    # If cycle number is not specified, auto-resolve the float's latest cycle with observations
+    if cycle_number is None and lat is None and lon is None and target_time is None:
+        sql_latest_cycle = f"""
+        SELECT cycle_number
+        FROM public.marine_data
+        WHERE platform_number = {platform_number} AND temp IS NOT NULL
+        ORDER BY time DESC, cycle_number DESC
+        LIMIT 1;
+        """
+        cycle_res = _execute_single_db("db2", sql_latest_cycle) or _execute_single_db("db1", sql_latest_cycle)
+        if cycle_res and cycle_res[0].get("cycle_number") is not None:
+            cycle_number = cycle_res[0]["cycle_number"]
 
     if cycle_number is not None:
         conditions.append(f"cycle_number = {cycle_number}")
@@ -409,17 +435,75 @@ def depth_profile(
     where = " AND ".join(conditions)
     sql = f"""
     SELECT platform_number, cycle_number, direction, time, latitude, longitude,
-           pres AS depth_m, temp, psal, doxy, chla, nitrate, ph_in_situ_total
+           pres, pres AS depth_m, pres AS depth, temp, psal, doxy, chla, nitrate, ph_in_situ_total
     FROM public.marine_data
     WHERE {where}
       AND pres IS NOT NULL
     ORDER BY pres ASC
     LIMIT 1000
     """
-    rows = run_sql(sql, params=params, limit=1000)
+    # Fast path: query DB2 first (recent active float data), fallback to DB1
+    rows = _execute_single_db("db2", sql, params)
     if rows:
         return rows
+    rows_db1 = _execute_single_db("db1", sql, params)
+    if rows_db1:
+        return rows_db1
     return []
+
+
+def get_float_deepest_cast(platform_number: int) -> Optional[Dict[str, Any]]:
+    """Retrieve the absolute deepest recorded measurement for a given float (1 dbar = 1 m)."""
+    sql = f"""
+    SELECT platform_number, cycle_number, direction, time, latitude, longitude,
+           pres, pres AS depth_m, pres AS depth, temp, psal, doxy, chla, nitrate, ph_in_situ_total
+    FROM public.marine_data
+    WHERE platform_number = {platform_number}
+      AND pres IS NOT NULL AND temp IS NOT NULL
+    ORDER BY pres DESC
+    LIMIT 1
+    """
+    rows = _execute_single_db("db2", sql)
+    if rows:
+        return rows[0]
+    rows_db1 = _execute_single_db("db1", sql)
+    if rows_db1:
+        return rows_db1[0]
+    return None
+
+
+def get_float_latest_surface(platform_number: int) -> Optional[Dict[str, Any]]:
+    """Retrieve the latest valid surface measurement for a given float (1 dbar = 1 m)."""
+    sql = f"""
+    SELECT platform_number, cycle_number, direction, time, latitude, longitude,
+           pres, pres AS depth_m, pres AS depth, temp, psal, doxy, chla, nitrate, ph_in_situ_total
+    FROM public.marine_data
+    WHERE platform_number = {platform_number}
+      AND pres < 25 AND temp IS NOT NULL
+    ORDER BY time DESC, pres ASC
+    LIMIT 1
+    """
+    rows = _execute_single_db("db2", sql)
+    if not rows:
+        rows = _execute_single_db("db1", sql)
+
+    if rows:
+        res = rows[0]
+        # Coalesce near-surface DOXY / CHLA from the same cycle cast if null at the very top millimeter
+        if res.get("doxy") is None and res.get("cycle_number") is not None:
+            sql_doxy = f"""
+            SELECT doxy, chla FROM public.marine_data
+            WHERE platform_number = {platform_number} AND cycle_number = {res['cycle_number']}
+              AND pres < 35 AND doxy IS NOT NULL
+            ORDER BY pres ASC LIMIT 1
+            """
+            doxy_row = _execute_single_db("db2", sql_doxy) or _execute_single_db("db1", sql_doxy)
+            if doxy_row:
+                res["doxy"] = doxy_row[0].get("doxy")
+                if res.get("chla") is None and doxy_row[0].get("chla") is not None:
+                    res["chla"] = doxy_row[0].get("chla")
+        return res
+    return None
 
 
 # ── Regional statistics ───────────────────────────────────────────────────────

@@ -33,6 +33,25 @@ def build_viz_specs(
     if not rows:
         return {"chart_type": None, "chart_data": None, "map_data": None}
 
+    # Normalize cross-domain / alias keys
+    norm_rows = []
+    for r in rows:
+        nr = dict(r)
+        if "water_temp_c" in nr and "temp" not in nr:
+            nr["temp"] = nr["water_temp_c"]
+        if "dissolved_oxygen_umol_kg" in nr and "doxy" not in nr:
+            nr["doxy"] = nr["dissolved_oxygen_umol_kg"]
+        if "salinity_psu" in nr and "psal" not in nr:
+            nr["psal"] = nr["salinity_psu"]
+        if "maximum_depth_m" in nr and "pres" not in nr:
+            nr["pres"] = nr["maximum_depth_m"]
+        if "argo_float_id" in nr and "platform_number" not in nr:
+            nr["platform_number"] = nr["argo_float_id"]
+        if "argo_obs_time" in nr and "time" not in nr:
+            nr["time"] = nr["argo_obs_time"]
+        norm_rows.append(nr)
+    rows = norm_rows
+
     cols = set(rows[0].keys())
     q = question.lower()
 
@@ -41,7 +60,8 @@ def build_viz_specs(
     if "latitude" in cols and "longitude" in cols:
         points = []
         for r in islice(rows, 300):
-            lat = r.get("latitude"); lon = r.get("longitude")
+            lat = r.get("latitude") or r.get("lat") or r.get("decimal_latitude")
+            lon = r.get("longitude") or r.get("lon") or r.get("decimal_longitude")
             if lat is None or lon is None:
                 continue
             points.append({
@@ -62,11 +82,11 @@ def build_viz_specs(
 
     has_depth   = "depth_m" in cols or "pres" in cols
     has_time    = "time" in cols or "month" in cols
-    has_temp    = "temp" in cols
-    has_psal    = "psal" in cols
-    has_doxy    = "doxy" in cols
-    has_chla    = "chla" in cols
-    has_nitrate = "nitrate" in cols
+    has_temp    = "temp" in cols and any(r.get("temp") is not None for r in rows)
+    has_psal    = "psal" in cols and any(r.get("psal") is not None for r in rows)
+    has_doxy    = "doxy" in cols and any(r.get("doxy") is not None for r in rows)
+    has_chla    = "chla" in cols and any(r.get("chla") is not None for r in rows)
+    has_nitrate = "nitrate" in cols and any(r.get("nitrate") is not None for r in rows)
     has_month   = "month" in cols
     multi_float = len({r.get("platform_number") for r in rows if r.get("platform_number")}) > 1
 

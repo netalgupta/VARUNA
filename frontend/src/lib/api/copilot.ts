@@ -10,6 +10,7 @@ export async function postAgentChat(payload: ChatIn): Promise<ChatOut> {
   return apiClient<ChatOut>(ENDPOINTS.AGENT_CHAT, {
     method: "POST",
     body: JSON.stringify(payload),
+    timeout: 120000,
   });
 }
 

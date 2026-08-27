@@ -11,16 +11,16 @@ import re
 from typing import Optional
 
 SQL_FENCE  = re.compile(r"```(?:sql)?\s*(.*?)```", re.IGNORECASE | re.DOTALL)
-SELECT_RE  = re.compile(r"(?is)\bSELECT\b.+")
+SELECT_RE  = re.compile(r"(?is)\b(?:SELECT|WITH)\b.+")
 BANNED     = ("insert","update","delete","drop","alter","create",
               "grant","revoke","truncate","comment","attach")
 
 
 def extract_sql(text: str) -> Optional[str]:
     """
-    Extract a single clean SELECT from LLM-generated text.
-    Priority: fenced block > first SELECT occurrence.
-    Returns None if no safe SELECT found.
+    Extract a single clean SELECT or CTE query from LLM-generated text.
+    Priority: fenced block > first SELECT/WITH occurrence.
+    Returns None if no safe SELECT/WITH found.
     """
     if not text:
         return None
@@ -30,21 +30,25 @@ def extract_sql(text: str) -> Optional[str]:
     m = SQL_FENCE.search(t)
     cand = m.group(1).strip() if m else None
 
-    # Fallback: first SELECT
+    # Fallback: first SELECT or WITH
     if not cand:
         m2 = SELECT_RE.search(t)
         if not m2:
             return None
         cand = m2.group(0).strip()
 
-    # Strip anything after role markers
-    for stop in ("\nAnswer:", "\nHuman:", "\nAssistant:", "\nExplanation:", "```"):
+    # Strip anything after role markers or tool-call tokens
+    for stop in ("\nAnswer:", "\nHuman:", "\nAssistant:", "\nExplanation:", "```", "<|tool_call", "<|im_end", "<|end", "')]"):
         cand = cand.split(stop)[0].strip()
 
-    cand = cand.rstrip(";").strip()
+    # Unescape any literal escape sequences from JSON/LLM output
+    cand = cand.replace(r"\n", "\n").replace(r"\t", " ").replace(r"\'", "'").replace(r'\"', '"')
+    # If a semicolon exists, take only the first statement
+    cand = cand.split(";")[0].strip()
+    cand = re.sub(r"['\"\)]+\]\}?$", "", cand).strip()
     low = cand.lower()
 
-    if not low.lstrip().startswith("select"):
+    if not (low.lstrip().startswith("select") or low.lstrip().startswith("with")):
         return None
     if any(b in low for b in BANNED):
         return None

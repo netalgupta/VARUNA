@@ -3,22 +3,22 @@
 import React, { useState, useEffect, useMemo } from "react";
 import {
   Radio,
-  Clock,
   Compass,
-  Layers,
-  ChevronRight,
-  TrendingUp,
   X,
-  Droplets,
-  Thermometer,
-  Activity,
+  ChevronRight,
 } from "lucide-react";
 import { useOperationalState } from "@/providers/OperationalProvider";
 import { getFloatTrajectory } from "@/lib/api/argo";
 import type { FloatTrajectoryPoint } from "@/types/argo";
 
-export function ArgoVerticalProfilePanel() {
-  const { selectedFloatId, selectedFloatProfile, floats } = useOperationalState();
+export function ArgoVerticalProfilePanel({
+  isCollapsible = false,
+  onDeselect,
+}: {
+  isCollapsible?: boolean;
+  onDeselect?: () => void;
+} = {}) {
+  const { selectedFloatId, selectedFloatProfile, floats, setActiveNav } = useOperationalState();
   const [activeView, setActiveView] = useState<"Profile" | "Map" | "History">("Profile");
   const [trajectoryPoints, setTrajectoryPoints] = useState<FloatTrajectoryPoint[]>([]);
 
@@ -117,6 +117,37 @@ export function ArgoVerticalProfilePanel() {
     return `M ${pts.join(" L ")}`;
   }, [trajectoryPoints]);
 
+  // Collapsed state when no float is selected
+  if (isCollapsible && !selectedFloatId) {
+    return (
+      <div className="panel-marine px-4 py-3 bg-[#0B1D2C]/90 flex items-center justify-between gap-4 font-mono text-[13px] select-none transition-all shadow-md">
+        <div className="flex items-center gap-3 min-w-0">
+          <div className="w-8 h-8 rounded-xl bg-[#2EE6C6]/15 border border-[#2EE6C6]/40 flex items-center justify-center shadow-[0_0_10px_rgba(46,230,198,0.25)] shrink-0">
+            <Radio size={16} className="text-[#00FFC6]" />
+          </div>
+          <div className="flex items-center gap-2.5 truncate">
+            <span className="font-bold text-white uppercase text-[13px]">
+              Vertical Cast Profile
+            </span>
+            <span className="text-[#809AAB] text-[13px] truncate">
+              Select a float on the map to view its profile
+            </span>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-3 shrink-0">
+          <button
+            onClick={() => setActiveNav("FLOATS")}
+            className="px-3.5 py-1.5 rounded-lg bg-[#2EE6C6]/15 hover:bg-[#2EE6C6] text-[#2EE6C6] hover:text-black text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer"
+          >
+            <span>Open Float Studio</span>
+            <ChevronRight size={13} />
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="panel-marine flex flex-col h-full overflow-hidden p-3.5 bg-[#0B1D2C]/90 relative select-none">
       {/* ── Header & Action Controls ──────────────────────────────────────── */}
@@ -125,18 +156,18 @@ export function ArgoVerticalProfilePanel() {
           <div className="w-5 h-5 rounded bg-[#2EE6C6]/15 border border-[#2EE6C6]/40 flex items-center justify-center">
             <Radio size={12} className="text-[#00FFC6]" />
           </div>
-          <span className="text-xs font-mono font-bold tracking-wider text-white">
+          <span className="text-xs sm:text-[13px] font-mono font-bold tracking-wider text-white">
             ARGO #{selectedFloatId || "2902764"} · Vertical Cast Profile
           </span>
         </div>
 
         {/* View Toggle Buttons */}
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-1.5">
           {(["Profile", "Map", "History"] as const).map((view) => (
             <button
               key={view}
               onClick={() => setActiveView(view)}
-              className={`px-2 py-0.5 rounded text-[10px] font-mono transition-all ${
+              className={`px-2.5 py-0.5 rounded text-xs font-mono transition-all ${
                 activeView === view
                   ? "bg-[#2EE6C6] text-black font-bold"
                   : "text-zinc-400 hover:text-white hover:bg-white/5"
@@ -145,11 +176,20 @@ export function ArgoVerticalProfilePanel() {
               {view}
             </button>
           ))}
+          {isCollapsible && onDeselect && (
+            <button
+              onClick={onDeselect}
+              className="p-1 rounded bg-white/5 hover:bg-white/10 text-zinc-400 hover:text-white transition-all ml-1 cursor-pointer"
+              title="Deselect float"
+            >
+              <X size={13} />
+            </button>
+          )}
         </div>
       </div>
 
       {/* ── Subtitle Info Strip ────────────────────────────────────────────── */}
-      <div className="flex items-center justify-between text-[10px] font-mono text-[#809AAB] pb-1.5 shrink-0">
+      <div className="flex items-center justify-between text-xs font-mono text-[#809AAB] pb-1.5 shrink-0">
         <span>Depth: <b className="text-white font-normal">0 – 2000 m (CTD/BGC)</b></span>
         <span>
           Location:{" "}
@@ -162,9 +202,9 @@ export function ArgoVerticalProfilePanel() {
       {/* ── Main Multi-Parameter Depth Profile Visualizer ──────────────────── */}
       <div className="flex-1 grid grid-cols-12 gap-3 min-h-[220px]">
         {/* Left 4-Curve Scientific SVG Depth Chart */}
-        <div className="col-span-8 bg-[#0E2435] rounded-lg border border-white/5 p-2 flex flex-col justify-between relative overflow-hidden">
+        <div className="col-span-8 bg-[#0E2435] rounded-lg border border-white/5 p-2.5 flex flex-col justify-between relative overflow-hidden">
           {/* Curve Legends Header */}
-          <div className="flex items-center justify-between text-[9px] font-mono text-zinc-300 pb-1 border-b border-white/5">
+          <div className="flex items-center justify-between text-xs font-mono text-zinc-300 pb-1.5 border-b border-white/5">
             <span className="flex items-center gap-1 text-[#FF4B4B]">
               <span className="w-1.5 h-1.5 rounded-full bg-[#FF4B4B]" /> Temp (°C)
             </span>
@@ -182,7 +222,7 @@ export function ArgoVerticalProfilePanel() {
           {/* 4 Multi-Parameter Hydrostatic Curves SVG */}
           <div className="flex-1 w-full h-full relative flex items-center">
             {/* Depth Axis Labels on Left */}
-            <div className="absolute left-0 top-0 bottom-0 flex flex-col justify-between text-[8px] font-mono text-zinc-500 pointer-events-none py-1">
+            <div className="absolute left-0 top-0 bottom-0 flex flex-col justify-between text-[10px] font-mono text-zinc-500 pointer-events-none py-1">
               <span>0m</span>
               <span>500m</span>
               <span>1000m</span>
@@ -191,7 +231,7 @@ export function ArgoVerticalProfilePanel() {
             </div>
 
             {/* Depth Grid & Multi-curves */}
-            <svg className="w-full h-full pl-7 pr-1" viewBox="0 0 200 130" fill="none">
+            <svg className="w-full h-full pl-8 pr-1" viewBox="0 0 200 130" fill="none">
               {/* Horizontal depth gridlines */}
               <line x1="0" y1="0" x2="200" y2="0" stroke="rgba(255,255,255,0.08)" strokeWidth="0.5" />
               <line x1="0" y1="32" x2="200" y2="32" stroke="rgba(255,255,255,0.05)" strokeWidth="0.5" />
@@ -246,7 +286,7 @@ export function ArgoVerticalProfilePanel() {
           </div>
 
           {/* Bottom Scale Markers */}
-          <div className="flex justify-between text-[8px] font-mono text-zinc-500 pt-1 border-t border-white/5 pl-7">
+          <div className="flex justify-between text-[10px] font-mono text-zinc-500 pt-1 border-t border-white/5 pl-8">
             <span className="text-[#FF4B4B]">0°</span>
             <span className="text-[#FF4B4B]">35°C</span>
             <span className="text-[#38BDF8]">33</span>
@@ -259,10 +299,10 @@ export function ArgoVerticalProfilePanel() {
         {/* Right Inset: Mini Trajectory Map + Key Metrics */}
         <div className="col-span-4 flex flex-col justify-between space-y-2">
           {/* Mini Trajectory Inset */}
-          <div className="h-20 rounded-lg bg-[#0E2435] border border-white/5 p-1.5 relative overflow-hidden flex flex-col justify-between">
-            <div className="text-[9px] font-mono text-[#809AAB] flex items-center justify-between">
+          <div className="h-20 rounded-lg bg-[#0E2435] border border-white/5 p-2 relative overflow-hidden flex flex-col justify-between">
+            <div className="text-xs font-mono text-[#809AAB] flex items-center justify-between">
               <span>90-Day Trajectory</span>
-              <Compass size={10} className="text-[#2EE6C6]" />
+              <Compass size={12} className="text-[#2EE6C6]" />
             </div>
 
             {/* Drift Path Visual */}
@@ -280,8 +320,8 @@ export function ArgoVerticalProfilePanel() {
           </div>
 
           {/* Key Metrics (0-50m) Table */}
-          <div className="p-2 rounded-lg bg-[#0E2435] border border-white/5 text-[10px] font-mono space-y-1">
-            <div className="text-[9px] font-bold text-zinc-400 uppercase tracking-wider mb-1">
+          <div className="p-2.5 rounded-lg bg-[#0E2435] border border-white/5 text-xs font-mono space-y-1.5">
+            <div className="text-[11px] font-bold text-zinc-400 uppercase tracking-wider mb-1">
               Live In-Situ Metrics
             </div>
             <div className="flex items-center justify-between">
