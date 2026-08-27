@@ -62,6 +62,9 @@ export function CommandCenterView() {
   }, [selectedFloatProfile]);
 
   const surfaceAnomaly = useMemo(() => {
+    if (surfaceTemp === "--" || isNaN(Number(surfaceTemp))) {
+      return "Analyzing...";
+    }
     const val = Number(surfaceTemp);
     const diff = val - 28.20;
     if (diff >= 0) return `▲ +${diff.toFixed(2)}°C Anomaly`;

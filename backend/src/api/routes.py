@@ -662,14 +662,7 @@ def get_cmlre_biodiversity_dataset() -> List[Dict[str, Any]]:
             os.path.join(root_dir, "dataset1_fixed.csv"),
             "cmlre_occurrence_clean-dataset1.csv",
         ]
-        json_candidates = [
-            os.path.join(root_dir, "species_ecological_profiles.json"),
-            os.path.join(root_dir, "ingestion", "species_ecological_profiles.json"),
-            "species_ecological_profiles.json",
-        ]
-
         csv_path = next((p for p in csv_candidates if os.path.exists(p)), None)
-        json_path = next((p for p in json_candidates if os.path.exists(p)), None)
 
         if not csv_path:
             log.warning("CMLRE CSV dataset not found; falling back to mock dataset")
@@ -700,40 +693,78 @@ def get_cmlre_biodiversity_dataset() -> List[Dict[str, Any]]:
             except Exception as e_master:
                 log.warning("Could not merge master occurrences: %s", str(e_master))
 
-        profiles_by_name: Dict[str, Dict[str, Any]] = {}
-        if json_path and os.path.exists(json_path):
-            with open(json_path, "r", encoding="utf-8") as f:
-                profiles = json.load(f)
-                profiles_by_name = {
-                    str(p.get("scientific_name", "")).strip().lower(): p
-                    for p in profiles
-                    if isinstance(p, dict) and p.get("scientific_name")
-                }
+        # 1. Load Species Ecological Profiles directly from Master CSV
+        profiles_csv_candidates = [
+            os.path.join(root_dir, "species_ecological_profiles_master----dataset2final.csv"),
+            os.path.join(root_dir, "species_ecological_profiles.csv"),
+            os.path.join(root_dir, "species_ecological_profiles-dataset2.csv"),
+            "species_ecological_profiles_master----dataset2final.csv",
+        ]
+        profiles_csv_path = next((p for p in profiles_csv_candidates if os.path.exists(p)), None)
 
-        # Also load master ecological profiles CSV if available to cover all 20k+ species
-        d2_master_csv = os.path.join(root_dir, "species_ecological_profiles_master----dataset2final.csv")
-        if os.path.exists(d2_master_csv):
+        profiles_by_name: Dict[str, Dict[str, Any]] = {}
+        if profiles_csv_path:
             try:
-                df_d2 = pd.read_csv(d2_master_csv, low_memory=False)
+                import pandas as pd
+                df_d2 = pd.read_csv(profiles_csv_path, low_memory=False)
                 for _, p_row in df_d2.iterrows():
-                    p_name = str(p_row.get("scientific_name", "")).strip().lower()
-                    if p_name and p_name not in profiles_by_name:
-                        profiles_by_name[p_name] = {
-                            "scientific_name": p_row.get("scientific_name"),
-                            "common_name": p_row.get("common_name"),
-                            "family": p_row.get("family"),
-                            "phylum": p_row.get("phylum"),
-                            "temp_pref_min_c": p_row.get("temp_pref_min_c") or p_row.get("thermal_range_min_c"),
-                            "temp_pref_max_c": p_row.get("temp_pref_max_c") or p_row.get("thermal_range_max_c"),
-                            "salinity_min_psu": p_row.get("salinity_min_psu"),
-                            "salinity_max_psu": p_row.get("salinity_max_psu"),
-                            "hypoxia_avoidance_threshold_umol_kg": p_row.get("hypoxia_avoidance_threshold_umol_kg"),
-                            "depth_min_m": p_row.get("depth_min_m"),
-                            "depth_max_m": p_row.get("depth_max_m"),
-                            "aphia_id": p_row.get("aphia_id"),
-                        }
+                    s_name = str(p_row.get("scientific_name", "")).strip()
+                    if not s_name or s_name.lower() == "nan":
+                        continue
+                    p_key = s_name.lower()
+
+                    aphia_val = p_row.get("aphia_id") or p_row.get("aphia_id_lsid")
+                    aphia_id = 0
+                    if aphia_val and not pd.isna(aphia_val):
+                        aphia_str = str(aphia_val)
+                        if "taxname:" in aphia_str:
+                            try:
+                                aphia_id = int(aphia_str.split("taxname:")[-1])
+                            except Exception:
+                                pass
+                        elif aphia_str.isdigit():
+                            aphia_id = int(aphia_str)
+
+                    profiles_by_name[p_key] = {
+                        "species_id": str(p_row.get("species_id", "")),
+                        "scientific_name": s_name,
+                        "common_name": p_row.get("common_name") if not pd.isna(p_row.get("common_name")) else None,
+                        "family": str(p_row.get("family", "")).strip() if not pd.isna(p_row.get("family")) else None,
+                        "genus": str(p_row.get("genus", "")).strip() if not pd.isna(p_row.get("genus")) else None,
+                        "habitat_zone": str(p_row.get("habitat_zone", "")).strip() if not pd.isna(p_row.get("habitat_zone")) else None,
+                        "temp_pref_min_c": p_row.get("temp_pref_min_c") if not pd.isna(p_row.get("temp_pref_min_c")) else None,
+                        "temp_pref_max_c": p_row.get("temp_pref_max_c") if not pd.isna(p_row.get("temp_pref_max_c")) else None,
+                        "salinity_min_psu": p_row.get("salinity_min_psu") if not pd.isna(p_row.get("salinity_min_psu")) else None,
+                        "salinity_max_psu": p_row.get("salinity_max_psu") if not pd.isna(p_row.get("salinity_max_psu")) else None,
+                        "hypoxia_avoidance_threshold_umol_kg": p_row.get("hypoxia_avoidance_threshold_umol_kg") if not pd.isna(p_row.get("hypoxia_avoidance_threshold_umol_kg")) else None,
+                        "depth_min_m": p_row.get("depth_min_m") if not pd.isna(p_row.get("depth_min_m")) else None,
+                        "depth_max_m": p_row.get("depth_max_m") if not pd.isna(p_row.get("depth_max_m")) else None,
+                        "aphia_id": aphia_id,
+                        "ecological_response": str(p_row.get("ecological_response", "")) if not pd.isna(p_row.get("ecological_response")) else None,
+                    }
+                log.info("Loaded %d species ecological profiles directly from CSV (%s)", len(profiles_by_name), os.path.basename(profiles_csv_path))
             except Exception as e_d2:
-                log.warning("Could not merge master profiles: %s", str(e_d2))
+                log.warning("Could not load master profiles CSV: %s", str(e_d2))
+
+        # Fallback to JSON only if CSV was not found
+        if not profiles_by_name:
+            json_candidates = [
+                os.path.join(root_dir, "species_ecological_profiles.json"),
+                os.path.join(root_dir, "ingestion", "species_ecological_profiles.json"),
+                "species_ecological_profiles.json",
+            ]
+            json_path = next((p for p in json_candidates if os.path.exists(p)), None)
+            if json_path:
+                try:
+                    with open(json_path, "r", encoding="utf-8") as f:
+                        profiles = json.load(f)
+                        profiles_by_name = {
+                            str(p.get("scientific_name", "")).strip().lower(): p
+                            for p in profiles
+                            if isinstance(p, dict) and p.get("scientific_name")
+                        }
+                except Exception as e_json:
+                    log.warning("Could not load profiles JSON: %s", str(e_json))
 
         import math
 
