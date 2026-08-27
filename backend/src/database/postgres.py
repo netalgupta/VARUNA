@@ -212,7 +212,11 @@ def _execute_single_db(db_name: str, sql: str, params: Optional[dict] = None) ->
                 rows = cur.fetchall()
                 return [dict(r) for r in rows]
     except Exception as e:
-        log.warning("Query execution failed on %s: %s", db_name, str(e))
+        err_msg = str(e)
+        if "does not exist" in err_msg or "UndefinedTable" in err_msg:
+            log.debug("Table not present on %s: %s", db_name, err_msg)
+        else:
+            log.warning("Query execution failed on %s: %s", db_name, err_msg)
         return []
 
 
@@ -228,14 +232,16 @@ def run_sql(sql: str, params: Optional[dict] = None, limit: int = 500) -> List[D
     if "limit" not in s.lower():
         s = f"{s} LIMIT {limit}"
 
-    target_dbs = route_query(s)
+    s_lower = s.lower()
+    is_bio_query = "marine_biodiversity" in s_lower or "species_ecological_profiles" in s_lower or "species_profiles" in s_lower
+    target_dbs = ["db1"] if is_bio_query else route_query(s)
 
     # 1. Single database path -> Fast zero-overhead execution
     if len(target_dbs) == 1:
         rows = _execute_single_db(target_dbs[0], s, params)
-        if rows:
+        if rows or is_bio_query:
             return rows
-        # If DB returned nothing or failed, try the other DB before fallback
+        # If DB returned nothing or failed and is not a bio-only query, try other DB before fallback
         other_db = "db1" if target_dbs[0] == "db2" else "db2"
         rows_other = _execute_single_db(other_db, s, params)
         if rows_other:
