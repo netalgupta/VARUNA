@@ -113,31 +113,41 @@ def _pick_sql_template(task_desc: str, params: Dict[str, Any]) -> str:
     """Choose and fill the right SQL template based on task intent."""
     q = (task_desc + " " + params.get("query", "")).lower()
 
-    # Named species in query — prioritize specific species filtering
+    # 1. Dynamic species detection: check if query contains Latin binomial (e.g. Euconchoecia aculeata)
+    import re
+    bio_name_match = re.search(r'\b([A-Z][a-z]{2,}\s+[a-z]{2,})\b', task_desc)
+    if bio_name_match:
+        sp_found = bio_name_match.group(1).strip()
+        log.info("Detected binomial species name in query: %s", sp_found)
+        return _SQL_SPECIES_STRESS.format(species_term=sp_found)
+
+    # 2. Named species in query candidates
     species_candidates = [
+        "euconchoecia aculeata", "euconchoecia", "abalistes stellatus", "abalistes",
+        "abdopus horridus", "abdopus", "aaptos aaptos", "aaptos",
         "penaeus monodon", "penaeus", "sardinella longiceps", "sardinella",
         "thunnus albacares", "thunnus", "acanthosepion pharaonis", "acanthosepion",
-        "acropora millepora", "acropora", "scombridae", "balistidae"
+        "acropora millepora", "acropora", "scombridae", "balistidae", "halocyprididae"
     ]
     for sp in species_candidates:
         if sp in q:
             return _SQL_SPECIES_STRESS.format(species_term=sp)
 
-    # OMZ / low oxygen / hypoxia / habitat compression
+    # 3. OMZ / low oxygen / hypoxia / habitat compression
     if any(kw in q for kw in ["omz", "hypox", "low oxygen", "doxy", "oxygen", "habitat compression"]):
         threshold = params.get("doxy_threshold", 60.0)
         return _SQL_OMZ_SPECIES.format(doxy_threshold=threshold)
 
-    # Thermal stress / bleaching / MHW
+    # 4. Thermal stress / bleaching / MHW
     if any(kw in q for kw in ["thermal", "bleach", "mhw", "heat", "temperature stress", "sst"]):
         threshold = params.get("temp_threshold", 28.5)
         return _SQL_THERMAL_STRESS.format(temp_threshold=threshold)
 
-    # Named species lookup via params
+    # 5. Named species lookup via params
     species = params.get("species", "")
     if species and len(species) > 2:
         safe_species = species.replace("'", "''")[:50]
-        return _SQL_SPECIES_LOOKUP.format(species_term=safe_species)
+        return _SQL_SPECIES_STRESS.format(species_term=safe_species)
 
     # Basin-based lookup — use bounding box from params or default to Arabian Sea
     lat_min = params.get("lat_min", 8.0)

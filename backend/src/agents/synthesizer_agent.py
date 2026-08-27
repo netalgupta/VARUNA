@@ -307,6 +307,14 @@ async def synthesize_answer(
     except Exception as e:
         log.warning("LLM Synthesis failed, using dynamic grounded data synthesizer: %s", str(e))
 
+    # Clean thinking tags or internal monologue from Nemotron / DeepSeek
+    if answer_md:
+        import re
+        answer_md = re.sub(r'<(?:think|thought)>.*?</(?:think|thought)>', '', answer_md, flags=re.DOTALL).strip()
+        header_match = re.search(r'(###?\s+.*)', answer_md)
+        if header_match and any(phrase in answer_md[:header_match.start()].lower() for phrase in ["we need to", "let's", "looking at the data", "thus there are", "according to rules", "better to cite"]):
+            answer_md = answer_md[header_match.start():].strip()
+
     # If LLM returned generic canned response, tool-call tokens, or empty, generate exact grounded synthesis from real rows
     if (
         not answer_md
