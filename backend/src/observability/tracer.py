@@ -35,7 +35,7 @@ class PipelineSpan:
         self.steps.append({
             "stage": stage,
             "message": message,
-            "elapsed_ms": float(round(elapsed, 2)),
+            "elapsed_ms": round(elapsed, 2),
             **kwargs,
         })
 
@@ -46,7 +46,7 @@ class PipelineSpan:
         return {
             "trace_id": self.trace_id,
             "query": self.query,
-            "total_ms": float(round(self.total_ms(), 2)),
+            "total_ms": round(self.total_ms(), 2),
             "steps": self.steps,
         }
 

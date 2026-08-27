@@ -149,52 +149,22 @@ async def embed_texts(
 
 
 def _offline_chat_fallback(messages: List[Dict[str, str]], task_tag: str) -> str:
-    """Deterministic fallback responses for testing and offline execution."""
+    """Dynamic precision fallback responses for testing and offline execution."""
     last_msg = messages[-1]["content"] if messages else ""
     tl = last_msg.lower()
 
     if "plan" in task_tag.lower() or "planner" in task_tag.lower() or "decompose" in tl:
-        return json.dumps({
-            "plan_id": "plan_auto_01",
-            "tasks": [
-                {
-                    "task_id": "task_01_sql",
-                    "agent": "SQL_GEN",
-                    "params": {"query": "SELECT DATE_TRUNC('month', time) AS month, AVG(temp) AS avg_temp, AVG(doxy) AS avg_doxy FROM public.marine_data WHERE time >= NOW() - INTERVAL '6 months' GROUP BY 1 ORDER BY 1;"},
-                    "dependencies": []
-                },
-                {
-                    "task_id": "task_02_bio",
-                    "agent": "BIODIVERSITY",
-                    "params": {"species": "Sardinella longiceps", "radius_km": 50},
-                    "dependencies": ["task_01_sql"]
-                },
-                {
-                    "task_id": "task_03_synth",
-                    "agent": "SYNTHESIZER",
-                    "params": {"format": "cited_markdown"},
-                    "dependencies": ["task_01_sql", "task_02_bio"]
-                }
-            ]
-        })
+        from src.agents.orchestrator import _build_default_plan
+        plan = _build_default_plan(last_msg)
+        return plan.model_dump_json()
 
     if "sql" in task_tag.lower():
-        return (
-            "```sql\n"
-            "SELECT DATE_TRUNC('month', time) AS month, AVG(temp) AS avg_temp, AVG(doxy) AS avg_doxy "
-            "FROM public.marine_data WHERE time >= NOW() - INTERVAL '6 months' "
-            "GROUP BY 1 ORDER BY 1 ASC LIMIT 100;\n"
-            "```"
-        )
+        from src.llm.sql_gen import generate_fallback_sql
+        clean_task = last_msg.replace("Generate SQL query for:", "").strip()
+        sql = generate_fallback_sql(clean_task)
+        return f"```sql\n{sql}\n```"
 
     if "synthesize" in task_tag.lower() or "summary" in task_tag.lower():
-        return (
-            "### 🌊 Marine Ecosystem Assessment\n\n"
-            "Analysis of **INCOIS ARGO Float Profiles** indicates active thermal stratification. "
-            "Surface temperatures in the Arabian Sea averaged **29.14°C** (+1.8°C above climatological baseline) [WMO: 1902303 | Row #4]. "
-            "Dissolved oxygen levels dropped to **42.1 µmol/kg** at 100-200m depth.\n\n"
-            "* **Biological Impact**: *Sardinella longiceps* (Indian Oil Sardine) thermal tolerance optimum ($22-26°C$) was exceeded by **3.14°C**, "
-            "resulting in deeper bathymetric displacement."
-        )
+        return "### 🌊 Marine Ecosystem Assessment\n\nOceanographic physical and biological parameters evaluated across active ARGO float telemetry."
 
-    return "VARUNA Marine Intelligence Platform: Operational analysis complete."
+    return "VARUNA Marine Intelligence Platform: Analysis complete."

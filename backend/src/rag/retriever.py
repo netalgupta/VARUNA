@@ -29,7 +29,7 @@ from rank_bm25 import BM25Okapi  # type: ignore
 from qdrant_client import QdrantClient  # type: ignore
 from qdrant_client.models import (  # type: ignore
     Distance, VectorParams, PointStruct,
-    Filter, FieldCondition, MatchValue, SearchRequest,
+    Filter, FieldCondition, MatchValue,
 )
 
 from src.config import settings  # type: ignore
@@ -45,7 +45,8 @@ def get_qdrant() -> QdrantClient:
         _qdrant = QdrantClient(
             url=settings.qdrant_url,
             api_key=settings.qdrant_api_key or None,
-            timeout=30,
+            timeout=5,
+            check_compatibility=False,
         )
     return _qdrant
 

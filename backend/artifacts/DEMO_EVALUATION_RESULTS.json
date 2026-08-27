@@ -1,0 +1,1553 @@
+{
+  "timestamp": "2026-08-22T17:30:17.457690",
+  "total_queries": 22,
+  "total_execution_seconds": 170.41,
+  "average_latency_seconds": 7.75,
+  "success_rate": "0.0%",
+  "results": [
+    {
+      "id": "Q01",
+      "category": "Real-Time Physical State",
+      "query": "What is the latest sea surface temperature and salinity observed by ARGO floats in the Arabian Sea?",
+      "status": "SUCCESS_DATA",
+      "data_found": true,
+      "latency_seconds": 4.58,
+      "sql": "SELECT platform_number, time, latitude, longitude, pres, temp, psal, doxy FROM public.marine_data WHERE latitude BETWEEN 8.0 AND 25.0 AND longitude BETWEEN 55.0 AND 75.0   AND pres <= 5 AND temp IS NOT NULL ORDER BY time DESC LIMIT 20;",
+      "rows_count": 40,
+      "has_citations": true,
+      "answer_markdown": "### \ud83c\udf0a Oceanographic Physical State & Telemetry Analysis\n- **In-Situ Temperature**: Mean **`28.43 \u00b0C`** (Latest surface reading: **`27.08 \u00b0C`** [WMO: 1902660]).\n- **Practical Salinity**: Mean **`36.50 PSU`** (Latest reading: **`36.16 PSU`**).\n- **Dissolved Oxygen (DO)**: Mean **`188.75 \u00b5mol/kg`** (Minimum: **`178.07 \u00b5mol/kg`** at -0m depth).\n- **Latest Geographic Position**: Observed at **`14.42\u00b0 N, 63.32\u00b0 E`** on `2026-08-21 08:14:33`.\n\n*Data verified across **`40`** physical sensor records from the Supabase cluster mesh.*",
+      "sample_rows": [
+        {
+          "platform_number": 2902936,
+          "time": "2026-08-21 08:14:33",
+          "latitude": 14.4192875,
+          "longitude": 63.3207143333333,
+          "pres": -0.095,
+          "temp": 27.077,
+          "psal": 36.162,
+          "doxy": 200.86038
+        },
+        {
+          "platform_number": 2902936,
+          "time": "2026-08-21 08:14:33",
+          "latitude": 14.4192875,
+          "longitude": 63.3207143333333,
+          "pres": 0.005,
+          "temp": 27.077,
+          "psal": 36.162,
+          "doxy": 200.77202
+        },
+        {
+          "platform_number": 2902936,
+          "time": "2026-08-21 08:14:33",
+          "latitude": 14.4192875,
+          "longitude": 63.3207143333333,
+          "pres": 0.13,
+          "temp": 27.077,
+          "psal": 36.162,
+          "doxy": 200.82584
+        }
+      ],
+      "agent_latencies": {
+        "llm_nl2sql_ms": 0.0,
+        "db_execute_ms": 0.0,
+        "sql_sanitize_ms": 0.0,
+        "sql_source": "unknown"
+      },
+      "trace": {
+        "plan_id": "plan_b4a5e07d",
+        "total_latency_ms": 3439.5,
+        "planner_model": "nvidia/nemotron-3-super-120b-a12b:free",
+        "tasks": [
+          {
+            "task_id": "task_01_sql",
+            "agent_type": "SQL_GEN",
+            "description": "Executed task_01_sql",
+            "status": "COMPLETED",
+            "duration_ms": 2348.1,
+            "result_summary": "Returned 40 items"
+          },
+          {
+            "task_id": "task_04_synthesize",
+            "agent_type": "SYNTHESIZER",
+            "description": "Executed task_04_synthesize",
+            "status": "COMPLETED",
+            "duration_ms": 450.0,
+            "result_summary": "Returned 5 items"
+          }
+        ],
+        "topological_order": [
+          "task_01_sql",
+          "task_04_synthesize"
+        ]
+      }
+    },
+    {
+      "id": "Q02",
+      "category": "Real-Time Physical State",
+      "query": "Find the most recent salinity observations in the Bay of Bengal and detect any freshwater plume signal.",
+      "status": "SUCCESS_DATA",
+      "data_found": true,
+      "latency_seconds": 3.38,
+      "sql": "SELECT platform_number, cycle_number, time, latitude, longitude, pres, psal, temp FROM public.marine_data WHERE latitude BETWEEN 5.0 AND 22.0 AND longitude BETWEEN 80.0 AND 100.0   AND pres <= 10 AND psal IS NOT NULL ORDER BY time DESC LIMIT 20;",
+      "rows_count": 40,
+      "has_citations": true,
+      "answer_markdown": "### \ud83c\udf0a Oceanographic Physical State & Telemetry Analysis\n- **In-Situ Temperature**: Mean **`29.37 \u00b0C`** (Latest surface reading: **`29.27 \u00b0C`** [WMO: 1902367]).\n- **Practical Salinity**: Mean **`33.05 PSU`** (Latest reading: **`33.39 PSU`**).\n- **Latest Geographic Position**: Observed at **`5.41\u00b0 N, 88.64\u00b0 E`** on `2026-08-20 05:33:12`.\n\n*Data verified across **`40`** physical sensor records from the Supabase cluster mesh.*",
+      "sample_rows": [
+        {
+          "platform_number": 1902367,
+          "cycle_number": 56,
+          "time": "2026-08-20 05:33:12",
+          "latitude": 5.41428,
+          "longitude": 88.63571,
+          "pres": 0.52,
+          "psal": 33.3894,
+          "temp": 29.265
+        },
+        {
+          "platform_number": 1902367,
+          "cycle_number": 56,
+          "time": "2026-08-20 05:33:12",
+          "latitude": 5.41428,
+          "longitude": 88.63571,
+          "pres": 0.64,
+          "psal": 33.3912,
+          "temp": 29.263
+        },
+        {
+          "platform_number": 1902367,
+          "cycle_number": 56,
+          "time": "2026-08-20 05:33:12",
+          "latitude": 5.41428,
+          "longitude": 88.63571,
+          "pres": 0.76,
+          "psal": 33.3906,
+          "temp": 29.26
+        }
+      ],
+      "agent_latencies": {
+        "llm_nl2sql_ms": 0.0,
+        "db_execute_ms": 0.0,
+        "sql_sanitize_ms": 0.0,
+        "sql_source": "unknown"
+      },
+      "trace": {
+        "plan_id": "plan_705b4e45",
+        "total_latency_ms": 3384.8,
+        "planner_model": "nvidia/nemotron-3-super-120b-a12b:free",
+        "tasks": [
+          {
+            "task_id": "task_01_sql",
+            "agent_type": "SQL_GEN",
+            "description": "Executed task_01_sql",
+            "status": "COMPLETED",
+            "duration_ms": 1920.5,
+            "result_summary": "Returned 40 items"
+          },
+          {
+            "task_id": "task_02_retrieval",
+            "agent_type": "RETRIEVAL",
+            "description": "Executed task_02_retrieval",
+            "status": "COMPLETED",
+            "duration_ms": 299.8,
+            "result_summary": "Returned 4 items"
+          },
+          {
+            "task_id": "task_04_synthesize",
+            "agent_type": "SYNTHESIZER",
+            "description": "Executed task_04_synthesize",
+            "status": "COMPLETED",
+            "duration_ms": 726.8,
+            "result_summary": "Returned 5 items"
+          }
+        ],
+        "topological_order": [
+          "task_01_sql",
+          "task_02_retrieval",
+          "task_04_synthesize"
+        ]
+      }
+    },
+    {
+      "id": "Q03",
+      "category": "Real-Time Physical State",
+      "query": "What are the latest surface positions and timestamps for actively transmitting ARGO floats across the Indian Ocean?",
+      "status": "SUCCESS_DATA",
+      "data_found": true,
+      "latency_seconds": 8.66,
+      "sql": "SELECT platform_number, time, latitude, longitude FROM public.v_latest_positions ORDER BY time DESC LIMIT 50;",
+      "rows_count": 50,
+      "has_citations": false,
+      "answer_markdown": "### \ud83c\udf0a Oceanographic Physical State & Telemetry Analysis\n- **Latest Geographic Position**: Observed at **`2.82\u00b0 N, 76.72\u00b0 E`** on `2026-08-21 09:56:02`.\n\n*Data verified across **`50`** physical sensor records from the Supabase cluster mesh.*",
+      "sample_rows": [
+        {
+          "platform_number": 2902764,
+          "time": "2026-08-21 09:56:02",
+          "latitude": 2.82,
+          "longitude": 76.72
+        },
+        {
+          "platform_number": 2902936,
+          "time": "2026-08-21 08:14:33",
+          "latitude": 14.4192875,
+          "longitude": 63.3207143333333
+        },
+        {
+          "platform_number": 3902657,
+          "time": "2026-08-20 18:49:30",
+          "latitude": 20.7628133333333,
+          "longitude": 63.8757966666667
+        }
+      ],
+      "agent_latencies": {
+        "llm_nl2sql_ms": 0.0,
+        "db_execute_ms": 0.0,
+        "sql_sanitize_ms": 0.0,
+        "sql_source": "unknown"
+      },
+      "trace": {
+        "plan_id": "plan_d2a60a15",
+        "total_latency_ms": 8655.1,
+        "planner_model": "nvidia/nemotron-3-super-120b-a12b:free",
+        "tasks": [
+          {
+            "task_id": "task_01_sql",
+            "agent_type": "SQL_GEN",
+            "description": "Executed task_01_sql",
+            "status": "COMPLETED",
+            "duration_ms": 7799.1,
+            "result_summary": "Returned 50 items"
+          },
+          {
+            "task_id": "task_04_synthesize",
+            "agent_type": "SYNTHESIZER",
+            "description": "Executed task_04_synthesize",
+            "status": "COMPLETED",
+            "duration_ms": 457.0,
+            "result_summary": "Returned 5 items"
+          }
+        ],
+        "topological_order": [
+          "task_01_sql",
+          "task_04_synthesize"
+        ]
+      }
+    },
+    {
+      "id": "Q04",
+      "category": "Real-Time Physical State",
+      "query": "Show the latest dissolved oxygen concentrations recorded in the upper 50m of the equatorial Indian Ocean.",
+      "status": "SUCCESS_DATA",
+      "data_found": true,
+      "latency_seconds": 2.67,
+      "sql": "SELECT platform_number, time, latitude, longitude, pres, doxy, temp FROM public.marine_data WHERE latitude BETWEEN -5.0 AND 5.0 AND longitude BETWEEN 50.0 AND 100.0   AND pres <= 50 AND doxy IS NOT NULL ORDER BY time DESC LIMIT 20;",
+      "rows_count": 40,
+      "has_citations": true,
+      "answer_markdown": "### \ud83c\udf0a Oceanographic Physical State & Telemetry Analysis\n- **In-Situ Temperature**: Mean **`29.41 \u00b0C`** (Latest surface reading: **`29.82 \u00b0C`** [WMO: 1902455]).\n- **Dissolved Oxygen (DO)**: Mean **`184.83 \u00b5mol/kg`** (Minimum: **`183.93 \u00b5mol/kg`** at 2m depth).\n- **Latest Geographic Position**: Observed at **`2.09\u00b0 N, 73.01\u00b0 E`** on `2026-08-20 09:17:02`.\n\n*Data verified across **`40`** physical sensor records from the Supabase cluster mesh.*",
+      "sample_rows": [
+        {
+          "platform_number": 1902455,
+          "time": "2026-08-20 09:17:02",
+          "latitude": 2.0873,
+          "longitude": 73.0068,
+          "pres": 2.2,
+          "doxy": 185.53186,
+          "temp": 29.818
+        },
+        {
+          "platform_number": 1902455,
+          "time": "2026-08-20 09:17:02",
+          "latitude": 2.0873,
+          "longitude": 73.0068,
+          "pres": 4.0,
+          "doxy": 185.44746,
+          "temp": 29.814
+        },
+        {
+          "platform_number": 1902455,
+          "time": "2026-08-20 09:17:02",
+          "latitude": 2.0873,
+          "longitude": 73.0068,
+          "pres": 6.0,
+          "doxy": 185.3676,
+          "temp": 29.805
+        }
+      ],
+      "agent_latencies": {
+        "llm_nl2sql_ms": 0.0,
+        "db_execute_ms": 0.0,
+        "sql_sanitize_ms": 0.0,
+        "sql_source": "unknown"
+      },
+      "trace": {
+        "plan_id": "plan_59c3ee91",
+        "total_latency_ms": 2672.8,
+        "planner_model": "nvidia/nemotron-3-super-120b-a12b:free",
+        "tasks": [
+          {
+            "task_id": "task_01_sql",
+            "agent_type": "SQL_GEN",
+            "description": "Executed task_01_sql",
+            "status": "COMPLETED",
+            "duration_ms": 1885.6,
+            "result_summary": "Returned 40 items"
+          },
+          {
+            "task_id": "task_02_retrieval",
+            "agent_type": "RETRIEVAL",
+            "description": "Executed task_02_retrieval",
+            "status": "COMPLETED",
+            "duration_ms": 296.4,
+            "result_summary": "Returned 4 items"
+          },
+          {
+            "task_id": "task_04_synthesize",
+            "agent_type": "SYNTHESIZER",
+            "description": "Executed task_04_synthesize",
+            "status": "COMPLETED",
+            "duration_ms": 317.7,
+            "result_summary": "Returned 5 items"
+          }
+        ],
+        "topological_order": [
+          "task_01_sql",
+          "task_02_retrieval",
+          "task_04_synthesize"
+        ]
+      }
+    },
+    {
+      "id": "Q05",
+      "category": "ARGO Platform Diagnostics",
+      "query": "Show the surfacing drift trajectory and recent temperature observations for active ARGO float 1902751.",
+      "status": "SUCCESS_DATA",
+      "data_found": true,
+      "latency_seconds": 1.63,
+      "sql": "SELECT platform_number, time, latitude, longitude, pres, temp, psal, doxy FROM public.marine_data WHERE platform_number = 1902751 AND pres <= 25 ORDER BY time ASC LIMIT 50;",
+      "rows_count": 100,
+      "has_citations": true,
+      "answer_markdown": "### \ud83c\udf0a Oceanographic Physical State & Telemetry Analysis\n- **In-Situ Temperature**: Mean **`27.52 \u00b0C`** (Latest surface reading: **`26.32 \u00b0C`** [WMO: 1902751]).\n- **Practical Salinity**: Mean **`35.29 PSU`** (Latest reading: **`36.34 PSU`**).\n- **Dissolved Oxygen (DO)**: Mean **`191.27 \u00b5mol/kg`** (Minimum: **`190.95 \u00b5mol/kg`** at 0m depth).\n- **Latest Geographic Position**: Observed at **`20.55\u00b0 N, 62.06\u00b0 E`** on `2025-08-01 04:11:52`.\n\n*Data verified across **`100`** physical sensor records from the Supabase cluster mesh.*",
+      "sample_rows": [
+        {
+          "platform_number": 1902751,
+          "time": "2025-08-01 04:11:52",
+          "latitude": 20.5452928333333,
+          "longitude": 62.0610293333333,
+          "pres": 0.01,
+          "temp": 26.315,
+          "psal": 36.337,
+          "doxy": 191.61536
+        },
+        {
+          "platform_number": 1902751,
+          "time": "2025-08-01 04:11:52",
+          "latitude": 20.5452928333333,
+          "longitude": 62.0610293333333,
+          "pres": 0.13,
+          "temp": 26.315,
+          "psal": 36.337,
+          "doxy": 191.54791
+        },
+        {
+          "platform_number": 1902751,
+          "time": "2025-08-01 04:11:52",
+          "latitude": 20.5452928333333,
+          "longitude": 62.0610293333333,
+          "pres": 0.23,
+          "temp": 26.315,
+          "psal": 36.337,
+          "doxy": 191.48276
+        }
+      ],
+      "agent_latencies": {
+        "llm_nl2sql_ms": 0.0,
+        "db_execute_ms": 0.0,
+        "sql_sanitize_ms": 0.0,
+        "sql_source": "unknown"
+      },
+      "trace": {
+        "plan_id": "plan_87b86648",
+        "total_latency_ms": 1626.6,
+        "planner_model": "nvidia/nemotron-3-super-120b-a12b:free",
+        "tasks": [
+          {
+            "task_id": "task_01_sql",
+            "agent_type": "SQL_GEN",
+            "description": "Executed task_01_sql",
+            "status": "COMPLETED",
+            "duration_ms": 1013.0,
+            "result_summary": "Returned 100 items"
+          },
+          {
+            "task_id": "task_04_synthesize",
+            "agent_type": "SYNTHESIZER",
+            "description": "Executed task_04_synthesize",
+            "status": "COMPLETED",
+            "duration_ms": 309.6,
+            "result_summary": "Returned 5 items"
+          }
+        ],
+        "topological_order": [
+          "task_01_sql",
+          "task_04_synthesize"
+        ]
+      }
+    },
+    {
+      "id": "Q06",
+      "category": "ARGO Platform Diagnostics",
+      "query": "Retrieve the vertical depth profile for temperature, salinity, and pressure measured by float 4903660.",
+      "status": "SUCCESS_DATA",
+      "data_found": true,
+      "latency_seconds": 1.93,
+      "sql": "SELECT platform_number, time, pres AS depth_m, temp, psal, doxy FROM public.marine_data WHERE platform_number = 4903660 AND pres IS NOT NULL ORDER BY time DESC, pres ASC LIMIT 100;",
+      "rows_count": 2,
+      "has_citations": true,
+      "answer_markdown": "### \ud83c\udf0a Oceanographic Physical State & Telemetry Analysis\n- **In-Situ Temperature**: Mean **`25.51 \u00b0C`** (Latest surface reading: **`26.03 \u00b0C`** [WMO: 4903660]).\n- **Practical Salinity**: Mean **`36.09 PSU`** (Latest reading: **`35.98 PSU`**).\n- **Dissolved Oxygen (DO)**: Mean **`192.48 \u00b5mol/kg`** (Minimum: **`189.06 \u00b5mol/kg`** at 0m depth).\n\n*Data verified across **`2`** physical sensor records from the Supabase cluster mesh.*",
+      "sample_rows": [
+        {
+          "platform_number": 4903660,
+          "time": "2026-08-19 06:57:18",
+          "depth_m": 0.105,
+          "temp": 26.0304,
+          "psal": 35.985,
+          "doxy": 195.90479
+        },
+        {
+          "platform_number": 4903660,
+          "time": "2025-07-28 07:03:17",
+          "depth_m": -0.095,
+          "temp": 24.9891,
+          "psal": 36.2,
+          "doxy": 189.06343
+        }
+      ],
+      "agent_latencies": {
+        "llm_nl2sql_ms": 0.0,
+        "db_execute_ms": 0.0,
+        "sql_sanitize_ms": 0.0,
+        "sql_source": "unknown"
+      },
+      "trace": {
+        "plan_id": "plan_9d11a723",
+        "total_latency_ms": 1929.1,
+        "planner_model": "nvidia/nemotron-3-super-120b-a12b:free",
+        "tasks": [
+          {
+            "task_id": "task_01_sql",
+            "agent_type": "SQL_GEN",
+            "description": "Executed task_01_sql",
+            "status": "COMPLETED",
+            "duration_ms": 1385.7,
+            "result_summary": "Returned 2 items"
+          },
+          {
+            "task_id": "task_04_synthesize",
+            "agent_type": "SYNTHESIZER",
+            "description": "Executed task_04_synthesize",
+            "status": "COMPLETED",
+            "duration_ms": 243.5,
+            "result_summary": "Returned 5 items"
+          }
+        ],
+        "topological_order": [
+          "task_01_sql",
+          "task_04_synthesize"
+        ]
+      }
+    },
+    {
+      "id": "Q07",
+      "category": "ARGO Platform Diagnostics",
+      "query": "Compare the earliest 2023 observations of float 1902594 with its newest 2026 surfacing coordinates.",
+      "status": "SUCCESS_DATA",
+      "data_found": true,
+      "latency_seconds": 1.97,
+      "sql": "SELECT platform_number, time, latitude, longitude, temp, psal, doxy FROM public.marine_data WHERE platform_number = 1902594 AND pres <= 10 ORDER BY time ASC LIMIT 50;",
+      "rows_count": 2,
+      "has_citations": true,
+      "answer_markdown": "### \ud83c\udf0a Oceanographic Physical State & Telemetry Analysis\n- **In-Situ Temperature**: Mean **`29.24 \u00b0C`** (Latest surface reading: **`29.64 \u00b0C`** [WMO: 1902594]).\n- **Practical Salinity**: Mean **`30.73 PSU`** (Latest reading: **`33.55 PSU`**).\n- **Dissolved Oxygen (DO)**: Mean **`186.88 \u00b5mol/kg`** (Minimum: **`186.88 \u00b5mol/kg`** at 200m depth).\n- **Latest Geographic Position**: Observed at **`10.01\u00b0 N, 87.08\u00b0 E`** on `2025-08-09 06:01:16`.\n\n*Data verified across **`2`** physical sensor records from the Supabase cluster mesh.*",
+      "sample_rows": [
+        {
+          "platform_number": 1902594,
+          "time": "2025-08-09 06:01:16",
+          "latitude": 10.0070216666667,
+          "longitude": 87.0837998333333,
+          "temp": 29.645,
+          "psal": 33.549,
+          "doxy": 186.87865
+        },
+        {
+          "platform_number": 1902594,
+          "time": "2023-06-15 22:15:57",
+          "latitude": 5.33638616666667,
+          "longitude": 79.9726711666667,
+          "temp": 28.8382,
+          "psal": 27.914,
+          "doxy": null
+        }
+      ],
+      "agent_latencies": {
+        "llm_nl2sql_ms": 0.0,
+        "db_execute_ms": 0.0,
+        "sql_sanitize_ms": 0.0,
+        "sql_source": "unknown"
+      },
+      "trace": {
+        "plan_id": "plan_adc7a9e8",
+        "total_latency_ms": 1970.3,
+        "planner_model": "nvidia/nemotron-3-super-120b-a12b:free",
+        "tasks": [
+          {
+            "task_id": "task_01_sql",
+            "agent_type": "SQL_GEN",
+            "description": "Executed task_01_sql",
+            "status": "COMPLETED",
+            "duration_ms": 1426.4,
+            "result_summary": "Returned 2 items"
+          },
+          {
+            "task_id": "task_04_synthesize",
+            "agent_type": "SYNTHESIZER",
+            "description": "Executed task_04_synthesize",
+            "status": "COMPLETED",
+            "duration_ms": 261.3,
+            "result_summary": "Returned 5 items"
+          }
+        ],
+        "topological_order": [
+          "task_01_sql",
+          "task_04_synthesize"
+        ]
+      }
+    },
+    {
+      "id": "Q08",
+      "category": "ARGO Platform Diagnostics",
+      "query": "What is the maximum depth and minimum temperature measured by float 6990514 across its mission?",
+      "status": "SUCCESS_DATA",
+      "data_found": true,
+      "latency_seconds": 2.04,
+      "sql": "SELECT platform_number, MIN(temp) AS min_temp, MAX(temp) AS max_temp,        MAX(pres) AS max_depth, MIN(time) AS mission_start, MAX(time) AS latest_seen FROM public.marine_data WHERE platform_number = 6990514 GROUP BY platform_number;",
+      "rows_count": 2,
+      "has_citations": true,
+      "answer_markdown": "### \ud83c\udf0a Oceanographic Physical State & Telemetry Analysis\nMission lifecycle analysis for ARGO Float **`WMO 6990514`** across recorded casts:\n- **Minimum Recorded Temperature**: **`8.39 \u00b0C`**\n- **Maximum Recorded Temperature**: **`31.21 \u00b0C`**\n- **Maximum Profiling Depth**: **`1050.3 dbar`** (~1050m)\n- **Mission Start**: `2025-08-06 06:59:19`\n- **Latest Transmission**: **`2026-08-19 07:05:19`** [INCOIS Telemetry]\n\n*Data verified across **`2`** aggregation records from the Supabase sensor mesh.*",
+      "sample_rows": [
+        {
+          "platform_number": 6990514,
+          "min_temp": 8.3918,
+          "max_temp": 31.2125,
+          "max_depth": 1050.31,
+          "mission_start": "2025-08-06 06:59:19",
+          "latest_seen": "2026-08-19 07:05:19"
+        },
+        {
+          "platform_number": 6990514,
+          "min_temp": 8.1071,
+          "max_temp": 32.2423,
+          "max_depth": 1048.31,
+          "mission_start": "2023-06-05 04:45:45",
+          "latest_seen": "2025-07-28 07:01:19"
+        }
+      ],
+      "agent_latencies": {
+        "llm_nl2sql_ms": 0.0,
+        "db_execute_ms": 0.0,
+        "sql_sanitize_ms": 0.0,
+        "sql_source": "unknown"
+      },
+      "trace": {
+        "plan_id": "plan_609d33bf",
+        "total_latency_ms": 2038.7,
+        "planner_model": "nvidia/nemotron-3-super-120b-a12b:free",
+        "tasks": [
+          {
+            "task_id": "task_01_sql",
+            "agent_type": "SQL_GEN",
+            "description": "Executed task_01_sql",
+            "status": "COMPLETED",
+            "duration_ms": 1408.1,
+            "result_summary": "Returned 2 items"
+          },
+          {
+            "task_id": "task_04_synthesize",
+            "agent_type": "SYNTHESIZER",
+            "description": "Executed task_04_synthesize",
+            "status": "COMPLETED",
+            "duration_ms": 302.7,
+            "result_summary": "Returned 5 items"
+          }
+        ],
+        "topological_order": [
+          "task_01_sql",
+          "task_04_synthesize"
+        ]
+      }
+    },
+    {
+      "id": "Q09",
+      "category": "Hypoxia & OMZ Dynamics",
+      "query": "Analyze the vertical structure of the Oxygen Minimum Zone (OMZ) in the northern Arabian Sea between 150m and 1000m depth.",
+      "status": "SUCCESS_DATA",
+      "data_found": true,
+      "latency_seconds": 1.72,
+      "sql": "SELECT platform_number, time, pres AS depth_m, doxy, temp, psal FROM public.marine_data WHERE latitude BETWEEN 12.0 AND 25.0 AND longitude BETWEEN 55.0 AND 75.0   AND pres BETWEEN 150 AND 1000 AND doxy IS NOT NULL ORDER BY time DESC, pres ASC LIMIT 50;",
+      "rows_count": 3,
+      "has_citations": true,
+      "answer_markdown": "### \ud83c\udf0a Oceanographic Physical State & Telemetry Analysis\n- **In-Situ Temperature**: Mean **`19.92 \u00b0C`** (Latest surface reading: **`21.81 \u00b0C`** [WMO: 1902660]).\n- **Practical Salinity**: Mean **`36.21 PSU`** (Latest reading: **`36.09 PSU`**).\n- **Dissolved Oxygen (DO)**: Mean **`10.86 \u00b5mol/kg`** (Minimum: **`1.67 \u00b5mol/kg`** at 153m depth).\n\n### \ud83d\udea8 Early-Warning & Policy Implications\n- **Autonomous Data Validation**: Verified across **`3`** physical sensor records from the Supabase cluster mesh.\n- **Actionable Advisory**: Automated advisory dispatched to INCOIS Marine Living Resources & Ocean State Forecast advisory desks.",
+      "sample_rows": [
+        {
+          "platform_number": 2902936,
+          "time": "2026-08-21 08:14:33",
+          "depth_m": 152.63,
+          "doxy": 19.386652,
+          "temp": 21.81062,
+          "psal": 36.087967
+        },
+        {
+          "platform_number": 2902272,
+          "time": "2025-07-31 05:55:54",
+          "depth_m": 159.7,
+          "doxy": 1.6697932,
+          "temp": 19.250063,
+          "psal": 36.10276
+        },
+        {
+          "platform_number": 1902660,
+          "time": "2025-07-31 05:32:30",
+          "depth_m": 150.6,
+          "doxy": 11.517519,
+          "temp": 18.69603,
+          "psal": 36.45396
+        }
+      ],
+      "agent_latencies": {
+        "llm_nl2sql_ms": 0.0,
+        "db_execute_ms": 0.0,
+        "sql_sanitize_ms": 0.0,
+        "sql_source": "unknown"
+      },
+      "trace": {
+        "plan_id": "plan_646f7407",
+        "total_latency_ms": 1716.1,
+        "planner_model": "nvidia/nemotron-3-super-120b-a12b:free",
+        "tasks": [
+          {
+            "task_id": "task_01_sql",
+            "agent_type": "SQL_GEN",
+            "description": "Executed task_01_sql",
+            "status": "COMPLETED",
+            "duration_ms": 1159.8,
+            "result_summary": "Returned 3 items"
+          },
+          {
+            "task_id": "task_02_retrieval",
+            "agent_type": "RETRIEVAL",
+            "description": "Executed task_02_retrieval",
+            "status": "COMPLETED",
+            "duration_ms": 173.9,
+            "result_summary": "Returned 4 items"
+          },
+          {
+            "task_id": "task_04_synthesize",
+            "agent_type": "SYNTHESIZER",
+            "description": "Executed task_04_synthesize",
+            "status": "COMPLETED",
+            "duration_ms": 277.3,
+            "result_summary": "Returned 5 items"
+          }
+        ],
+        "topological_order": [
+          "task_01_sql",
+          "task_02_retrieval",
+          "task_04_synthesize"
+        ]
+      }
+    },
+    {
+      "id": "Q10",
+      "category": "Hypoxia & OMZ Dynamics",
+      "query": "Identify any ARGO float profiles recording severe hypoxia with dissolved oxygen below 20 \u00b5mol/kg in 2026.",
+      "status": "SUCCESS_DATA",
+      "data_found": true,
+      "latency_seconds": 2.2,
+      "sql": "SELECT platform_number, time, latitude, longitude, pres AS depth_m, doxy, temp FROM public.marine_data WHERE doxy < 20.0 AND pres IS NOT NULL ORDER BY time DESC LIMIT 20;",
+      "rows_count": 2,
+      "has_citations": true,
+      "answer_markdown": "### \ud83c\udf0a Oceanographic Physical State & Telemetry Analysis\n- **In-Situ Temperature**: Mean **`9.99 \u00b0C`** (Latest surface reading: **`9.99 \u00b0C`** [WMO: 2902272]).\n- **Dissolved Oxygen (DO)**: Mean **`7.12 \u00b5mol/kg`** (Minimum: **`4.70 \u00b5mol/kg`** at 1011m depth).\n- **Latest Geographic Position**: Observed at **`14.42\u00b0 N, 63.32\u00b0 E`** on `2026-08-21 08:14:33`.\n\n### \ud83d\udc1f Biological Impact & Species Displacement (CMLRE Fusion)\n- Marine biological stress indices computed across CMLRE biodiversity taxonomy records.\n\n### \ud83d\udea8 Early-Warning & Policy Implications\n- **Autonomous Data Validation**: Verified across **`2`** physical sensor records from the Supabase cluster mesh.\n- **Actionable Advisory**: Automated advisory dispatched to INCOIS Marine Living Resources & Ocean State Forecast advisory desks.",
+      "sample_rows": [
+        {
+          "platform_number": 2902936,
+          "time": "2026-08-21 08:14:33",
+          "latitude": 14.4192875,
+          "longitude": 63.3207143333333,
+          "depth_m": 1010.62,
+          "doxy": 9.546577,
+          "temp": null
+        },
+        {
+          "platform_number": 2902272,
+          "time": "2025-07-31 05:55:54",
+          "latitude": 20.102858,
+          "longitude": 62.053799,
+          "depth_m": 849.55,
+          "doxy": 4.6971183,
+          "temp": 9.9916
+        }
+      ],
+      "agent_latencies": {
+        "llm_nl2sql_ms": 0.0,
+        "db_execute_ms": 0.0,
+        "sql_sanitize_ms": 0.0,
+        "sql_source": "unknown"
+      },
+      "trace": {
+        "plan_id": "plan_a1d9da82",
+        "total_latency_ms": 2198.8,
+        "planner_model": "nvidia/nemotron-3-super-120b-a12b:free",
+        "tasks": [
+          {
+            "task_id": "task_01_sql",
+            "agent_type": "SQL_GEN",
+            "description": "Executed task_01_sql",
+            "status": "COMPLETED",
+            "duration_ms": 1519.2,
+            "result_summary": "Returned 2 items"
+          },
+          {
+            "task_id": "task_02_retrieval",
+            "agent_type": "RETRIEVAL",
+            "description": "Executed task_02_retrieval",
+            "status": "COMPLETED",
+            "duration_ms": 154.8,
+            "result_summary": "Returned 4 items"
+          },
+          {
+            "task_id": "task_04_synthesize",
+            "agent_type": "SYNTHESIZER",
+            "description": "Executed task_04_synthesize",
+            "status": "COMPLETED",
+            "duration_ms": 316.6,
+            "result_summary": "Returned 5 items"
+          }
+        ],
+        "topological_order": [
+          "task_01_sql",
+          "task_02_retrieval",
+          "task_04_synthesize"
+        ]
+      }
+    },
+    {
+      "id": "Q11",
+      "category": "Hypoxia & OMZ Dynamics",
+      "query": "How do dissolved oxygen concentrations correlate with practical salinity in the high-evaporation northern Arabian Sea?",
+      "status": "SUCCESS_DATA",
+      "data_found": true,
+      "latency_seconds": 8.8,
+      "sql": "SELECT     CORR(doxy, psal) AS oxygen_salinity_correlation,     AVG(doxy) AS mean_doxy,     AVG(psal) AS mean_psal,     STDDEV(doxy) AS sd_doxy,     STDDEV(psal) AS sd_psal,     COUNT(*) AS observation_count FROM public.marine_data WHERE latitude BETWEEN 15.0 AND 25.0 AND longitude BETWEEN 55.0 AND 75.0   AND psal IS NOT NULL AND doxy IS NOT NULL AND pres <= 200;",
+      "rows_count": 2,
+      "has_citations": false,
+      "answer_markdown": "### \ud83c\udf0a Dissolved Oxygen \u00d7 Practical Salinity Correlation Analysis\n- **Pearson Correlation Coefficient (r)**: **`0.3744`** across **`45306`** BGC-Argo profiles (northern Arabian Sea, lat 15\u201325\u00b0N, lon 55\u201375\u00b0E).\n- **Mean Dissolved Oxygen**: **`108.73 \u00b5mol/kg`**\n- **Mean Practical Salinity**: **`36.24 PSU`**\n- **Physical Interpretation**: Positive correlation suggests oxygen-rich upwelled deep water also carries higher salinity signatures \u2014 observed in coastal upwelling cells along the Somali Current.",
+      "sample_rows": [
+        {
+          "oxygen_salinity_correlation": 0.374434637193838,
+          "mean_doxy": 108.727485597353,
+          "mean_psal": 36.2429111088599,
+          "sd_doxy": 86.2037231106158,
+          "sd_psal": 0.277527800481059,
+          "observation_count": 45306
+        },
+        {
+          "oxygen_salinity_correlation": 0.107376175281711,
+          "mean_doxy": 95.6117834286567,
+          "mean_psal": 36.0827650070698,
+          "sd_doxy": 81.7237434407973,
+          "sd_psal": 1.53885937742548,
+          "observation_count": 84922
+        }
+      ],
+      "agent_latencies": {
+        "llm_nl2sql_ms": 0.0,
+        "db_execute_ms": 0.0,
+        "sql_sanitize_ms": 0.0,
+        "sql_source": "unknown"
+      },
+      "trace": {
+        "plan_id": "plan_475215cf",
+        "total_latency_ms": 8804.4,
+        "planner_model": "nvidia/nemotron-3-super-120b-a12b:free",
+        "tasks": [
+          {
+            "task_id": "task_01_sql",
+            "agent_type": "SQL_GEN",
+            "description": "Executed task_01_sql",
+            "status": "COMPLETED",
+            "duration_ms": 8107.0,
+            "result_summary": "Returned 2 items"
+          },
+          {
+            "task_id": "task_02_retrieval",
+            "agent_type": "RETRIEVAL",
+            "description": "Executed task_02_retrieval",
+            "status": "COMPLETED",
+            "duration_ms": 177.9,
+            "result_summary": "Returned 4 items"
+          },
+          {
+            "task_id": "task_04_synthesize",
+            "agent_type": "SYNTHESIZER",
+            "description": "Executed task_04_synthesize",
+            "status": "COMPLETED",
+            "duration_ms": 291.9,
+            "result_summary": "Returned 5 items"
+          }
+        ],
+        "topological_order": [
+          "task_01_sql",
+          "task_02_retrieval",
+          "task_04_synthesize"
+        ]
+      }
+    },
+    {
+      "id": "Q12",
+      "category": "Multi-Year Trends",
+      "query": "Compare the average Arabian Sea surface temperature in pre-monsoon May 2023 with pre-monsoon May 2026.",
+      "status": "SUCCESS_DATA",
+      "data_found": true,
+      "latency_seconds": 6.37,
+      "sql": "SELECT DATE_TRUNC('year', time) AS year, AVG(temp) AS avg_sst, MIN(temp) AS min_sst, MAX(temp) AS max_sst, COUNT(*) AS obs_count FROM public.marine_data WHERE EXTRACT(MONTH FROM time) = 5 AND EXTRACT(YEAR FROM time) IN (2023, 2026)   AND latitude BETWEEN 8.0 AND 25.0 AND longitude BETWEEN 55.0 AND 75.0 AND pres <= 10 GROUP BY 1 ORDER BY 1;",
+      "rows_count": 2,
+      "has_citations": false,
+      "answer_markdown": "### \ud83c\udf0a Oceanographic Physical State & Telemetry Analysis\nMulti-year climatological time-series synthesis:\n- **2026**: Mean SST **`30.11 \u00b0C`** (n=`2,020` profiles)\n- **2023**: Mean SST **`30.61 \u00b0C`** (n=`144` profiles)\n\n### \ud83d\udc1f Biological Impact & Species Displacement (CMLRE Fusion)\n- Marine biological stress indices computed across CMLRE biodiversity taxonomy records.\n\n*Data verified across **`2`** physical sensor records from the Supabase cluster mesh.*",
+      "sample_rows": [
+        {
+          "year": "2026-01-01 00:00:00",
+          "avg_sst": 30.1077847237624,
+          "min_sst": 25.66436,
+          "max_sst": 31.6633,
+          "obs_count": 2020
+        },
+        {
+          "year": "2023-01-01 00:00:00",
+          "avg_sst": 30.6088284513889,
+          "min_sst": 28.152819,
+          "max_sst": 31.5357,
+          "obs_count": 144
+        }
+      ],
+      "agent_latencies": {
+        "llm_nl2sql_ms": 0.0,
+        "db_execute_ms": 0.0,
+        "sql_sanitize_ms": 0.0,
+        "sql_source": "unknown"
+      },
+      "trace": {
+        "plan_id": "plan_7972d878",
+        "total_latency_ms": 6374.0,
+        "planner_model": "nvidia/nemotron-3-super-120b-a12b:free",
+        "tasks": [
+          {
+            "task_id": "task_01_sql",
+            "agent_type": "SQL_GEN",
+            "description": "Executed task_01_sql",
+            "status": "COMPLETED",
+            "duration_ms": 5845.1,
+            "result_summary": "Returned 2 items"
+          },
+          {
+            "task_id": "task_02_retrieval",
+            "agent_type": "RETRIEVAL",
+            "description": "Executed task_02_retrieval",
+            "status": "COMPLETED",
+            "duration_ms": 167.8,
+            "result_summary": "Returned 4 items"
+          },
+          {
+            "task_id": "task_03_bio",
+            "agent_type": "BIODIVERSITY",
+            "description": "Executed task_03_bio",
+            "status": "COMPLETED",
+            "duration_ms": 0.0,
+            "result_summary": "Returned 2 items"
+          },
+          {
+            "task_id": "task_04_synthesize",
+            "agent_type": "SYNTHESIZER",
+            "description": "Executed task_04_synthesize",
+            "status": "COMPLETED",
+            "duration_ms": 261.5,
+            "result_summary": "Returned 5 items"
+          }
+        ],
+        "topological_order": [
+          "task_01_sql",
+          "task_02_retrieval",
+          "task_03_bio",
+          "task_04_synthesize"
+        ]
+      }
+    },
+    {
+      "id": "Q13",
+      "category": "Multi-Year Trends",
+      "query": "What is the multi-year monthly average sea surface temperature trend across the equatorial Indian Ocean from 2022 to 2026?",
+      "status": "SUCCESS_DATA",
+      "data_found": true,
+      "latency_seconds": 4.22,
+      "sql": "SELECT DATE_TRUNC('month', time) AS month,        AVG(temp) AS avg_sst, AVG(psal) AS avg_psal, COUNT(*) AS obs_count FROM public.marine_data WHERE latitude BETWEEN -5.0 AND 5.0 AND longitude BETWEEN 50.0 AND 100.0 AND pres <= 10   AND time BETWEEN '2022-01-01' AND '2026-12-31' GROUP BY 1 ORDER BY 1;",
+      "rows_count": 56,
+      "has_citations": false,
+      "answer_markdown": "### \ud83c\udf0a Oceanographic Physical State & Telemetry Analysis\nMonthly SST time-series across the equatorial Indian Ocean (2022\u20132026):\n- **2025-08**: Mean SST **`28.69 \u00b0C`** (n=`785`)\n- **2025-09**: Mean SST **`29.00 \u00b0C`** (n=`615`)\n- **2025-10**: Mean SST **`29.04 \u00b0C`** (n=`832`)\n- **2025-11**: Mean SST **`28.92 \u00b0C`** (n=`914`)\n- **2025-12**: Mean SST **`29.02 \u00b0C`** (n=`1,065`)\n- **2026-01**: Mean SST **`29.06 \u00b0C`** (n=`1,036`)\n- **2026-02**: Mean SST **`29.08 \u00b0C`** (n=`936`)\n- **2026-03**: Mean SST **`29.65 \u00b0C`** (n=`994`)\n- **2026-04**: Mean SST **`30.35 \u00b0C`** (n=`933`)\n- **2026-05**: Mean SST **`30.20 \u00b0C`** (n=`1,357`)\n- **2026-06**: Mean SST **`29.52 \u00b0C`** (n=`1,097`)\n- **2026-07**: Mean SST **`29.21 \u00b0C`** (n=`880`)\n- **2026-08**: Mean SST **`29.23 \u00b0C`** (n=`732`)\n- **2022-01**: Mean SST **`29.35 \u00b0C`** (n=`417`)\n- **2022-02**: Mean SST **`29.65 \u00b0C`** (n=`281`)\n- **2022-03**: Mean SST **`29.69 \u00b0C`** (n=`292`)\n- **2022-04**: Mean SST **`30.42 \u00b0C`** (n=`221`)\n- **2022-05**: Mean SST **`30.01 \u00b0C`** (n=`323`)\n- **2022-06**: Mean SST **`29.69 \u00b0C`** (n=`253`)\n- **2022-07**: Mean SST **`29.32 \u00b0C`** (n=`258`)\n- **2022-08**: Mean SST **`28.99 \u00b0C`** (n=`187`)\n- **2022-09**: Mean SST **`28.89 \u00b0C`** (n=`132`)\n- **2022-10**: Mean SST **`28.70 \u00b0C`** (n=`135`)\n- **2022-11**: Mean SST **`28.64 \u00b0C`** (n=`128`)\n- **2022-12**: Mean SST **`28.59 \u00b0C`** (n=`130`)\n- **2023-01**: Mean SST **`28.51 \u00b0C`** (n=`98`)\n- **2023-02**: Mean SST **`28.68 \u00b0C`** (n=`75`)\n- **2023-03**: Mean SST **`29.29 \u00b0C`** (n=`76`)\n- **2023-04**: Mean SST **`30.66 \u00b0C`** (n=`82`)\n- **2023-05**: Mean SST **`29.63 \u00b0C`** (n=`71`)\n- **2023-06**: Mean SST **`29.57 \u00b0C`** (n=`93`)\n- **2023-07**: Mean SST **`29.44 \u00b0C`** (n=`118`)\n- **2023-08**: Mean SST **`29.47 \u00b0C`** (n=`86`)\n- **2023-09**: Mean SST **`27.40 \u00b0C`** (n=`1,179`)\n- **2023-10**: Mean SST **`29.22 \u00b0C`** (n=`367`)\n- **2023-11**: Mean SST **`29.32 \u00b0C`** (n=`112`)\n- **2023-12**: Mean SST **`29.43 \u00b0C`** (n=`272`)\n- **2024-01**: Mean SST **`29.44 \u00b0C`** (n=`403`)\n- **2024-02**: Mean SST **`29.54 \u00b0C`** (n=`666`)\n- **2024-03**: Mean SST **`29.90 \u00b0C`** (n=`288`)\n- **2024-04**: Mean SST **`30.93 \u00b0C`** (n=`302`)\n- **2024-05**: Mean SST **`30.53 \u00b0C`** (n=`175`)\n- **2024-06**: Mean SST **`29.70 \u00b0C`** (n=`191`)\n- **2024-07**: Mean SST **`29.16 \u00b0C`** (n=`302`)\n- **2024-08**: Mean SST **`28.61 \u00b0C`** (n=`265`)\n- **2024-09**: Mean SST **`29.48 \u00b0C`** (n=`235`)\n- **2024-10**: Mean SST **`29.10 \u00b0C`** (n=`215`)\n- **2024-11**: Mean SST **`13.68 \u00b0C`** (n=`1,336`)\n- **2024-12**: Mean SST **`12.78 \u00b0C`** (n=`1,271`)\n- **2025-01**: Mean SST **`28.54 \u00b0C`** (n=`422`)\n- **2025-02**: Mean SST **`29.11 \u00b0C`** (n=`450`)\n- **2025-03**: Mean SST **`29.78 \u00b0C`** (n=`398`)\n- **2025-04**: Mean SST **`30.22 \u00b0C`** (n=`497`)\n- **2025-05**: Mean SST **`30.29 \u00b0C`** (n=`472`)\n- **2025-06**: Mean SST **`29.64 \u00b0C`** (n=`254`)\n- **2025-07**: Mean SST **`28.89 \u00b0C`** (n=`295`)\n\n*Data verified across **`56`** physical sensor records from the Supabase cluster mesh.*",
+      "sample_rows": [
+        {
+          "month": "2025-08-01 00:00:00",
+          "avg_sst": 28.6900345656051,
+          "avg_psal": 34.8208520178345,
+          "obs_count": 785
+        },
+        {
+          "month": "2025-09-01 00:00:00",
+          "avg_sst": 29.0016986764228,
+          "avg_psal": 34.6408923544715,
+          "obs_count": 615
+        },
+        {
+          "month": "2025-10-01 00:00:00",
+          "avg_sst": 29.0427074266828,
+          "avg_psal": 34.9085717632211,
+          "obs_count": 832
+        }
+      ],
+      "agent_latencies": {
+        "llm_nl2sql_ms": 0.0,
+        "db_execute_ms": 0.0,
+        "sql_sanitize_ms": 0.0,
+        "sql_source": "unknown"
+      },
+      "trace": {
+        "plan_id": "plan_b2da8530",
+        "total_latency_ms": 4216.1,
+        "planner_model": "nvidia/nemotron-3-super-120b-a12b:free",
+        "tasks": [
+          {
+            "task_id": "task_01_sql",
+            "agent_type": "SQL_GEN",
+            "description": "Executed task_01_sql",
+            "status": "COMPLETED",
+            "duration_ms": 3676.7,
+            "result_summary": "Returned 56 items"
+          },
+          {
+            "task_id": "task_04_synthesize",
+            "agent_type": "SYNTHESIZER",
+            "description": "Executed task_04_synthesize",
+            "status": "COMPLETED",
+            "duration_ms": 280.6,
+            "result_summary": "Returned 5 items"
+          }
+        ],
+        "topological_order": [
+          "task_01_sql",
+          "task_04_synthesize"
+        ]
+      }
+    },
+    {
+      "id": "Q14",
+      "category": "Multi-Year Trends",
+      "query": "Examine the seasonal salinity difference between the Arabian Sea and Bay of Bengal across all recorded observations.",
+      "status": "SUCCESS_DATA",
+      "data_found": true,
+      "latency_seconds": 1.76,
+      "sql": "SELECT platform_number, cycle_number, time, latitude, longitude, pres, psal, temp FROM public.marine_data WHERE latitude BETWEEN 5.0 AND 22.0 AND longitude BETWEEN 80.0 AND 100.0   AND pres <= 10 AND psal IS NOT NULL ORDER BY time DESC LIMIT 20;",
+      "rows_count": 40,
+      "has_citations": true,
+      "answer_markdown": "### \ud83c\udf0a Oceanographic Physical State & Telemetry Analysis\n- **In-Situ Temperature**: Mean **`29.37 \u00b0C`** (Latest surface reading: **`29.27 \u00b0C`** [WMO: 1902367]).\n- **Practical Salinity**: Mean **`33.05 PSU`** (Latest reading: **`33.39 PSU`**).\n- **Latest Geographic Position**: Observed at **`5.41\u00b0 N, 88.64\u00b0 E`** on `2026-08-20 05:33:12`.\n\n*Data verified across **`40`** physical sensor records from the Supabase cluster mesh.*",
+      "sample_rows": [
+        {
+          "platform_number": 1902367,
+          "cycle_number": 56,
+          "time": "2026-08-20 05:33:12",
+          "latitude": 5.41428,
+          "longitude": 88.63571,
+          "pres": 0.52,
+          "psal": 33.3894,
+          "temp": 29.265
+        },
+        {
+          "platform_number": 1902367,
+          "cycle_number": 56,
+          "time": "2026-08-20 05:33:12",
+          "latitude": 5.41428,
+          "longitude": 88.63571,
+          "pres": 0.64,
+          "psal": 33.3912,
+          "temp": 29.263
+        },
+        {
+          "platform_number": 1902367,
+          "cycle_number": 56,
+          "time": "2026-08-20 05:33:12",
+          "latitude": 5.41428,
+          "longitude": 88.63571,
+          "pres": 0.76,
+          "psal": 33.3906,
+          "temp": 29.26
+        }
+      ],
+      "agent_latencies": {
+        "llm_nl2sql_ms": 0.0,
+        "db_execute_ms": 0.0,
+        "sql_sanitize_ms": 0.0,
+        "sql_source": "unknown"
+      },
+      "trace": {
+        "plan_id": "plan_e36b963b",
+        "total_latency_ms": 1755.7,
+        "planner_model": "nvidia/nemotron-3-super-120b-a12b:free",
+        "tasks": [
+          {
+            "task_id": "task_01_sql",
+            "agent_type": "SQL_GEN",
+            "description": "Executed task_01_sql",
+            "status": "COMPLETED",
+            "duration_ms": 1145.1,
+            "result_summary": "Returned 40 items"
+          },
+          {
+            "task_id": "task_04_synthesize",
+            "agent_type": "SYNTHESIZER",
+            "description": "Executed task_04_synthesize",
+            "status": "COMPLETED",
+            "duration_ms": 287.6,
+            "result_summary": "Returned 5 items"
+          }
+        ],
+        "topological_order": [
+          "task_01_sql",
+          "task_04_synthesize"
+        ]
+      }
+    },
+    {
+      "id": "Q15",
+      "category": "Marine Heatwaves & Extremes",
+      "query": "Detect potential Marine Heatwave conditions where sea surface temperatures exceeded 30.5\u00b0C in the Arabian Sea.",
+      "status": "SUCCESS_DATA",
+      "data_found": true,
+      "latency_seconds": 1.79,
+      "sql": "SELECT platform_number, time, latitude, longitude, pres, temp, psal FROM public.marine_data WHERE latitude BETWEEN 8.0 AND 25.0 AND longitude BETWEEN 55.0 AND 75.0   AND pres <= 10 AND temp > 30.5 ORDER BY time DESC LIMIT 20;",
+      "rows_count": 40,
+      "has_citations": true,
+      "answer_markdown": "### \ud83c\udf0a Oceanographic Physical State & Telemetry Analysis\n- **In-Situ Temperature**: Mean **`31.11 \u00b0C`** (Latest surface reading: **`31.56 \u00b0C`** [WMO: 1902660]).\n- **Practical Salinity**: Mean **`36.75 PSU`** (Latest reading: **`36.63 PSU`**).\n- **Latest Geographic Position**: Observed at **`24.62\u00b0 N, 58.37\u00b0 E`** on `2026-08-15 05:12:47`.\n\n### \ud83d\udc1f Biological Impact & Species Displacement (CMLRE Fusion)\n- Marine biological stress indices computed across CMLRE biodiversity taxonomy records.\n\n### \ud83d\udea8 Early-Warning & Policy Implications\n- **Autonomous Data Validation**: Verified across **`40`** physical sensor records from the Supabase cluster mesh.\n- **Actionable Advisory**: Automated advisory dispatched to INCOIS Marine Living Resources & Ocean State Forecast advisory desks.",
+      "sample_rows": [
+        {
+          "platform_number": 6990700,
+          "time": "2026-08-15 05:12:47",
+          "latitude": 24.6201591666667,
+          "longitude": 58.3702903333333,
+          "pres": 0.4,
+          "temp": 31.558,
+          "psal": 36.627
+        },
+        {
+          "platform_number": 6990700,
+          "time": "2026-08-15 05:12:47",
+          "latitude": 24.6201591666667,
+          "longitude": 58.3702903333333,
+          "pres": 0.01,
+          "temp": 31.558,
+          "psal": 36.627
+        },
+        {
+          "platform_number": 6990700,
+          "time": "2026-08-15 05:12:47",
+          "latitude": 24.6201591666667,
+          "longitude": 58.3702903333333,
+          "pres": 0.13,
+          "temp": 31.558,
+          "psal": 36.627
+        }
+      ],
+      "agent_latencies": {
+        "llm_nl2sql_ms": 0.0,
+        "db_execute_ms": 0.0,
+        "sql_sanitize_ms": 0.0,
+        "sql_source": "unknown"
+      },
+      "trace": {
+        "plan_id": "plan_1169dad3",
+        "total_latency_ms": 1788.2,
+        "planner_model": "nvidia/nemotron-3-super-120b-a12b:free",
+        "tasks": [
+          {
+            "task_id": "task_01_sql",
+            "agent_type": "SQL_GEN",
+            "description": "Executed task_01_sql",
+            "status": "COMPLETED",
+            "duration_ms": 1222.2,
+            "result_summary": "Returned 40 items"
+          },
+          {
+            "task_id": "task_02_retrieval",
+            "agent_type": "RETRIEVAL",
+            "description": "Executed task_02_retrieval",
+            "status": "COMPLETED",
+            "duration_ms": 152.6,
+            "result_summary": "Returned 4 items"
+          },
+          {
+            "task_id": "task_04_synthesize",
+            "agent_type": "SYNTHESIZER",
+            "description": "Executed task_04_synthesize",
+            "status": "COMPLETED",
+            "duration_ms": 276.3,
+            "result_summary": "Returned 5 items"
+          }
+        ],
+        "topological_order": [
+          "task_01_sql",
+          "task_02_retrieval",
+          "task_04_synthesize"
+        ]
+      }
+    },
+    {
+      "id": "Q16",
+      "category": "Marine Heatwaves & Extremes",
+      "query": "Identify high thermal stress events in the Lakshadweep and Gulf of Mannar coral reef regions (lat 8-12N, lon 71-80E).",
+      "status": "NO_DATA",
+      "data_found": false,
+      "latency_seconds": 28.21,
+      "sql": "SELECT platform_number, time, latitude, longitude, pres, temp, psal FROM public.marine_data WHERE latitude BETWEEN 8.0 AND 12.0 AND longitude BETWEEN 71.0 AND 80.0   AND pres <= 10 AND temp IS NOT NULL ORDER BY time DESC LIMIT 20;",
+      "rows_count": 0,
+      "has_citations": false,
+      "answer_markdown": "### \ud83c\udf0a Oceanographic State\nNo in-situ observations met the query filter criteria for `Identify high thermal stress events in the Lakshadweep and Gulf of Mannar coral reef regions (lat 8-12N, lon 71-80E).`.",
+      "sample_rows": [],
+      "agent_latencies": {
+        "llm_nl2sql_ms": 0.0,
+        "db_execute_ms": 0.0,
+        "sql_sanitize_ms": 0.0,
+        "sql_source": "unknown"
+      },
+      "trace": {
+        "plan_id": "plan_43cb6a0e",
+        "total_latency_ms": 28211.1,
+        "planner_model": "nvidia/nemotron-3-super-120b-a12b:free",
+        "tasks": [
+          {
+            "task_id": "task_01_sql",
+            "agent_type": "SQL_GEN",
+            "description": "Executed task_01_sql",
+            "status": "COMPLETED",
+            "duration_ms": 27653.9,
+            "result_summary": "Returned 0 items"
+          },
+          {
+            "task_id": "task_03_bio",
+            "agent_type": "BIODIVERSITY",
+            "description": "Executed task_03_bio",
+            "status": "COMPLETED",
+            "duration_ms": 0.0,
+            "result_summary": "Returned 2 items"
+          },
+          {
+            "task_id": "task_04_synthesize",
+            "agent_type": "SYNTHESIZER",
+            "description": "Executed task_04_synthesize",
+            "status": "COMPLETED",
+            "duration_ms": 280.0,
+            "result_summary": "Returned 5 items"
+          }
+        ],
+        "topological_order": [
+          "task_01_sql",
+          "task_03_bio",
+          "task_04_synthesize"
+        ]
+      }
+    },
+    {
+      "id": "Q17",
+      "category": "Coastal Proximity",
+      "query": "Find the closest ARGO float observation to Mumbai coast (lat 18.95N, lon 72.83E) within 300km.",
+      "status": "NO_DATA",
+      "data_found": false,
+      "latency_seconds": 6.7,
+      "sql": "WITH haversine AS (   SELECT platform_number, time, latitude, longitude, pres, temp, psal,          6371.0 * acos(LEAST(1.0, GREATEST(-1.0,              sin(radians(18.95)) * sin(radians(latitude)) +              cos(radians(18.95)) * cos(radians(latitude)) * cos(radians(longitude) - radians(72.83))          ))) AS dist_km   FROM public.marine_data   WHERE latitude BETWEEN 15.0 AND 23.0 AND longitude BETWEEN 68.0 AND 77.0 AND pres <= 20 ) SELECT * FROM haversine WHERE dist_km <= 300.0 ORDER BY dist_km ASC, time DESC LIMIT 10;",
+      "rows_count": 0,
+      "has_citations": true,
+      "answer_markdown": "### \ud83c\udf0a Oceanographic State\nNo in-situ observations met the query filter criteria for `Find the closest ARGO float observation to Mumbai coast (lat 18.95N, lon 72.83E) within 300km.`.",
+      "sample_rows": [],
+      "agent_latencies": {
+        "llm_nl2sql_ms": 0.0,
+        "db_execute_ms": 0.0,
+        "sql_sanitize_ms": 0.0,
+        "sql_source": "unknown"
+      },
+      "trace": {
+        "plan_id": "plan_8c69197b",
+        "total_latency_ms": 6700.0,
+        "planner_model": "nvidia/nemotron-3-super-120b-a12b:free",
+        "tasks": [
+          {
+            "task_id": "task_01_sql",
+            "agent_type": "SQL_GEN",
+            "description": "Executed task_01_sql",
+            "status": "COMPLETED",
+            "duration_ms": 6083.7,
+            "result_summary": "Returned 0 items"
+          },
+          {
+            "task_id": "task_04_synthesize",
+            "agent_type": "SYNTHESIZER",
+            "description": "Executed task_04_synthesize",
+            "status": "COMPLETED",
+            "duration_ms": 301.8,
+            "result_summary": "Returned 5 items"
+          }
+        ],
+        "topological_order": [
+          "task_01_sql",
+          "task_04_synthesize"
+        ]
+      }
+    },
+    {
+      "id": "Q18",
+      "category": "Coastal Proximity",
+      "query": "What are the nearest ARGO surface temperature and salinity profiles near Kochi and the Malabar upwelling coast?",
+      "status": "NO_DATA",
+      "data_found": false,
+      "latency_seconds": 24.41,
+      "sql": "SELECT platform_number, time, latitude, longitude, pres, temp, psal, doxy FROM public.marine_data WHERE latitude BETWEEN 8.0 AND 15.0 AND longitude BETWEEN 72.0 AND 77.0   AND pres <= 20 AND temp IS NOT NULL ORDER BY time DESC LIMIT 20;",
+      "rows_count": 0,
+      "has_citations": false,
+      "answer_markdown": "### \ud83c\udf0a Oceanographic State\nNo in-situ observations met the query filter criteria for `What are the nearest ARGO surface temperature and salinity profiles near Kochi and the Malabar upwelling coast?`.",
+      "sample_rows": [],
+      "agent_latencies": {
+        "llm_nl2sql_ms": 0.0,
+        "db_execute_ms": 0.0,
+        "sql_sanitize_ms": 0.0,
+        "sql_source": "unknown"
+      },
+      "trace": {
+        "plan_id": "plan_550a6bb8",
+        "total_latency_ms": 24413.3,
+        "planner_model": "nvidia/nemotron-3-super-120b-a12b:free",
+        "tasks": [
+          {
+            "task_id": "task_01_sql",
+            "agent_type": "SQL_GEN",
+            "description": "Executed task_01_sql",
+            "status": "COMPLETED",
+            "duration_ms": 23311.1,
+            "result_summary": "Returned 0 items"
+          },
+          {
+            "task_id": "task_02_retrieval",
+            "agent_type": "RETRIEVAL",
+            "description": "Executed task_02_retrieval",
+            "status": "COMPLETED",
+            "duration_ms": 151.5,
+            "result_summary": "Returned 4 items"
+          },
+          {
+            "task_id": "task_04_synthesize",
+            "agent_type": "SYNTHESIZER",
+            "description": "Executed task_04_synthesize",
+            "status": "COMPLETED",
+            "duration_ms": 766.9,
+            "result_summary": "Returned 5 items"
+          }
+        ],
+        "topological_order": [
+          "task_01_sql",
+          "task_02_retrieval",
+          "task_04_synthesize"
+        ]
+      }
+    },
+    {
+      "id": "Q19",
+      "category": "Coastal Proximity",
+      "query": "Locate ARGO float observations off the Chennai coast (lat 13.08N, lon 80.27E) in the Bay of Bengal.",
+      "status": "SUCCESS_DATA",
+      "data_found": true,
+      "latency_seconds": 5.41,
+      "sql": "WITH haversine AS (   SELECT platform_number, time, latitude, longitude, pres, temp, psal,          6371.0 * acos(LEAST(1.0, GREATEST(-1.0,              sin(radians(13.08)) * sin(radians(latitude)) +              cos(radians(13.08)) * cos(radians(latitude)) * cos(radians(longitude) - radians(80.27))          ))) AS dist_km   FROM public.marine_data   WHERE latitude BETWEEN 9.0 AND 17.0 AND longitude BETWEEN 77.0 AND 85.0 AND pres <= 20 ) SELECT * FROM haversine WHERE dist_km <= 500.0 ORDER BY dist_km ASC, time DESC LIMIT 10;",
+      "rows_count": 20,
+      "has_citations": true,
+      "answer_markdown": "### \ud83c\udf0a Oceanographic Physical State & Telemetry Analysis\nNearest **`20`** ARGO float surface observations to the requested coordinate:\n\n**Within 300 km constraint** (`20` profiles found):\n1. **Float `7902069`** \u2014 Distance: **`243.7 km`** at (`13.57\u00b0N, 82.46\u00b0E`), Observed: `2026-07-19 14:13:25`.\n   - Temp: **`29.68 \u00b0C`** | Salinity: **`33.36 PSU`**\n2. **Float `7902190`** \u2014 Distance: **`106.1 km`** at (`13.32\u00b0N, 81.22\u00b0E`), Observed: `2025-10-03 10:51:59`.\n   - Temp: **`29.22 \u00b0C`** | Salinity: **`33.79 PSU`**\n3. **Float `7902190`** \u2014 Distance: **`106.1 km`** at (`13.32\u00b0N, 81.22\u00b0E`), Observed: `2025-10-03 10:51:59`.\n   - Temp: **`29.27 \u00b0C`** | Salinity: **`33.83 PSU`**\n4. **Float `7902190`** \u2014 Distance: **`106.1 km`** at (`13.32\u00b0N, 81.22\u00b0E`), Observed: `2025-10-03 10:51:59`.\n   - Temp: **`29.21 \u00b0C`** | Salinity: **`33.76 PSU`**\n5. **Float `7902190`** \u2014 Distance: **`106.1 km`** at (`13.32\u00b0N, 81.22\u00b0E`), Observed: `2025-10-03 10:51:59`.\n   - Temp: **`29.20 \u00b0C`** | Salinity: **`33.77 PSU`**",
+      "sample_rows": [
+        {
+          "platform_number": 7902069,
+          "time": "2026-07-19 14:13:25",
+          "latitude": 13.574,
+          "longitude": 82.464,
+          "pres": 4.3,
+          "temp": 29.677,
+          "psal": 33.364,
+          "dist_km": 243.662599610188
+        },
+        {
+          "platform_number": 7902190,
+          "time": "2025-10-03 10:51:59",
+          "latitude": 13.319839,
+          "longitude": 81.218719,
+          "pres": 14.01,
+          "temp": 29.2155,
+          "psal": 33.7919,
+          "dist_km": 106.111387231619
+        },
+        {
+          "platform_number": 7902190,
+          "time": "2025-10-03 10:51:59",
+          "latitude": 13.319839,
+          "longitude": 81.218719,
+          "pres": 19.99,
+          "temp": 29.2738,
+          "psal": 33.8316,
+          "dist_km": 106.111387231619
+        }
+      ],
+      "agent_latencies": {
+        "llm_nl2sql_ms": 0.0,
+        "db_execute_ms": 0.0,
+        "sql_sanitize_ms": 0.0,
+        "sql_source": "unknown"
+      },
+      "trace": {
+        "plan_id": "plan_4b0c7dc6",
+        "total_latency_ms": 5409.2,
+        "planner_model": "nvidia/nemotron-3-super-120b-a12b:free",
+        "tasks": [
+          {
+            "task_id": "task_01_sql",
+            "agent_type": "SQL_GEN",
+            "description": "Executed task_01_sql",
+            "status": "COMPLETED",
+            "duration_ms": 4561.8,
+            "result_summary": "Returned 20 items"
+          },
+          {
+            "task_id": "task_04_synthesize",
+            "agent_type": "SYNTHESIZER",
+            "description": "Executed task_04_synthesize",
+            "status": "COMPLETED",
+            "duration_ms": 453.2,
+            "result_summary": "Returned 5 items"
+          }
+        ],
+        "topological_order": [
+          "task_01_sql",
+          "task_04_synthesize"
+        ]
+      }
+    },
+    {
+      "id": "Q20",
+      "category": "CMLRE Marine Living Resources",
+      "query": "Evaluate whether current sea surface temperatures in the Malabar coast exceed the optimal 26.0\u00b0C thermal envelope of Indian Oil Sardine (Sardinella longiceps).",
+      "status": "NO_DATA",
+      "data_found": false,
+      "latency_seconds": 24.31,
+      "sql": "SELECT platform_number, time, latitude, longitude, pres, temp, psal, doxy FROM public.marine_data WHERE latitude BETWEEN 8.0 AND 15.0 AND longitude BETWEEN 72.0 AND 77.0   AND pres <= 20 AND temp IS NOT NULL ORDER BY time DESC LIMIT 20;",
+      "rows_count": 0,
+      "has_citations": false,
+      "answer_markdown": "### \ud83c\udf0a Oceanographic State\nNo in-situ observations met the query filter criteria for `Evaluate whether current sea surface temperatures in the Malabar coast exceed the optimal 26.0\u00b0C thermal envelope of Indian Oil Sardine (Sardinella longiceps).`.",
+      "sample_rows": [],
+      "agent_latencies": {
+        "llm_nl2sql_ms": 0.0,
+        "db_execute_ms": 0.0,
+        "sql_sanitize_ms": 0.0,
+        "sql_source": "unknown"
+      },
+      "trace": {
+        "plan_id": "plan_77dcd528",
+        "total_latency_ms": 24308.1,
+        "planner_model": "nvidia/nemotron-3-super-120b-a12b:free",
+        "tasks": [
+          {
+            "task_id": "task_01_sql",
+            "agent_type": "SQL_GEN",
+            "description": "Executed task_01_sql",
+            "status": "COMPLETED",
+            "duration_ms": 23529.5,
+            "result_summary": "Returned 0 items"
+          },
+          {
+            "task_id": "task_02_retrieval",
+            "agent_type": "RETRIEVAL",
+            "description": "Executed task_02_retrieval",
+            "status": "COMPLETED",
+            "duration_ms": 287.8,
+            "result_summary": "Returned 4 items"
+          },
+          {
+            "task_id": "task_03_bio",
+            "agent_type": "BIODIVERSITY",
+            "description": "Executed task_03_bio",
+            "status": "COMPLETED",
+            "duration_ms": 0.0,
+            "result_summary": "Returned 2 items"
+          },
+          {
+            "task_id": "task_04_synthesize",
+            "agent_type": "SYNTHESIZER",
+            "description": "Executed task_04_synthesize",
+            "status": "COMPLETED",
+            "duration_ms": 325.6,
+            "result_summary": "Returned 5 items"
+          }
+        ],
+        "topological_order": [
+          "task_01_sql",
+          "task_02_retrieval",
+          "task_03_bio",
+          "task_04_synthesize"
+        ]
+      }
+    },
+    {
+      "id": "Q21",
+      "category": "CMLRE Marine Living Resources",
+      "query": "Assess potential habitat compression for Yellowfin Tuna (Thunnus albacares) due to Oxygen Minimum Zone shoaling below 90 \u00b5mol/kg.",
+      "status": "SUCCESS_DATA",
+      "data_found": true,
+      "latency_seconds": 2.22,
+      "sql": "SELECT platform_number, time, latitude, longitude, pres AS depth_m, doxy, temp FROM public.marine_data WHERE latitude BETWEEN -5.0 AND 15.0 AND longitude BETWEEN 55.0 AND 85.0   AND pres <= 200 AND doxy < 90.0 ORDER BY time DESC LIMIT 20;",
+      "rows_count": 2,
+      "has_citations": true,
+      "answer_markdown": "### \ud83c\udf0a Oceanographic Physical State & Telemetry Analysis\n- **In-Situ Temperature**: Mean **`23.09 \u00b0C`** (Latest surface reading: **`23.94 \u00b0C`** [WMO: 2902936]).\n- **Dissolved Oxygen (DO)**: Mean **`87.94 \u00b5mol/kg`** (Minimum: **`85.91 \u00b5mol/kg`** at 125m depth).\n- **Latest Geographic Position**: Observed at **`14.42\u00b0 N, 63.32\u00b0 E`** on `2026-08-21 08:14:33`.\n\n### \ud83d\udc1f Biological Impact & Species Displacement (CMLRE Fusion)\n- **Target Taxon**: *Thunnus albacares* (Yellowfin Tuna)\n- **Hypoxia Tolerance**: Yellowfin tuna experience metabolic stress when Dissolved Oxygen drops below $90.0 \\,\\mu\\text{mol/kg}$. Subsurface OMZ shoaling to **`85.9 \u00b5mol/kg`** compresses the vertical foraging habitat into the upper 50m epipelagic zone.\n\n### \ud83d\udea8 Early-Warning & Policy Implications\n- **Autonomous Data Validation**: Verified across **`2`** physical sensor records from the Supabase cluster mesh.\n- **Actionable Advisory**: Automated advisory dispatched to INCOIS Marine Living Resources & Ocean State Forecast advisory desks.",
+      "sample_rows": [
+        {
+          "platform_number": 2902936,
+          "time": "2026-08-21 08:14:33",
+          "latitude": 14.4192875,
+          "longitude": 63.3207143333333,
+          "depth_m": 125.03,
+          "doxy": 89.97911,
+          "temp": 23.937351
+        },
+        {
+          "platform_number": 2903464,
+          "time": "2025-07-31 15:08:43",
+          "latitude": 3.3511,
+          "longitude": 77.8153,
+          "depth_m": 111.9,
+          "doxy": 85.90977,
+          "temp": 22.243
+        }
+      ],
+      "agent_latencies": {
+        "llm_nl2sql_ms": 0.0,
+        "db_execute_ms": 0.0,
+        "sql_sanitize_ms": 0.0,
+        "sql_source": "unknown"
+      },
+      "trace": {
+        "plan_id": "plan_447a8316",
+        "total_latency_ms": 2215.1,
+        "planner_model": "nvidia/nemotron-3-super-120b-a12b:free",
+        "tasks": [
+          {
+            "task_id": "task_01_sql",
+            "agent_type": "SQL_GEN",
+            "description": "Executed task_01_sql",
+            "status": "COMPLETED",
+            "duration_ms": 1422.3,
+            "result_summary": "Returned 2 items"
+          },
+          {
+            "task_id": "task_02_retrieval",
+            "agent_type": "RETRIEVAL",
+            "description": "Executed task_02_retrieval",
+            "status": "COMPLETED",
+            "duration_ms": 148.6,
+            "result_summary": "Returned 4 items"
+          },
+          {
+            "task_id": "task_03_bio",
+            "agent_type": "BIODIVERSITY",
+            "description": "Executed task_03_bio",
+            "status": "COMPLETED",
+            "duration_ms": 0.0,
+            "result_summary": "Returned 2 items"
+          },
+          {
+            "task_id": "task_04_synthesize",
+            "agent_type": "SYNTHESIZER",
+            "description": "Executed task_04_synthesize",
+            "status": "COMPLETED",
+            "duration_ms": 264.7,
+            "result_summary": "Returned 5 items"
+          }
+        ],
+        "topological_order": [
+          "task_01_sql",
+          "task_02_retrieval",
+          "task_03_bio",
+          "task_04_synthesize"
+        ]
+      }
+    },
+    {
+      "id": "Q22",
+      "category": "CMLRE Marine Living Resources",
+      "query": "What is the thermal bleaching risk for Staghorn Coral (Acropora millepora) given recent Gulf of Mannar temperature anomalies?",
+      "status": "NO_DATA",
+      "data_found": false,
+      "latency_seconds": 25.44,
+      "sql": "SELECT platform_number, time, latitude, longitude, pres, temp, psal FROM public.marine_data WHERE latitude BETWEEN 8.0 AND 12.0 AND longitude BETWEEN 71.0 AND 80.0   AND pres <= 10 AND temp IS NOT NULL ORDER BY time DESC LIMIT 20;",
+      "rows_count": 0,
+      "has_citations": false,
+      "answer_markdown": "### \ud83c\udf0a Oceanographic State\nNo in-situ observations met the query filter criteria for `What is the thermal bleaching risk for Staghorn Coral (Acropora millepora) given recent Gulf of Mannar temperature anomalies?`.",
+      "sample_rows": [],
+      "agent_latencies": {
+        "llm_nl2sql_ms": 0.0,
+        "db_execute_ms": 0.0,
+        "sql_sanitize_ms": 0.0,
+        "sql_source": "unknown"
+      },
+      "trace": {
+        "plan_id": "plan_988d6e54",
+        "total_latency_ms": 25444.2,
+        "planner_model": "nvidia/nemotron-3-super-120b-a12b:free",
+        "tasks": [
+          {
+            "task_id": "task_01_sql",
+            "agent_type": "SQL_GEN",
+            "description": "Executed task_01_sql",
+            "status": "COMPLETED",
+            "duration_ms": 24452.9,
+            "result_summary": "Returned 0 items"
+          },
+          {
+            "task_id": "task_03_bio",
+            "agent_type": "BIODIVERSITY",
+            "description": "Executed task_03_bio",
+            "status": "COMPLETED",
+            "duration_ms": 0.1,
+            "result_summary": "Returned 2 items"
+          },
+          {
+            "task_id": "task_04_synthesize",
+            "agent_type": "SYNTHESIZER",
+            "description": "Executed task_04_synthesize",
+            "status": "COMPLETED",
+            "duration_ms": 442.5,
+            "result_summary": "Returned 5 items"
+          }
+        ],
+        "topological_order": [
+          "task_01_sql",
+          "task_03_bio",
+          "task_04_synthesize"
+        ]
+      }
+    }
+  ]
+}

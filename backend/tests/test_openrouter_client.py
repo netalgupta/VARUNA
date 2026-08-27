@@ -26,7 +26,7 @@ async def test_offline_chat_fallback_synthesizer():
     messages = [{"role": "user", "content": "Synthesize summary"}]
     res = await chat_complete(messages, task_tag="synthesizer")
     assert "Marine Ecosystem Assessment" in res
-    assert "Sardinella" in res or "ARGO" in res
+    assert "ARGO" in res
 
 
 @pytest.mark.asyncio

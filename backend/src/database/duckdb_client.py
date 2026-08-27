@@ -50,7 +50,8 @@ def _seed_in_memory_data(conn: duckdb.DuckDBPyConnection):
         );
     """)
     # Check if table already has rows
-    cnt = conn.execute("SELECT COUNT(*) FROM marine_data").fetchone()[0]
+    result = conn.execute("SELECT COUNT(*) FROM marine_data").fetchone()
+    cnt = result[0] if result else 0
     if cnt > 0:
         return
 
@@ -169,6 +170,8 @@ def parquet_stats() -> Dict[str, Any]:
                 SUM(CASE WHEN chla IS NOT NULL THEN 1 ELSE 0 END) AS bgc_chla_rows
             FROM marine_data
         """).fetchone()
+        if row is None:
+            return {"total_rows": 0, "unique_floats": 0, "earliest": "", "latest": "", "bgc_oxygen_rows": 0, "bgc_chla_rows": 0}
         return {
             "total_rows": row[0], "unique_floats": row[1],
             "earliest": str(row[2]), "latest": str(row[3]),

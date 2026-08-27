@@ -2,37 +2,44 @@ import type { Config } from "tailwindcss";
 
 const config: Config = {
   content: [
-    "./pages/**/*.{js,ts,jsx,tsx,mdx}",
-    "./components/**/*.{js,ts,jsx,tsx,mdx}",
-    "./app/**/*.{js,ts,jsx,tsx,mdx}",
+    "./src/pages/**/*.{js,ts,jsx,tsx,mdx}",
+    "./src/components/**/*.{js,ts,jsx,tsx,mdx}",
+    "./src/features/**/*.{js,ts,jsx,tsx,mdx}",
+    "./src/app/**/*.{js,ts,jsx,tsx,mdx}",
   ],
   theme: {
     extend: {
       colors: {
-        // taste-skill: The LILA BAN. Neutral base. ONE accent.
+        // Marine dark theme tokens
         zinc: {
           950: "#09090b",
         },
         accent: {
-          DEFAULT: "#10b981",   // emerald-500
-          dim:     "#064e3b",   // emerald-950
-          bright:  "#34d399",   // emerald-400
+          DEFAULT: "#2EE6C6",   // VARUNA Tropical Aqua / Emerald
+          dim:     "#0D5C52",
+          bright:  "#5CF5DA",
         },
+        glow:      "#2EE6C6",
+        coral:     "#FF7F50",   // Marine heatwave alert color
+        warning:   "#F59E0B",
+        danger:    "#EF4444",
 
-        // Keep for chart compatibility — but UI uses zinc only
+        // Scientific chart compatibility
         argo: {
-          cyan:    "#10b981",   // remapped to emerald
-          blue:    "#6ee7b7",
-          gold:    "#fbbf24",
-          orange:  "#f97316",
+          cyan:    "#2EE6C6",
+          blue:    "#38BDF8",
+          gold:    "#FBBF24",
+          orange:  "#F97316",
         },
-        deep:    "#09090b",
-        ocean:   "#111113",
-        abyss:   "#05050a",
-        surface: "#18181b",
-        "text-main":  "#f4f4f5",
-        "text-muted": "#a1a1aa",
-        "text-dark":  "#09090b",
+        bg:        "#040914",   // Deep Abyssal Navy
+        deep:      "#06101E",
+        ocean:     "#09182E",
+        abyss:     "#03070E",
+        surface:   "#0F233D",
+        text:      "#E2E8F0",
+        "text-main":  "#F1F5F9",
+        "text-muted": "#94A3B8",
+        "text-dark":  "#040914",
       },
 
       fontFamily: {
@@ -42,7 +49,7 @@ const config: Config = {
       },
 
       borderColor: {
-        DEFAULT: "rgba(255,255,255,0.06)",
+        DEFAULT: "rgba(255,255,255,0.08)",
       },
 
       animation: {

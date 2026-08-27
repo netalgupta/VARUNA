@@ -21,11 +21,16 @@ async def execute_retrieval_task(
 ) -> Dict[str, Any]:
     """
     Executes hybrid retrieval across argo_knowledge, argo_schema, and bio_knowledge.
+    Returns results with latency breakdown.
     """
+    import time as _time
+
     collection = params.get("collection", "argo_knowledge") if params else "argo_knowledge"
     top_k = params.get("top_k", 5) if params else 5
 
+    latency = {}
     results = []
+    t_vec = _time.perf_counter()
     try:
         results = await search_similar(
             query=task_desc,
@@ -34,6 +39,7 @@ async def execute_retrieval_task(
         )
     except Exception as e:
         log.warning("Vector search in Qdrant skipped or offline: %s", str(e))
+    latency["vector_search_ms"] = round((_time.perf_counter() - t_vec) * 1000.0, 1)
 
     if not results:
         # Grounded fallback chunks for testing
@@ -56,4 +62,6 @@ async def execute_retrieval_task(
         "passages": results,
         "count": len(results),
         "query": task_desc,
+        "latency": latency,
     }
+

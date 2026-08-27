@@ -114,7 +114,7 @@ def call_mcp_tool(name: str, arguments: Dict[str, Any]) -> Dict[str, Any]:
         fmt = arguments.get("format", "csv")
         rows = run_sql(sql, limit=1000)
         content, media_type, filename = format_export(rows, fmt)
-        text_preview = content.decode("utf-8", errors="ignore") if isinstance(content, bytes) else str(content)
+        text_preview = content.decode("utf-8", errors="ignore") if isinstance(content, bytes) else content
         return {
             "content": [{"type": "text", "text": f"Exported {len(rows)} rows to {fmt.upper()} format."}],
             "filename": filename,

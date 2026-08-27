@@ -19,6 +19,7 @@ from src.agents.sql_gen_agent import execute_sql_task
 from src.agents.retrieval_agent import execute_retrieval_task
 from src.agents.synthesizer_agent import synthesize_answer
 from src.llm.openrouter_client import chat_complete
+from src.config import settings
 from src.observability.tracer import pipeline_span
 
 log = logging.getLogger("varuna.orchestrator")
@@ -111,55 +112,61 @@ async def plan_query(
 
 
 def _build_default_plan(query: str) -> ExecutionPlan:
-    """Deterministic default plan fallback."""
-    is_compound = "vs" in query.lower() or "compare" in query.lower() or "species" in query.lower() or "sardine" in query.lower()
+    """Deterministic default plan fallback parameterized by user query."""
+    ql = query.lower()
+    is_compound = "vs" in ql or ("compare" in ql and ("arabian" in ql or "equator" in ql or "oxygen" in ql))
+    has_bio = any(k in ql for k in ["sardine", "sardinella", "species", "coral", "tuna", "thunnus", "bleaching"]) or is_compound
+    has_retrieval = any(k in ql for k in ["omz", "hypoxia", "heatwave", "thermal envelope", "plume", "upwelling", "freshwater", "oxygen"]) or is_compound
 
-    if is_compound:
-        return ExecutionPlan(
-            tasks=[
-                TaskNode(
-                    task_id="task_01_sql_arabian",
-                    agent="SQL_GEN",
-                    params={"query": "SELECT DATE_TRUNC('month', time) AS month, AVG(temp) AS avg_temp, AVG(doxy) AS avg_doxy FROM public.marine_data WHERE time >= NOW() - INTERVAL '6 months' AND latitude BETWEEN 8.0 AND 22.0 AND longitude BETWEEN 58.0 AND 74.0 GROUP BY 1 ORDER BY 1;"},
-                    dependencies=[]
-                ),
-                TaskNode(
-                    task_id="task_02_sql_equator",
-                    agent="SQL_GEN",
-                    params={"query": "SELECT DATE_TRUNC('month', time) AS month, AVG(temp) AS avg_temp, AVG(doxy) AS avg_doxy FROM public.marine_data WHERE time >= NOW() - INTERVAL '6 months' AND latitude BETWEEN -5.0 AND 5.0 AND longitude BETWEEN 60.0 AND 90.0 GROUP BY 1 ORDER BY 1;"},
-                    dependencies=[]
-                ),
-                TaskNode(
-                    task_id="task_03_bio",
-                    agent="BIODIVERSITY",
-                    params={"species": "Sardinella longiceps", "radius_km": 50},
-                    dependencies=["task_01_sql_arabian"]
-                ),
-                TaskNode(
-                    task_id="task_04_synthesize",
-                    agent="SYNTHESIZER",
-                    params={"goal": "Synthesize basin comparison and species stress"},
-                    dependencies=["task_01_sql_arabian", "task_02_sql_equator", "task_03_bio"]
-                ),
-            ]
+    tasks = [
+        TaskNode(
+            task_id="task_01_sql",
+            agent="SQL_GEN",
+            params={"query_goal": query},
+            dependencies=[]
         )
+    ]
 
-    return ExecutionPlan(
-        tasks=[
+    deps = ["task_01_sql"]
+
+    if has_retrieval:
+        tasks.append(
             TaskNode(
-                task_id="task_01_sql",
-                agent="SQL_GEN",
-                params={"query_goal": query},
+                task_id="task_02_retrieval",
+                agent="RETRIEVAL",
+                params={"query": query},
                 dependencies=[]
-            ),
+            )
+        )
+        deps.append("task_02_retrieval")
+
+    if has_bio:
+        species_name = "Sardinella longiceps"
+        if "tuna" in ql or "thunnus" in ql:
+            species_name = "Thunnus albacares"
+        elif "coral" in ql or "acropora" in ql:
+            species_name = "Acropora millepora"
+
+        tasks.append(
             TaskNode(
-                task_id="task_02_synthesize",
-                agent="SYNTHESIZER",
-                params={"goal": "Synthesize SQL rows into answer"},
+                task_id="task_03_bio",
+                agent="BIODIVERSITY",
+                params={"species": species_name, "query": query},
                 dependencies=["task_01_sql"]
             )
-        ]
+        )
+        deps.append("task_03_bio")
+
+    tasks.append(
+        TaskNode(
+            task_id="task_04_synthesize",
+            agent="SYNTHESIZER",
+            params={"goal": "Synthesize scientific findings from real data", "query": query},
+            dependencies=deps
+        )
     )
+
+    return ExecutionPlan(tasks=tasks)
 
 
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -206,17 +213,36 @@ async def plan_and_execute(
     session_id: str = "default",
     user_lat: Optional[float] = None,
     user_lon: Optional[float] = None,
+    event_bus: Optional[Any] = None,  # PipelineEventBus | None
 ) -> Any:
     """
     End-to-end execution of compound query via Multi-Agent Task DAG.
+    Captures granular per-phase latency breakdown.
     """
     trace_id = str(uuid.uuid4())
     start_total = time.perf_counter()
 
     with pipeline_span(trace_id, query) as trace:
-        # Step 1: Decompose query into Task DAG
+        # Step 1: Decompose query into Task DAG (Planner LLM call)
+        t_plan = time.perf_counter()
+        if event_bus:
+            await event_bus.emit("pipeline_step", {
+                "stage": "PLANNER",
+                "status": "RUNNING",
+                "message": "LLM decomposing query into Task DAG...",
+            })
         plan = await plan_query(query, trace=trace)
+        planner_latency_ms = round((time.perf_counter() - t_plan) * 1000.0, 1)
         stages = _get_topological_stages(plan)
+        if event_bus:
+            await event_bus.emit("pipeline_step", {
+                "stage": "PLANNER",
+                "status": "DONE",
+                "message": f"Plan compiled: {len(plan.tasks)} tasks across {len(stages)} parallel stages",
+                "plan_id": plan.plan_id,
+                "task_ids": [t.task_id for t in plan.tasks],
+                "duration_ms": planner_latency_ms,
+            })
 
         task_results: Dict[str, Any] = {}
         execution_steps = []
@@ -229,9 +255,22 @@ async def plan_and_execute(
                 t0 = time.perf_counter()
                 res: Dict[str, Any] = {}
 
+                if event_bus:
+                    await event_bus.emit("pipeline_step", {
+                        "stage": node.agent,
+                        "task_id": node.task_id,
+                        "status": "RUNNING",
+                        "message": f"{node.agent} agent started",
+                        "params": node.params,
+                    })
+
                 try:
                     if node.agent == "SQL_GEN":
                         res = await execute_sql_task(node.params.get("query_goal", query), params=node.params, trace=trace)
+                        if event_bus and res.get("sql"):
+                            await event_bus.emit("sql", res["sql"])
+                        if event_bus and res.get("rows"):
+                            await event_bus.emit("rows", res["rows"][:50])
                     elif node.agent == "RETRIEVAL":
                         res = await execute_retrieval_task(node.params.get("query", query), params=node.params, trace=trace)
                     elif node.agent == "BIODIVERSITY":
@@ -247,6 +286,15 @@ async def plan_and_execute(
                     res = {"error": str(e), "status": "FAILED"}
 
                 dur_ms = (time.perf_counter() - t0) * 1000.0
+                if event_bus:
+                    await event_bus.emit("pipeline_step", {
+                        "stage": node.agent,
+                        "task_id": node.task_id,
+                        "status": "FAILED" if "error" in res else "DONE",
+                        "message": f"{node.agent} completed in {dur_ms:.0f}ms",
+                        "duration_ms": round(dur_ms, 1),
+                        "row_count": res.get("row_count", len(res.get("rows", []))),
+                    })
                 return node.task_id, res, dur_ms
 
             # Run all tasks in current stage concurrently
@@ -254,16 +302,18 @@ async def plan_and_execute(
 
             for tid, result_data, duration_ms in results:
                 task_results[tid] = result_data
-                execution_steps.append({
+                step_entry = {
                     "task_id": tid,
                     "agent_type": next((n.agent for n in stage_nodes if n.task_id == tid), "UNKNOWN"),
                     "description": f"Executed {tid}",
                     "status": "COMPLETED" if "error" not in result_data else "FAILED",
                     "duration_ms": round(duration_ms, 1),
                     "result_summary": f"Returned {result_data.get('row_count', len(result_data))} items",
-                })
-
-        total_ms = (time.perf_counter() - start_total) * 1000.0
+                }
+                # Attach sub-agent internal latency breakdown if available
+                if isinstance(result_data, dict) and "latency" in result_data:
+                    step_entry["latency_breakdown"] = result_data["latency"]
+                execution_steps.append(step_entry)
 
         # Step 3: Extract final synthesized result
         final_synth = None
@@ -272,15 +322,39 @@ async def plan_and_execute(
                 final_synth = res
                 break
 
+        synthesizer_latency_ms = 0.0
         if not final_synth:
+            t_synth = time.perf_counter()
             final_synth = await synthesize_answer(query, task_results=task_results, trace=trace)
+            synthesizer_latency_ms = round((time.perf_counter() - t_synth) * 1000.0, 1)
+
+        total_ms = (time.perf_counter() - start_total) * 1000.0
+
+        # Build comprehensive latency breakdown
+        latency_breakdown = {
+            "total_ms": round(total_ms, 1),
+            "planner_llm_ms": planner_latency_ms,
+            "stages": [],
+        }
+        for step in execution_steps:
+            stage_entry = {
+                "task_id": step["task_id"],
+                "agent_type": step["agent_type"],
+                "total_ms": step["duration_ms"],
+            }
+            if "latency_breakdown" in step:
+                stage_entry.update(step["latency_breakdown"])
+            latency_breakdown["stages"].append(stage_entry)
+        if synthesizer_latency_ms > 0:
+            latency_breakdown["final_synthesizer_llm_ms"] = synthesizer_latency_ms
 
         agent_trace_payload = {
             "plan_id": plan.plan_id,
             "total_latency_ms": round(total_ms, 1),
-            "planner_model": "nvidia/nemotron-ultra-550b-a55b:free",
+            "planner_model": settings.openrouter_model,
             "tasks": execution_steps,
             "topological_order": [t["task_id"] for t in execution_steps],
+            "latency_breakdown": latency_breakdown,
         }
 
         from src.api.routes import ChatOut
@@ -295,3 +369,4 @@ async def plan_and_execute(
             intent="MULTI_AGENT_DAG",
             trace_id=trace_id,
         )
+

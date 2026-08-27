@@ -16,7 +16,7 @@ from __future__ import annotations
 from collections import OrderedDict
 from typing import Any, Dict, Optional, List, Tuple
 
-_TRACE_CACHE: Dict[str, Any] = OrderedDict()
+_TRACE_CACHE: OrderedDict[str, Any] = OrderedDict()
 MAX_TRACES = 500
 
 

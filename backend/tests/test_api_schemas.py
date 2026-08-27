@@ -28,6 +28,6 @@ def test_chat_out_defaults():
         viz_specs={"chart_type": "time_series"}
     )
     assert out.ok is True
-    assert "Ocean Assessment" in out.answer_markdown
-    assert len(out.rows) == 1
-    assert out.viz_specs["chart_type"] == "time_series"
+    assert out.answer_markdown is not None and "Ocean Assessment" in out.answer_markdown
+    assert out.rows is not None and len(out.rows) == 1
+    assert out.viz_specs is not None and out.viz_specs["chart_type"] == "time_series"

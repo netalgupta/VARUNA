@@ -38,6 +38,7 @@ dist/
 
 # Data / Artifacts
 apps/backend/artifacts/
+**/data/qdrant_storage/
 apps/backend/chroma/
 *.sqlite
 *.db

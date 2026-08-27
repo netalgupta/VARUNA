@@ -17,10 +17,18 @@ class Settings(BaseSettings):
     )
     log_level: str = Field("DEBUG", alias="FLOATCHAT_LOG_LEVEL")
 
-    # ── PostgreSQL ─────────────────────────────────────
+    # ── PostgreSQL (Dual Supabase Sharded Connection Pools) ──
     pg_dsn: str = Field(
-        "postgresql://argo_admin:argo_password@localhost:5432/argo_data",
+        "postgresql://postgres.skbxtnjcvutzgkzgrrxr:HelloWorldIsSoLame@aws-0-ap-southeast-2.pooler.supabase.com:5432/postgres",
         alias="PG_DSN",
+    )
+    pg_dsn_db1: str = Field(
+        "postgresql://postgres.anpvaxwncqsxetujkqce:HelloWorldIsSoLame@aws-0-ap-northeast-2.pooler.supabase.com:5432/postgres",
+        alias="PG_DSN_DB1",
+    )
+    pg_dsn_db2: str = Field(
+        "postgresql://postgres.skbxtnjcvutzgkzgrrxr:HelloWorldIsSoLame@aws-0-ap-southeast-2.pooler.supabase.com:5432/postgres",
+        alias="PG_DSN_DB2",
     )
 
     # ── Qdrant ─────────────────────────────────────────
@@ -34,7 +42,7 @@ class Settings(BaseSettings):
     # ── OpenRouter / Cloud Cognitive API ────────────────
     openrouter_api_key: str = Field("", alias="OPENROUTER_API_KEY")
     openrouter_base_url: str = Field("https://openrouter.ai/api/v1", alias="OPENROUTER_BASE_URL")
-    openrouter_model: str = Field("nvidia/nemotron-ultra-550b-a55b:free", alias="OPENROUTER_MODEL")
+    openrouter_model: str = Field("nvidia/nemotron-3-super-120b-a12b:free", alias="OPENROUTER_MODEL")
     openrouter_embed_model: str = Field("nomic-ai/nomic-embed-text-v1.5:free", alias="OPENROUTER_EMBED_MODEL")
     hf_token: str = Field("", alias="HF_TOKEN")
 
@@ -68,7 +76,12 @@ class Settings(BaseSettings):
     #: Empty -> falls back to physics-informed synthetic data paths.
     argo_db_urls: str = Field("", alias="VARUNA_ARGO_DB_URLS")
 
-    model_config = {"env_file": ".env", "env_file_encoding": "utf-8", "populate_by_name": True}
+    model_config = {
+        "env_file": ".env",
+        "env_file_encoding": "utf-8",
+        "populate_by_name": True,
+        "extra": "ignore",
+    }
 
 
 @lru_cache(maxsize=1)

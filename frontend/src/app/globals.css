@@ -1,0 +1,202 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* Deep Ocean Backgrounds */
+    --bg-root: #020B14;
+    --bg-abyss: #051421;
+    --bg-panel: #0B1D2C;
+    --bg-panel-secondary: #0E2435;
+    --bg-panel-tertiary: #10293A;
+    --bg-card: rgba(11, 29, 44, 0.75);
+
+    /* Primary Luminescent Accents */
+    --accent: #2EE6C6;
+    --accent-glow: #00FFC6;
+    --accent-secondary: #1ECBE1;
+    --accent-dim: rgba(46, 230, 198, 0.15);
+
+    /* Warning & Critical Alerts */
+    --warning: #F59E0B;
+    --warning-glow: rgba(245, 158, 11, 0.25);
+    --critical: #FF4B4B;
+    --critical-glow: rgba(255, 75, 75, 0.35);
+    --coral: #FF7F50;
+
+    /* Scientific Monospace / Text */
+    --text-primary: #FFFFFF;
+    --text-secondary: #D6F6FF;
+    --text-muted: #809AAB;
+    --text-dim: #4B6B82;
+
+    /* High-Precision Borders */
+    --border-subtle: rgba(46, 230, 198, 0.12);
+    --border-medium: rgba(46, 230, 198, 0.24);
+    --border-active: rgba(0, 255, 198, 0.5);
+  }
+
+  html {
+    color-scheme: dark;
+    background: var(--bg-root);
+  }
+
+  body {
+    font-family: var(--font-inter), system-ui, sans-serif;
+    background: var(--bg-root);
+    color: var(--text-secondary);
+    min-height: 100vh;
+    overflow-x: hidden;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  * {
+    border-color: var(--border-subtle);
+    box-sizing: border-box;
+  }
+}
+
+/* ─── Tactical Panel & Card Styles ───────────────────────────────────────── */
+.panel-marine {
+  background: rgba(11, 29, 44, 0.85);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(46, 230, 198, 0.18);
+  border-radius: 12px;
+  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.5), inset 0 0 1px 1px rgba(46, 230, 198, 0.05);
+}
+
+.panel-marine:hover {
+  border-color: rgba(46, 230, 198, 0.32);
+}
+
+.card-marine {
+  background: #0E2435;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 8px;
+}
+
+.card-marine-interactive {
+  background: #0E2435;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 8px;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.card-marine-interactive:hover {
+  background: #10293A;
+  border-color: rgba(46, 230, 198, 0.4);
+  box-shadow: 0 0 16px rgba(46, 230, 198, 0.12);
+}
+
+/* ─── Glowing Borders & HUD Elements ─────────────────────────────────────── */
+.hud-glow {
+  box-shadow: 0 0 15px rgba(46, 230, 198, 0.2), inset 0 0 15px rgba(46, 230, 198, 0.05);
+}
+
+.hud-glow-critical {
+  box-shadow: 0 0 20px rgba(255, 75, 75, 0.3), inset 0 0 15px rgba(255, 75, 75, 0.1);
+}
+
+.hud-badge-glow {
+  box-shadow: 0 0 8px currentColor;
+}
+
+/* ─── Scientific Grid & Scanline Atmosphere ──────────────────────────────── */
+.grid-ocean {
+  background-size: 24px 24px;
+  background-image: 
+    linear-gradient(to right, rgba(46, 230, 198, 0.03) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(46, 230, 198, 0.03) 1px, transparent 1px);
+}
+
+.scanlines {
+  background: linear-gradient(
+    rgba(18, 16, 16, 0) 50%, 
+    rgba(0, 0, 0, 0.25) 50%
+  );
+  background-size: 100% 4px;
+}
+
+/* ─── Pulse Animations ───────────────────────────────────────────────────── */
+@keyframes pulse-cyan {
+  0% {
+    box-shadow: 0 0 0 0 rgba(0, 255, 198, 0.7);
+  }
+  70% {
+    box-shadow: 0 0 0 8px rgba(0, 255, 198, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(0, 255, 198, 0);
+  }
+}
+
+.pulse-cyan {
+  animation: pulse-cyan 2s infinite;
+}
+
+@keyframes pulse-critical {
+  0%, 100% {
+    box-shadow: 0 0 0 0 rgba(255, 75, 75, 0.8);
+  }
+  50% {
+    box-shadow: 0 0 0 6px rgba(255, 75, 75, 0);
+  }
+}
+
+.pulse-critical {
+  animation: pulse-critical 1.8s infinite;
+}
+
+/* ─── Custom Scrollbar ───────────────────────────────────────────────────── */
+::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+::-webkit-scrollbar-track {
+  background: rgba(2, 11, 20, 0.6);
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(46, 230, 198, 0.2);
+  border-radius: 99px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(46, 230, 198, 0.5);
+}
+
+/* ─── Cesium Viewer Overrides & Full-Bleed Canvas ─────────────────────────── */
+.cesium-viewer,
+.cesium-viewer-cesiumWidgetContainer,
+.cesium-widget,
+.cesium-widget canvas,
+.cesium-viewer canvas {
+  width: 100% !important;
+  height: 100% !important;
+  position: absolute !important;
+  top: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  bottom: 0 !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  overflow: hidden !important;
+  display: block !important;
+}
+
+.cesium-widget-credits,
+.cesium-credit-logoContainer,
+.cesium-credit-textContainer,
+.cesium-credit-expand-link {
+  display: none !important;
+}
+
+.cesium-viewer-bottom {
+  display: none !important;
+}
+
+.cesium-viewer-toolbar {
+  top: 8px !important;
+  right: 8px !important;
+}

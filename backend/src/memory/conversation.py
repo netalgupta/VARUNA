@@ -19,7 +19,7 @@ WHY 20-turn window?
 from __future__ import annotations
 
 import json
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 
 try:
@@ -92,14 +92,14 @@ def append_message(session_id: str, role: str, content: str) -> None:
             parsed = json.loads(raw) if raw else None
             data: Dict[str, Any] = dict(parsed) if parsed else {
                 "session_id": session_id,
-                "created_at": datetime.utcnow().isoformat(),
+                "created_at": datetime.now(timezone.utc).isoformat(),
                 "messages": [],
             }
             data["messages"].append({"role": role, "content": content})
             msgs = list(data["messages"])
             start_idx = max(0, len(msgs) - MAX_TURNS)
             data["messages"] = msgs[start_idx:]
-            data["updated_at"] = datetime.utcnow().isoformat()
+            data["updated_at"] = datetime.now(timezone.utc).isoformat()
             r.setex(_key(session_id), SESSION_TTL, json.dumps(data))
     except Exception:
         pass  # Gracefully degrade to in-memory store
@@ -119,7 +119,10 @@ def clear_session(session_id: str) -> None:
 def get_session_meta(session_id: str) -> Dict[str, Any]:
     """Get session metadata (created_at, updated_at, message count)."""
     try:
-        raw = get_redis().get(_key(session_id))
+        r = get_redis()
+        if r is None:
+            return {"exists": False}
+        raw = r.get(_key(session_id))
         if not raw:
             return {"exists": False}
         data = json.loads(raw)

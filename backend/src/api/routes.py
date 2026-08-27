@@ -584,16 +584,12 @@ async def submit_feedback(fb: FeedbackIn):
     "/anomalies",
     response_model=List[AnomalyAlert],
     tags=["🚨 Proactive Anomaly & Early-Warning Feed"],
-    summary="List Active Marine Heatwaves & Hypoxia Alerts",
-    description=(
-        "Retrieves active marine ecological anomalies calculated via the **Hobday et al. (2016)** climatological algorithm "
-        "($P_{90}$ threshold exceedance for 5+ consecutive days) and hypoxia detectors ($\text{DOXY} < 60\,\mu\text{mol/kg}$). "
-        "Includes affected marine living species and policy advisories."
-    ),
+    summary="List Active Marine Heatwaves & Hypoxia Events",
+    description="Fetches real-time statistical anomaly alerts computed across 2°×2° spatial grid cells in the Indian Ocean using Hobday (2016) $P_{90}$ threshold criteria.",
 )
 async def list_anomalies(
-    basin: Optional[str] = Query(None, description="Filter by basin: arabian_sea | bay_of_bengal | equatorial_io | gulf_of_mannar", example="arabian_sea"),
-    severity: Optional[str] = Query(None, description="Filter by severity: MODERATE | STRONG | SEVERE | CRITICAL", example="SEVERE"),
+    basin: Optional[str] = Query(None, description="Filter by basin: arabian_sea | bay_of_bengal | equatorial_io | gulf_of_mannar", examples=["arabian_sea"]),
+    severity: Optional[str] = Query(None, description="Filter by severity: MODERATE | STRONG | SEVERE | CRITICAL", examples=["SEVERE"]),
     limit: int = Query(20, description="Max alerts to return", ge=1, le=100)
 ):
     alerts = list(MOCK_ANOMALIES)
@@ -611,7 +607,7 @@ async def list_anomalies(
     summary="Get Detailed Anomaly Alert & Fisheries Advisory",
     description="Returns detailed climatological baseline deviations, affected indicator species, and actionable coastal fisheries dispatch advisories for a specific alert ID.",
 )
-async def get_anomaly_detail(alert_id: int = Path(..., description="Unique anomaly alert ID", example=101)):
+async def get_anomaly_detail(alert_id: int = Path(..., description="Unique anomaly alert ID", examples=[101])):
     for alert in MOCK_ANOMALIES:
         if alert["id"] == alert_id:
             return alert
@@ -630,8 +626,8 @@ async def get_anomaly_detail(alert_id: int = Path(..., description="Unique anoma
     description="Queries 500+ Indian Ocean marine species occurrences standardized to TDWG Darwin Core (`dwc:scientificName`, `dwc:decimalLatitude`, `dwc:eventDate`).",
 )
 async def list_biodiversity(
-    species: Optional[str] = Query(None, description="Filter by scientific name (e.g. Sardinella longiceps)", example="Sardinella longiceps"),
-    family: Optional[str] = Query(None, description="Filter by taxonomic family (e.g. Clupeidae)", example="Clupeidae"),
+    species: Optional[str] = Query(None, description="Filter by scientific name (e.g. Sardinella longiceps)", examples=["Sardinella longiceps"]),
+    family: Optional[str] = Query(None, description="Filter by taxonomic family (e.g. Clupeidae)", examples=["Clupeidae"]),
     limit: int = Query(50, description="Max records to return", ge=1, le=200)
 ):
     records = list(MOCK_BIODIVERSITY)
@@ -654,9 +650,9 @@ async def list_biodiversity(
     ),
 )
 async def correlate_species(
-    species: str = Query("Sardinella longiceps", description="Scientific species name", example="Sardinella longiceps"),
-    days_window: int = Query(90, description="Temporal search window in days", example=90),
-    max_distance_km: float = Query(50.0, description="Maximum spatial distance in kilometers", example=50.0)
+    species: str = Query("Sardinella longiceps", description="Scientific species name", examples=["Sardinella longiceps"]),
+    days_window: int = Query(90, description="Temporal search window in days", examples=[90]),
+    max_distance_km: float = Query(50.0, description="Maximum spatial distance in kilometers", examples=[50.0])
 ):
     # High-precision correlation response for live demonstration
     return [
@@ -704,11 +700,12 @@ async def correlate_species(
 @router.get(
     "/floats",
     tags=["🛰️ INCOIS ARGO Float Fleet & Depth Profiles"],
-    summary="List Active ARGO Float Platforms",
-    description="Retrieves a catalog of active ARGO float platforms in the Indian Ocean with latest surfacing coordinates, cycle numbers, and data assembly center (DAC) metadata.",
+    summary="List Active ARGO Surface Floats (Fleet Map)",
+    description="Returns the latest surfacing positions, WMO platform identifiers, and timestamps for all actively transmitting ARGO floats across the Indian Ocean basin.",
 )
-async def list_floats(limit: int = Query(50, description="Max float platforms to return", ge=1, le=500)):
-    return get_active_floats(limit=limit)
+async def list_active_floats(limit: int = Query(500, description="Max floats to return", ge=1, le=1000)):
+    floats = get_active_floats(limit=limit)
+    return {"count": len(floats), "floats": floats}
 
 
 @router.get(
@@ -718,8 +715,8 @@ async def list_floats(limit: int = Query(50, description="Max float platforms to
     description="Retrieves chronological surfacing coordinates (latitude, longitude, timestamp) for an ARGO float platform to render ocean surface drift vectors.",
 )
 async def get_trajectory(
-    platform_number: int = Path(..., description="ARGO float WMO platform number", example=1902303),
-    days: int = Query(365, description="Historical drift days window", example=90)
+    platform_number: int = Path(..., description="ARGO float WMO platform number", examples=[1902303]),
+    days: int = Query(365, description="Historical drift days window", examples=[90])
 ):
     rows = float_trajectory(platform_number, days=days)
     if not rows:
@@ -734,8 +731,8 @@ async def get_trajectory(
     description="Retrieves vertical water column measurements ($0-2000\\text{m}$) including in-situ temperature, practical salinity, dissolved oxygen, and chlorophyll-a.",
 )
 async def get_profile(
-    platform_number: int = Path(..., description="ARGO float WMO platform number", example=1902303),
-    cycle: Optional[int] = Query(None, description="Specific profiling cycle number", example=42)
+    platform_number: int = Path(..., description="ARGO float WMO platform number", examples=[1902303]),
+    cycle: Optional[int] = Query(None, description="Specific profiling cycle number", examples=[42])
 ):
     rows = depth_profile(platform_number=platform_number, cycle_number=cycle)
     if not rows:
@@ -750,9 +747,9 @@ async def get_profile(
     description="Calculates summary statistics (mean, standard deviation, min, max, profile counts) for a selected ocean basin and parameter.",
 )
 async def get_stats(
-    region: str = Query("arabian_sea", description="Region: arabian_sea | bay_of_bengal | equatorial_io", example="arabian_sea"),
-    variable: str = Query("temp", description="Variable: temp | psal | doxy | chla | nitrate", example="temp"),
-    days: int = Query(30, description="Rolling time window in days", example=30),
+    region: str = Query("arabian_sea", description="Region: arabian_sea | bay_of_bengal | equatorial_io", examples=["arabian_sea"]),
+    variable: str = Query("temp", description="Variable: temp | psal | doxy | chla | nitrate", examples=["temp"]),
+    days: int = Query(30, description="Rolling time window in days", examples=[30]),
 ):
     stats = regional_stats(region=region, variable=variable, days=days)
     return {"region": region, "variable": variable, "days": days, "stats": stats}
@@ -807,13 +804,13 @@ async def detect_sensor_qc(req: ProfileQCRequest = Body(...)):
     description="Executes a sanitized `SELECT` SQL query and streams the dataset directly as a downloadable CSV or high-performance Apache Parquet file.",
 )
 async def export_data(
-    sql: str = Query("SELECT * FROM public.marine_data LIMIT 100", description="Sanitized SELECT SQL query", example="SELECT platform_number, time, latitude, longitude, temp, psal, doxy FROM public.marine_data LIMIT 50;"),
-    format: str = Query("csv", description="Export format: csv | parquet | json", example="csv"),
+    sql: str = Query("SELECT * FROM public.marine_data LIMIT 100", description="Sanitized SELECT SQL query", examples=["SELECT platform_number, time, latitude, longitude, temp, psal, doxy FROM public.marine_data LIMIT 50;"]),
+    format: str = Query("csv", description="Export format: csv | parquet | json", examples=["csv"]),
 ):
     from fastapi.responses import Response
     from src.utils.export_service import format_export
 
-    rows = run_sql(sql, limit=1000)
+    rows = run_sql(sql, limit=100000)
     content, media_type, filename = format_export(rows, format)
 
     return Response(
@@ -833,7 +830,7 @@ async def export_data(
     summary="Inspect Pipeline Span Trace",
     description="Retrieves granular execution span timing, token counts, sub-agent dispatches, and intermediate SQL AST trees for a specific request trace ID.",
 )
-async def get_debug_trace(trace_id: str = Path(..., description="Unique request trace ID", example="3f8b7e21-00a1-4a89-91c2-1482847a9e10")):
+async def get_debug_trace(trace_id: str = Path(..., description="Unique request trace ID", examples=["3f8b7e21-00a1-4a89-91c2-1482847a9e10"])):
     trace = get_trace(trace_id)
     if not trace:
         raise HTTPException(404, f"Trace {trace_id} not found in telemetry buffer")

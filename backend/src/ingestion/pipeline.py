@@ -48,6 +48,8 @@ async def ingest_file(netcdf_path: str) -> bool:
     # ━━ 3. Load into PostgreSQL ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
     # We use psycopg's COPY for blazing fast bulk inserts
     pool = get_pool()
+    if pool is None:
+        raise RuntimeError("Database connection pool is not available")
     
     with pool.connection() as conn:
         with conn.cursor() as cur:

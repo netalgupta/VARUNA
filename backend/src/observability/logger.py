@@ -23,7 +23,7 @@ from __future__ import annotations
 import time
 import json
 import logging
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, cast
 from contextlib import contextmanager
 
 try:
@@ -62,17 +62,18 @@ except ImportError:
 
 # ── structlog setup ───────────────────────────────────────────────────────────
 if _has_structlog:
-    structlog.configure(
+    slog = cast(Any, structlog)
+    slog.configure(
         processors=[
-            structlog.contextvars.merge_contextvars,
-            structlog.processors.add_log_level,
-            structlog.processors.TimeStamper(fmt="iso"),
-            structlog.processors.JSONRenderer(),
+            slog.contextvars.merge_contextvars,
+            slog.processors.add_log_level,
+            slog.processors.TimeStamper(fmt="iso"),
+            slog.processors.JSONRenderer(),
         ],
-        logger_factory=structlog.PrintLoggerFactory(),
+        logger_factory=slog.PrintLoggerFactory(),
         cache_logger_on_first_use=True,
     )
-    _log = structlog.get_logger("floatchat")
+    _log = slog.get_logger("floatchat")
 else:
     _log = logging.getLogger("floatchat")
 

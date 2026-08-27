@@ -1,46 +1,58 @@
 """
-FloatChat AI â€” WebSocket Server for Streaming Answers
+VARUNA — WebSocket Streaming Server (v2)
 
-WHY WebSocket for streaming?
-  HTTP request-response makes you wait for the entire LLM answer before
-  anything arrives. With WebSocket + streaming, tokens arrive word-by-word
-  â€” the user sees the answer forming in real-time (like ChatGPT).
+Full real-time pipeline transparency via plan_and_execute + PipelineEventBus.
 
-  WebSocket protocol:
-  - Client sends: {"question": "...", "session": "..."}
-  - Server sends: {"type": "token", "data": "word..."}  (repeated)
-  - Server sends: {"type": "sql",   "data": "SELECT..."}
-  - Server sends: {"type": "rows",  "data": [...]}
-  - Server sends: {"type": "viz",   "data": {...}}
-  - Server sends: {"type": "done",  "trace_id": "..."}
-  - Server sends: {"type": "error", "data": "..."} on failure
+WebSocket Protocol (ws://host/ws/chat):
+  CLIENT -> SERVER:
+    {"question": "...", "session": "...", "user_lat": null, "user_lon": null}
+
+  SERVER -> CLIENT (streamed in order):
+    {"type": "pipeline_step", "data": {"stage": "PLANNER",  "status": "RUNNING", "message": "..."}}
+    {"type": "pipeline_step", "data": {"stage": "PLANNER",  "status": "DONE",    "duration_ms": 340}}
+    {"type": "pipeline_step", "data": {"stage": "SQL_GEN",  "status": "RUNNING", "task_id": "task_01_sql"}}
+    {"type": "sql",           "data": "SELECT ..."}
+    {"type": "rows",          "data": [{...}, ...]}
+    {"type": "pipeline_step", "data": {"stage": "SQL_GEN",  "status": "DONE",    "duration_ms": 820, "row_count": 40}}
+    {"type": "pipeline_step", "data": {"stage": "RETRIEVAL","status": "RUNNING"}}
+    {"type": "pipeline_step", "data": {"stage": "RETRIEVAL","status": "DONE",    "duration_ms": 210}}
+    {"type": "pipeline_step", "data": {"stage": "SYNTHESIZER","status": "RUNNING"}}
+    {"type": "pipeline_step", "data": {"stage": "SYNTHESIZER","status": "DONE",  "duration_ms": 450}}
+    {"type": "done",          "data": {"answer_markdown": "...", "trace_id": "...", "row_count": 40,
+                                       "agent_trace": {...}, "viz_specs": {...}, "intent": "..."}}
+    {"type": "error",         "data": "Error message"} (only on failure)
 """
 from __future__ import annotations
 
+import asyncio
 import json
+import logging
 import uuid
 from typing import Optional
 
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 
-from src.config import settings
-from src.chains import sql_rag_chain, rag_chain
-from src.rag.query_rewriter import detect_intent_fast
-from src.rag.decomposer import maybe_decompose, merge_multi_hop_answers
+from src.api.event_bus import PipelineEventBus
 from src.memory.conversation import append_message, build_history_prompt
-from src.llm.ollama_client import rewrite_query, stream_answer
-from src.observability.logger import pipeline_span
-from src.observability.pipeline_log import store_trace
-from src.api.routes import _smalltalk, _extract_latlon, _extract_city, _extract_days
-from src.database.postgres import nearest_floats
-from src.utils.geo import city_lookup
-from src.utils.viz_builder import build_viz_specs
 
+log = logging.getLogger("varuna.ws")
 router = APIRouter()
 
 
-async def _send(ws: WebSocket, msg_type: str, data):
-    await ws.send_text(json.dumps({"type": msg_type, "data": data}, default=str))
+async def _send(ws: WebSocket, msg_type: str, data) -> None:
+    """Serialize and send a typed JSON frame over the WebSocket."""
+    try:
+        await ws.send_text(json.dumps({"type": msg_type, "data": data}, default=str))
+    except Exception as e:
+        log.debug("WS send failed (client likely disconnected): %s", e)
+
+
+async def _drain_bus_to_ws(bus: PipelineEventBus, ws: WebSocket) -> None:
+    """Drain ALL pending events from the bus to the WebSocket (non-blocking)."""
+    while not bus.empty():
+        evt = await bus.get_nowait()
+        if evt:
+            await ws.send_text(json.dumps(evt, default=str))
 
 
 @router.websocket("/ws/chat")
@@ -48,112 +60,116 @@ async def _send(ws: WebSocket, msg_type: str, data):
 @router.websocket("/api/ws/chat")
 async def ws_chat(websocket: WebSocket):
     """
-    WebSocket endpoint for streaming chat responses.
-    Supports the same intent routing as POST /api/v1/chat.
+    WebSocket endpoint for full real-time pipeline streaming.
+    Emits granular per-agent events as they happen inside plan_and_execute.
     """
     await websocket.accept()
+    log.info("WebSocket connected: %s", websocket.client)
+
     try:
         while True:
             raw = await websocket.receive_text()
             inp = json.loads(raw)
-            q = inp.get("question", "").strip()
-            session = inp.get("session", "default")
+
+            q: str = inp.get("question", inp.get("query", "")).strip()
+            session: str = inp.get("session", inp.get("session_id", "default"))
+            user_lat: Optional[float] = inp.get("user_lat")
+            user_lon: Optional[float] = inp.get("user_lon")
             trace_id = str(uuid.uuid4())
 
             if not q:
                 await _send(websocket, "error", "Empty question")
                 continue
 
-            history = build_history_prompt(session, last_n=4)
+            # Fast-path: smalltalk (greetings, math, time)
+            from src.api.routes import _smalltalk
+            st = _smalltalk(q)
+            if st:
+                await _send(websocket, "pipeline_step", {
+                    "stage": "INTENT", "status": "DONE",
+                    "message": "Smalltalk / fast-path response"
+                })
+                await _send(websocket, "done", {
+                    "answer_markdown": st,
+                    "trace_id": trace_id,
+                    "intent": "SMALLTALK",
+                    "row_count": 0,
+                })
+                append_message(session, "user", q)
+                append_message(session, "assistant", st)
+                continue
+
+            # Store user turn in memory
             append_message(session, "user", q)
 
-            with pipeline_span(trace_id, q) as trace:
-                # ━━ Smalltalk fast path ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-                st = _smalltalk(q)
-                if st:
-                    await _send(websocket, "token", st)
-                    await _send(websocket, "done", {"trace_id": trace_id, "intent": "SMALLTALK"})
-                    continue
+            # ── Create the event bus for this connection ───────────────────────
+            bus = PipelineEventBus()
 
-                # ━━ Intent detection ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-                intent = detect_intent_fast(q)
-                if not intent:
-                    q_rw, intent = await rewrite_query(q, history)
-                    trace.log("REWRITE", f"LLM: {q_rw[:60]} | {intent}")
-                    q = q_rw
-                await _send(websocket, "intent", intent)
+            # ── Run plan_and_execute in a background task, draining events ─────
+            from src.agents.orchestrator import plan_and_execute
 
-                # ━━ Pipeline trace step events to frontend ━━━━━━━━━━━━━━━━━━━━
-                await _send(websocket, "pipeline_step", {
-                    "stage": "INTENT", "message": f"Intent: {intent}"
-                })
+            orchestrator_task = asyncio.create_task(
+                plan_and_execute(
+                    query=q,
+                    session_id=session,
+                    user_lat=user_lat,
+                    user_lon=user_lon,
+                    event_bus=bus,
+                )
+            )
 
-                # ━━ SQL / Data path with streaming ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-                if intent in ("SQL_DATA", "NEAREST_FLOAT", "MULTI_HOP") or not intent:
-                    try:
-                        # Run SQL chain (non-streaming for rows), then stream narration
-                        result = await sql_rag_chain.answer(q, history_str=history, trace=trace)
-                        rows = result.get("rows", [])
-                        sql  = result.get("sql")
+            # ── Drain bus events to client while orchestrator runs ─────────────
+            final_result = None
+            while not orchestrator_task.done():
+                try:
+                    # Wait up to 0.05s for an event; then poll again
+                    evt = await asyncio.wait_for(bus.get(), timeout=0.05)
+                    await websocket.send_text(json.dumps(evt, default=str))
+                except asyncio.TimeoutError:
+                    pass
+                except Exception as e:
+                    log.warning("Bus drain error: %s", e)
 
-                        # Send SQL + rows first
-                        if sql:
-                            await _send(websocket, "sql", sql)
-                        if rows:
-                            await _send(websocket, "rows", rows[:50])
+                await _drain_bus_to_ws(bus, websocket)
 
-                        # Stream the narration
-                        await _send(websocket, "pipeline_step", {
-                            "stage": "NARRATE", "message": "Streaming narration..."
-                        })
-                        import json as _json
-                        rows_preview = _json.dumps(rows[:5], default=str)
-                        async for token in stream_answer(q, rows_preview, sql=sql):
-                            await _send(websocket, "token", token)
+            # Drain any remaining events after task finishes
+            await _drain_bus_to_ws(bus, websocket)
 
-                        # Send viz specs
-                        viz = build_viz_specs(rows, q)
-                        await _send(websocket, "viz", viz)
+            # ── Collect result ─────────────────────────────────────────────────
+            try:
+                final_result = orchestrator_task.result()
+            except Exception as e:
+                log.error("Orchestrator task failed: %s", e, exc_info=True)
+                await _send(websocket, "error", str(e))
+                continue
 
-                        store_trace(trace_id, trace.to_dict())
-                        await _send(websocket, "done", {
-                            "trace_id": trace_id,
-                            "intent": intent,
-                            "row_count": len(rows),
-                        })
-
-                    except Exception as e:
-                        await _send(websocket, "error", str(e))
-
-                # ━━ Semantic path with streaming ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-                else:
-                    try:
-                        from src.rag.retriever import get_retriever
-                        from src.rag.context_assembler import assemble_context
-                        from src.rag.query_rewriter import expand_query
-
-                        retriever = await get_retriever()
-                        chunks = await retriever.retrieve(expand_query(q), top_k=8)
-
-                        await _send(websocket, "pipeline_step", {
-                            "stage": "RERANK",
-                            "message": f"{len(chunks)} chunks retrieved",
-                            "scores": [{"text": c.get("text","")[:60], "score": round(c.get("rerank_score",0),3)} for c in chunks[:5]]
-                        })
-
-                        context = assemble_context(chunks)
-
-                        async for token in stream_answer(q, context):
-                            await _send(websocket, "token", token)
-
-                        store_trace(trace_id, trace.to_dict())
-                        await _send(websocket, "done", {
-                            "trace_id": trace_id,
-                            "intent": "SEMANTIC",
-                            "chunks_used": len(chunks),
-                        })
-                    except Exception as e:
-                        await _send(websocket, "error", str(e))
+            # ── Send final "done" payload ──────────────────────────────────────
+            if final_result:
+                append_message(session, "assistant", final_result.answer_markdown or "")
+                done_payload = {
+                    "trace_id": trace_id,
+                    "answer_markdown": final_result.answer_markdown,
+                    "sql": final_result.sql,
+                    "rows": final_result.rows,
+                    "row_count": len(final_result.rows) if final_result.rows else 0,
+                    "intent": final_result.intent,
+                    "float_ids": final_result.float_ids,
+                    "viz_specs": final_result.viz_specs,
+                    "agent_trace": (
+                        final_result.agent_trace.model_dump()
+                        if hasattr(final_result.agent_trace, "model_dump")
+                        else final_result.agent_trace
+                    ),
+                }
+                await _send(websocket, "done", done_payload)
+            else:
+                await _send(websocket, "error", "No result returned from orchestrator")
 
     except WebSocketDisconnect:
-        pass
+        log.info("WebSocket disconnected: %s", websocket.client)
+    except Exception as e:
+        log.error("WebSocket fatal error: %s", e, exc_info=True)
+        try:
+            await _send(websocket, "error", str(e))
+        except Exception:
+            pass
