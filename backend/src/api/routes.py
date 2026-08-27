@@ -814,8 +814,11 @@ def get_cmlre_biodiversity_dataset() -> List[Dict[str, Any]]:
             np.where(class_name.str.contains("mammal"), "marine_mammal",
             np.where(basis.str.contains("human|observation|catch|fishery"), "fishery", "voucher")))
 
-        event_dates = occ["event_date"].astype(str).str.split().str[0] if "event_date" in occ.columns else "2024-01-01"
-        event_dates = event_dates.replace({"nan": "2024-01-01", "NaT": "2024-01-01", "None": "2024-01-01"})
+        if "event_date" in occ.columns:
+            event_dates = occ["event_date"].astype(str).str.split().str[0]
+            event_dates = event_dates.replace(["nan", "NaT", "None", ""], "2024-01-01")
+        else:
+            event_dates = pd.Series("2024-01-01", index=occ.index)
 
         aphia_source = occ["scientific_name_id"] if "scientific_name_id" in occ.columns else occ.get("aphia_id_lsid", pd.Series([""] * len(occ)))
         family = text_coalesce("family", "family_profile", default="Marine Taxa")
@@ -847,7 +850,8 @@ def get_cmlre_biodiversity_dataset() -> List[Dict[str, Any]]:
             "institution_code": "CMLRE",
         })
 
-        _cmlre_bio_dataset = json.loads(mapped.to_json(orient="records"))
+        raw_records = mapped.to_json(orient="records") or "[]"
+        _cmlre_bio_dataset = json.loads(raw_records)
         log.info("Loaded %d CMLRE biodiversity occurrence records into memory", len(_cmlre_bio_dataset))
         return _cmlre_bio_dataset
 
