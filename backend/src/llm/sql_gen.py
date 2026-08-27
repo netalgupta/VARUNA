@@ -127,6 +127,75 @@ WHERE latitude BETWEEN 8.0 AND 25.0 AND longitude BETWEEN 55.0 AND 75.0
   AND pres <= 20
   AND time >= NOW() - INTERVAL '6 months';
 ```
+
+Example 6 (BGC pH Profile with Depth):
+Question: How does pH vary with depth in the eastern Indian Ocean according to BGC-Argo floats?
+SQL:
+```sql
+SELECT 
+    ROUND(pres::numeric, 0) AS depth_dbar,
+    ROUND(AVG(ph_in_situ_total)::numeric, 3) AS avg_ph,
+    ROUND(AVG(temp)::numeric, 2) AS avg_temp_c,
+    COUNT(*) AS sample_count
+FROM public.marine_data
+WHERE longitude BETWEEN 80.0 AND 100.0
+  AND ph_in_situ_total IS NOT NULL
+GROUP BY ROUND(pres::numeric, 0)
+ORDER BY depth_dbar ASC
+LIMIT 100;
+```
+
+Example 7 (OMZ Core Geographic Boundaries):
+Question: Find the geographic boundaries of the Arabian Sea OMZ core where oxygen is below 10 umol/kg
+SQL:
+```sql
+SELECT 
+    ROUND(MIN(latitude)::numeric, 2) AS min_lat,
+    ROUND(MAX(latitude)::numeric, 2) AS max_lat,
+    ROUND(MIN(longitude)::numeric, 2) AS min_lon,
+    ROUND(MAX(longitude)::numeric, 2) AS max_lon,
+    ROUND(MIN(pres)::numeric, 0) AS omz_core_top_dbar,
+    ROUND(MAX(pres)::numeric, 0) AS omz_core_base_dbar,
+    COUNT(*) AS observation_count
+FROM public.marine_data
+WHERE latitude BETWEEN 8.0 AND 25.0 AND longitude BETWEEN 55.0 AND 75.0
+  AND doxy IS NOT NULL AND doxy < 10.0;
+```
+
+Example 8 (Marine Heatwave Climatology Exceedance):
+Question: Detect marine heatwave events where temperature exceeds the 90th percentile climatology for at least 5 days
+SQL:
+```sql
+SELECT 
+    platform_number,
+    DATE(time) AS observation_date,
+    ROUND(AVG(temp)::numeric, 2) AS surface_temp_c,
+    ROUND(MAX(temp)::numeric, 2) AS peak_temp_c,
+    COUNT(*) AS profile_count
+FROM public.marine_data
+WHERE pres <= 10 AND temp >= 29.5
+GROUP BY platform_number, DATE(time)
+HAVING COUNT(*) >= 1
+ORDER BY observation_date DESC
+LIMIT 50;
+```
+
+Example 9 (Salinity vs Dissolved Oxygen Correlation in OMZ):
+Question: Plot the correlation between salinity and dissolved oxygen in the Arabian Sea oxygen minimum zone
+SQL:
+```sql
+SELECT 
+    ROUND(psal::numeric, 2) AS salinity_psu,
+    ROUND(doxy::numeric, 1) AS dissolved_oxygen_umol_kg,
+    ROUND(AVG(doxy)::numeric, 1) AS avg_doxy,
+    ROUND(AVG(psal)::numeric, 2) AS avg_psal
+FROM public.marine_data
+WHERE latitude BETWEEN 8.0 AND 25.0 AND longitude BETWEEN 55.0 AND 75.0
+  AND pres BETWEEN 150 AND 1000
+  AND psal IS NOT NULL AND doxy IS NOT NULL
+GROUP BY ROUND(psal::numeric, 2), ROUND(doxy::numeric, 1)
+LIMIT 200;
+```
 """
 
 

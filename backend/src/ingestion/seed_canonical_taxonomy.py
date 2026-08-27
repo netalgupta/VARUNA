@@ -1,10 +1,10 @@
 """
-VARUNA — canonical_taxonomy table migration + seed
+VARUNA - canonical_taxonomy table migration + seed
 Creates the canonical_taxonomy table and seeds it from marine_biodiversity.scientific_name
 and species_ecological_profiles. This is the ONLY authority for BIO-002/BIO-003 checks.
 
 Run once against both DB shards:
-  .\venv\Scripts\python.exe src/ingestion/seed_canonical_taxonomy.py
+  venv/Scripts/python src/ingestion/seed_canonical_taxonomy.py
 """
 from __future__ import annotations
 
@@ -18,7 +18,7 @@ sys.path.insert(0, str(_BACKEND))
 if hasattr(sys.stdout, "reconfigure"):
     sys.stdout.reconfigure(encoding="utf-8")
 
-from src.database.postgres import _run_on_all_shards   # internal helper
+
 
 log = logging.getLogger("varuna.ingest.taxonomy")
 logging.basicConfig(level=logging.INFO, format="%(levelname)s %(message)s")
@@ -56,13 +56,13 @@ CREATE INDEX IF NOT EXISTS idx_canonical_taxonomy_scientific_name
 SEED_FROM_BIODIVERSITY = """
 INSERT INTO public.canonical_taxonomy
     (scientific_name, accepted_name, kingdom, phylum, class_name, order_name, family, genus, species, taxonomic_status)
-SELECT DISTINCT
+SELECT DISTINCT ON (b.scientific_name)
     b.scientific_name,
     b.scientific_name                  AS accepted_name,
     COALESCE(b.kingdom, 'Animalia')   AS kingdom,
     b.phylum,
-    b.class_name,
-    b.order_name,
+    b."class"                          AS class_name,
+    b."order"                          AS order_name,
     b.family,
     b.genus,
     b.species,
@@ -70,6 +70,7 @@ SELECT DISTINCT
 FROM public.marine_biodiversity b
 WHERE b.scientific_name IS NOT NULL
   AND b.scientific_name != ''
+ORDER BY b.scientific_name, b.id DESC
 ON CONFLICT (scientific_name) DO UPDATE
     SET
         family           = EXCLUDED.family,
@@ -87,7 +88,7 @@ ON CONFLICT (scientific_name) DO UPDATE
 SEED_FROM_PROFILES = """
 INSERT INTO public.canonical_taxonomy
     (scientific_name, accepted_name, family, genus, taxonomic_status)
-SELECT DISTINCT
+SELECT DISTINCT ON (s.scientific_name)
     s.scientific_name,
     s.scientific_name AS accepted_name,
     s.family,
@@ -96,6 +97,7 @@ SELECT DISTINCT
 FROM public.species_ecological_profiles s
 WHERE s.scientific_name IS NOT NULL
   AND s.scientific_name != ''
+ORDER BY s.scientific_name
 ON CONFLICT (scientific_name) DO UPDATE
     SET
         family = COALESCE(EXCLUDED.family, canonical_taxonomy.family),
@@ -110,42 +112,66 @@ FROM public.canonical_taxonomy;
 """
 
 
-async def _migrate_shard(conn_str: str, shard_name: str) -> None:
-    import asyncpg
+def _migrate_shard(conn_str: str, shard_name: str, primary_conn_str: Optional[str] = None) -> None:
+    import psycopg
+    import psycopg.rows
     log.info("Connecting to %s ...", shard_name)
-    conn = await asyncpg.connect(conn_str)
-    try:
+    with psycopg.connect(conn_str, row_factory=psycopg.rows.dict_row) as conn:
         log.info("[%s] Creating canonical_taxonomy table ...", shard_name)
-        await conn.execute(CREATE_TAXONOMY_TABLE)
-        await conn.execute(CREATE_INDEX)
+        conn.execute(CREATE_TAXONOMY_TABLE)
+        conn.execute(CREATE_INDEX)
 
-        log.info("[%s] Seeding from marine_biodiversity ...", shard_name)
-        await conn.execute(SEED_FROM_BIODIVERSITY)
+        # Check if marine_biodiversity exists
+        has_bio = conn.execute(
+            "SELECT EXISTS (SELECT FROM information_schema.tables WHERE table_name = 'marine_biodiversity')"
+        ).fetchone()["exists"]
 
-        log.info("[%s] Seeding from species_ecological_profiles ...", shard_name)
-        await conn.execute(SEED_FROM_PROFILES)
+        if has_bio:
+            log.info("[%s] Seeding from marine_biodiversity ...", shard_name)
+            conn.execute(SEED_FROM_BIODIVERSITY)
+        elif primary_conn_str:
+            log.info("[%s] Copying canonical_taxonomy records from DB1 ...", shard_name)
+            with psycopg.connect(primary_conn_str, row_factory=psycopg.rows.dict_row) as pconn:
+                taxa_rows = pconn.execute("SELECT * FROM public.canonical_taxonomy").fetchall()
+                if taxa_rows:
+                    cols = [k for k in taxa_rows[0].keys() if k != "taxon_id"]
+                    col_names = ", ".join(cols)
+                    placeholders = ", ".join([f"%({c})s" for c in cols])
+                    insert_sql = f"""
+                    INSERT INTO public.canonical_taxonomy ({col_names})
+                    VALUES ({placeholders})
+                    ON CONFLICT (scientific_name) DO NOTHING;
+                    """
+                    for tr in taxa_rows:
+                        conn.execute(insert_sql, tr)
 
-        row = await conn.fetchrow(VERIFY_QUERY)
+        # Check if species_ecological_profiles exists
+        has_eco = conn.execute(
+            "SELECT EXISTS (SELECT FROM information_schema.tables WHERE table_name = 'species_ecological_profiles')"
+        ).fetchone()["exists"]
+        if has_eco:
+            log.info("[%s] Seeding from species_ecological_profiles ...", shard_name)
+            conn.execute(SEED_FROM_PROFILES)
+
+        row = conn.execute(VERIFY_QUERY).fetchone()
         log.info(
             "[%s] canonical_taxonomy: %d taxa | %d families | %d genera",
             shard_name, row["total_taxa"], row["families"], row["genera"]
         )
-    finally:
-        await conn.close()
+        conn.commit()
 
 
-async def main() -> None:
+def main() -> None:
     from src.config import settings
 
     shards = [
-        (settings.database_url, "DB1 (primary)"),
+        (settings.pg_dsn_db1, "DB1 (primary)", None),
+        (settings.pg_dsn_db2, "DB2 (secondary)", settings.pg_dsn_db1),
     ]
-    if getattr(settings, "database_url_db2", None):
-        shards.append((settings.database_url_db2, "DB2 (secondary)"))
 
-    for conn_str, name in shards:
+    for conn_str, name, primary_conn in shards:
         try:
-            await _migrate_shard(conn_str, name)
+            _migrate_shard(conn_str, name, primary_conn_str=primary_conn)
         except Exception as e:
             log.error("[%s] Migration failed: %s", name, e)
 
@@ -153,4 +179,4 @@ async def main() -> None:
 
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    main()

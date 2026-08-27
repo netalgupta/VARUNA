@@ -86,9 +86,39 @@ LIMIT 25;
 """
 
 
+# Template 5: Species-specific physical exposure join (Penaeus, Sardinella, Thunnus, etc.)
+_SQL_SPECIES_STRESS = """
+SELECT DISTINCT ON (b.scientific_name)
+    b.scientific_name, b.family, b.genus,
+    b.minimum_depth_m, b.maximum_depth_m,
+    m.platform_number AS argo_float_id,
+    m.time  AS argo_obs_time,
+    ROUND(m.temp::numeric, 2) AS water_temp_c,
+    ROUND(m.doxy::numeric, 1) AS dissolved_oxygen_umol_kg,
+    ROUND(m.psal::numeric, 3) AS salinity_psu,
+    ROUND((ST_Distance(b.geom, m.geom) / 1000.0)::numeric, 1) AS dist_km
+FROM public.marine_biodiversity b
+JOIN public.marine_data m
+  ON ST_DWithin(b.geom, m.geom, 100000)
+WHERE b.scientific_name ILIKE '%{species_term}%'
+ORDER BY b.scientific_name, dist_km ASC
+LIMIT 25;
+"""
+
+
 def _pick_sql_template(task_desc: str, params: Dict[str, Any]) -> str:
     """Choose and fill the right SQL template based on task intent."""
     q = (task_desc + " " + params.get("query", "")).lower()
+
+    # Named species in query — prioritize specific species filtering
+    species_candidates = [
+        "penaeus monodon", "penaeus", "sardinella longiceps", "sardinella",
+        "thunnus albacares", "thunnus", "acanthosepion pharaonis", "acanthosepion",
+        "acropora millepora", "acropora", "scombridae", "balistidae"
+    ]
+    for sp in species_candidates:
+        if sp in q:
+            return _SQL_SPECIES_STRESS.format(species_term=sp)
 
     # OMZ / low oxygen / hypoxia / habitat compression
     if any(kw in q for kw in ["omz", "hypox", "low oxygen", "doxy", "oxygen", "habitat compression"]):
@@ -100,7 +130,7 @@ def _pick_sql_template(task_desc: str, params: Dict[str, Any]) -> str:
         threshold = params.get("temp_threshold", 28.5)
         return _SQL_THERMAL_STRESS.format(temp_threshold=threshold)
 
-    # Named species lookup
+    # Named species lookup via params
     species = params.get("species", "")
     if species and len(species) > 2:
         safe_species = species.replace("'", "''")[:50]

@@ -66,7 +66,7 @@ QUERY_SEMANTIC_SPECS: Dict[str, Dict[str, Any]] = {
         "required_tables": ["marine_data"],
         "required_columns": ["doxy"],
         "required_predicates": ["150", "800"],
-        "required_order": ["doxy asc", "order by"],
+        "required_order": [("doxy asc", "order by", "min")],
     },
     "BGC_09": {
         "modality": "SQL_ONLY",
@@ -95,7 +95,7 @@ QUERY_SEMANTIC_SPECS: Dict[str, Dict[str, Any]] = {
         "modality": "SQL_ONLY",
         "required_tables": ["marine_data"],
         "required_columns": ["doxy", "psal"],
-        "required_aggregations": ["avg", "corr"],
+        "required_aggregations": [("avg", "corr", "select", "group by")],
     },
     "BGC_14": {
         "modality": "SQL_ONLY",
