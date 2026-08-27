@@ -80,17 +80,16 @@ async def chat_complete(
         "max_tokens": max_tokens,
     }
 
-    models_to_try = [chosen_model]
-    for fallback_m in [
+    models_to_try = [
+        "minimax/minimax-m3:free",
+        "nvidia/nemotron-3.5-lightning:free",
+        "google/gemma-4-31b-it:free",
+        "z-ai/glm-5.2:free",
+        "google/gemma-4-26b-a4b-it:free",
+        "minimax/minimax-m2.7:free",
         "nvidia/nemotron-3-super-120b-a12b:free",
         "nvidia/nemotron-3-ultra-550b-a55b:free",
-        "google/gemma-4-31b-it:free",
-        "nvidia/nemotron-3.5-lightning:free",
-        "google/gemma-4-26b-a4b-it:free",
-        "minimax/minimax-m3:free",
-    ]:
-        if fallback_m not in models_to_try:
-            models_to_try.append(fallback_m)
+    ]
 
     # Multi-Key x Multi-Model Resilient Cascade starting from last known healthy key
     num_keys = len(key_pool)

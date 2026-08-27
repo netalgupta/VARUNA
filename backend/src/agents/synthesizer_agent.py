@@ -18,6 +18,10 @@ log = logging.getLogger("varuna.agent.synthesizer")
 SYNTHESIZER_PROMPT = """You are the Lead Scientific Synthesizer for the VARUNA Marine Intelligence Platform (INCOIS & CMLRE).
 Your task is to write a cohesive, precise, scientific oceanographic response based ONLY on the provided verified data below.
 
+CRITICAL INSTRUCTION: Output ONLY the final response starting directly with:
+### 🌊 Oceanographic Physical State & Basin Comparison
+Do NOT write internal thoughts, reasoning steps, planning, or preambles.
+
 RULES:
 1. Every numerical value (temperature, salinity, oxygen, anomaly) MUST come directly from the data. Do NOT invent numbers.
 2. Cite the source data using brackets: e.g. [WMO: 1902303 | Row #4] or [CMLRE Bio-Match].
@@ -315,11 +319,13 @@ async def synthesize_answer(
         if header_match and any(phrase in answer_md[:header_match.start()].lower() for phrase in ["we need to", "let's", "looking at the data", "thus there are", "according to rules", "better to cite"]):
             answer_md = answer_md[header_match.start():].strip()
 
-    # If LLM returned generic canned response, tool-call tokens, or empty, generate exact grounded synthesis from real rows
+    # If LLM returned generic canned response, tool-call tokens, or empty, or leaked reasoning without markdown headers, generate exact grounded synthesis from real rows
     if (
         not answer_md
+        or "### " not in answer_md
         or "<|tool_call" in answer_md
         or "<|think" in answer_md
+        or answer_md.startswith("We need to")
         or (all_rows and "no specific" in answer_md.lower())
         or "Analysis of INCOIS ARGO Float Profiles indicates active thermal stratification" in answer_md
         or "Oceanographic physical and biological parameters evaluated across active ARGO" in answer_md
