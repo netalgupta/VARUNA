@@ -269,72 +269,7 @@ const INITIAL_ANOMALIES: AnomalyAlert[] = [
   },
 ];
 
-const INITIAL_BIODIVERSITY: BiodiversityRecord[] = [
-  {
-    id: 501,
-    scientific_name: "Sardinella longiceps",
-    common_name: "Indian Oil Sardine",
-    aphia_id: 218659,
-    kingdom: "Animalia",
-    phylum: "Chordata",
-    family: "Clupeidae",
-    latitude: 15.42,
-    longitude: 73.81,
-    depth_m: 12.0,
-    event_date: "2026-04-14",
-    thermal_range_min_c: 22.0,
-    thermal_range_max_c: 26.0,
-    institution_code: "CMLRE",
-  },
-  {
-    id: 502,
-    scientific_name: "Rastrelliger kanagurta",
-    common_name: "Indian Mackerel",
-    aphia_id: 219717,
-    kingdom: "Animalia",
-    phylum: "Chordata",
-    family: "Scombridae",
-    latitude: 18.95,
-    longitude: 72.82,
-    depth_m: 25.0,
-    event_date: "2026-04-18",
-    thermal_range_min_c: 24.0,
-    thermal_range_max_c: 27.5,
-    institution_code: "CMLRE",
-  },
-  {
-    id: 503,
-    scientific_name: "Acropora millepora",
-    common_name: "Staghorn Coral",
-    aphia_id: 206983,
-    kingdom: "Animalia",
-    phylum: "Cnidaria",
-    family: "Acroporidae",
-    latitude: 9.15,
-    longitude: 79.12,
-    depth_m: 4.5,
-    event_date: "2026-05-02",
-    thermal_range_min_c: 24.0,
-    thermal_range_max_c: 28.0,
-    institution_code: "CMLRE",
-  },
-  {
-    id: 504,
-    scientific_name: "Thunnus albacares",
-    common_name: "Yellowfin Tuna",
-    aphia_id: 127027,
-    kingdom: "Animalia",
-    phylum: "Chordata",
-    family: "Scombridae",
-    latitude: 11.20,
-    longitude: 71.40,
-    depth_m: 60.0,
-    event_date: "2026-05-10",
-    thermal_range_min_c: 18.0,
-    thermal_range_max_c: 28.0,
-    institution_code: "CMLRE",
-  },
-];
+const INITIAL_BIODIVERSITY: BiodiversityRecord[] = [];
 
 const OperationalContext = createContext<OperationalContextValue | null>(null);
 
@@ -428,25 +363,28 @@ export function OperationalProvider({ children }: { children: React.ReactNode })
     }
   }, [selectedAlertId]);
 
-  // Fetch Biodiversity & Species Correlations
-  const loadBiodiversityData = useCallback(async (speciesName: string) => {
+  const loadBiodiversityOccurrences = useCallback(async () => {
     setIsLoadingBio(true);
     try {
-      const results = await Promise.allSettled([
-        getBiodiversity({ limit: 20000 }),
-        getSpeciesCorrelations(speciesName, 90, 50),
-      ]);
-
-      if (results[0].status === "fulfilled" && results[0].value && results[0].value.length > 0) {
-        setBiodiversity(results[0].value);
-      }
-      if (results[1].status === "fulfilled" && results[1].value && results[1].value.length > 0) {
-        setCorrelations(results[1].value);
+      const data = await getBiodiversity({ limit: 100000 });
+      if (data && data.length > 0) {
+        setBiodiversity(data);
       }
     } catch {
-      // Graceful fallback
+      // Keep an empty catalog rather than the old 4-point mock set.
     } finally {
       setIsLoadingBio(false);
+    }
+  }, []);
+
+  const loadSpeciesCorrelations = useCallback(async (speciesName: string) => {
+    try {
+      const data = await getSpeciesCorrelations(speciesName, 90, 50);
+      if (data && data.length > 0) {
+        setCorrelations(data);
+      }
+    } catch {
+      // Spatial join is optional for map/catalog rendering.
     }
   }, []);
 
@@ -490,23 +428,27 @@ export function OperationalProvider({ children }: { children: React.ReactNode })
   }, []);
 
   const refreshAllData = useCallback(async () => {
-    // Critical first paint data: health, active float fleet, anomalies, and CMLRE biodiversity occurrences
     await Promise.allSettled([
       checkHealth(),
       loadFloats(),
       loadAnomalies(),
-      loadBiodiversityData(selectedSpecies),
+      loadBiodiversityOccurrences(),
+      loadSpeciesCorrelations(selectedSpecies),
     ]);
-  }, [checkHealth, loadFloats, loadAnomalies, loadBiodiversityData, selectedSpecies]);
+  }, [checkHealth, loadFloats, loadAnomalies, loadBiodiversityOccurrences, loadSpeciesCorrelations, selectedSpecies]);
 
   useEffect(() => {
-    refreshAllData();
-  }, [refreshAllData]);
+    Promise.allSettled([
+      checkHealth(),
+      loadFloats(),
+      loadAnomalies(),
+      loadBiodiversityOccurrences(),
+    ]);
+  }, [checkHealth, loadFloats, loadAnomalies, loadBiodiversityOccurrences]);
 
-  // When species changes, reload biodiversity correlations
   useEffect(() => {
-    loadBiodiversityData(selectedSpecies);
-  }, [selectedSpecies, loadBiodiversityData]);
+    loadSpeciesCorrelations(selectedSpecies);
+  }, [selectedSpecies, loadSpeciesCorrelations]);
 
   // When float changes, IMMEDIATELY clear stale data and fetch fresh profile from DB
   useEffect(() => {

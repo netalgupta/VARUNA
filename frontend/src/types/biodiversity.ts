@@ -26,6 +26,25 @@ export interface BiodiversityRecord {
   institution_code: string;
 }
 
+export interface EcologicalProfile {
+  species_id: string;
+  scientific_name: string;
+  aphia_id_lsid?: string | null;
+  family?: string | null;
+  genus?: string | null;
+  common_name?: string | null;
+  habitat_zone?: string | null;
+  depth_min_m?: number | null;
+  depth_max_m?: number | null;
+  ecological_response?: string | null;
+  evidence_source?: string | null;
+  temp_pref_min_c?: number | null;
+  temp_pref_max_c?: number | null;
+  salinity_min_psu?: number | null;
+  salinity_max_psu?: number | null;
+  hypoxia_avoidance_threshold_umol_kg?: number | null;
+}
+
 export interface SpatialCorrelationRecord {
   species_name: string;
   common_name: string;

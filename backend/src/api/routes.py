@@ -11,7 +11,7 @@ import logging
 import re
 import uuid
 from datetime import datetime, timezone
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Tuple
 
 log = logging.getLogger("varuna.api")
 
@@ -249,6 +249,24 @@ class BiodiversityRecord(BaseModel):
     hypoxia_avoidance_threshold_umol_kg: Optional[float] = Field(45.0, examples=[45.0])
     dataset_type: Optional[str] = Field("voucher", examples=["voucher"])
     institution_code: str = Field("CMLRE", examples=["CMLRE"])
+
+class EcologicalProfile(BaseModel):
+    species_id: str
+    scientific_name: str
+    aphia_id_lsid: Optional[str] = None
+    family: Optional[str] = None
+    genus: Optional[str] = None
+    common_name: Optional[str] = None
+    habitat_zone: Optional[str] = None
+    depth_min_m: Optional[float] = None
+    depth_max_m: Optional[float] = None
+    ecological_response: Optional[str] = None
+    evidence_source: Optional[str] = None
+    temp_pref_min_c: Optional[float] = None
+    temp_pref_max_c: Optional[float] = None
+    salinity_min_psu: Optional[float] = None
+    salinity_max_psu: Optional[float] = None
+    hypoxia_avoidance_threshold_umol_kg: Optional[float] = None
 
 class SpatialCorrelationRecord(BaseModel):
     species_name: str = Field(..., examples=["Sardinella longiceps"])
@@ -648,6 +666,134 @@ async def get_anomaly_detail(alert_id: int = Path(..., description="Unique anoma
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 _cmlre_bio_dataset: Optional[List[Dict[str, Any]]] = None
+_cmlre_profile_dataset: Optional[List[Dict[str, Any]]] = None
+_cmlre_occurrence_df: Optional[Any] = None
+
+
+def _repo_root() -> str:
+    return os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", ".."))
+
+
+def _first_existing(paths: List[str]) -> Optional[str]:
+    return next((p for p in paths if p and os.path.exists(p)), None)
+
+
+def _occurrence_csv_path() -> Optional[str]:
+    root_dir = _repo_root()
+    return _first_existing([
+        os.path.join(root_dir, "cmlre_occurrence_master_final--dataset1final.csv"),
+        os.path.join(root_dir, "cmlre_occurrence_clean-dataset1.csv"),
+        os.path.join(root_dir, "cmlre_occurrence_clean.csv"),
+        os.path.join(root_dir, "dataset1_fixed.csv"),
+    ])
+
+
+def _profile_csv_path() -> Optional[str]:
+    root_dir = _repo_root()
+    downloads = os.path.abspath(os.path.join(root_dir, "..", "species_ecological_profiles_master.csv"))
+    return _first_existing([
+        os.path.join(root_dir, "species_ecological_profiles_master----dataset2final.csv"),
+        downloads,
+        os.path.join(root_dir, "species_ecological_profiles-dataset2.csv"),
+        os.path.join(root_dir, "ingestion", "species_ecological_profiles(1).csv"),
+    ])
+
+
+def _safe_aphia_id(series: Any) -> Any:
+    import pandas as pd
+    extracted = series.astype(str).str.extract(r"taxname:(\d+)", expand=False)
+    return pd.to_numeric(extracted, errors="coerce").fillna(0).astype(int)
+
+
+def get_occurrence_frame():
+    global _cmlre_occurrence_df
+    if _cmlre_occurrence_df is not None:
+        return _cmlre_occurrence_df
+
+    import pandas as pd
+    csv_path = _occurrence_csv_path()
+    if not csv_path:
+        _cmlre_occurrence_df = pd.DataFrame()
+        return _cmlre_occurrence_df
+
+    df = pd.read_csv(csv_path, low_memory=False)
+    _cmlre_occurrence_df = df
+    log.info("Cached CMLRE occurrence table from %s (%d rows)", csv_path, len(df))
+    return _cmlre_occurrence_df
+
+
+def get_ecological_profile_dataset() -> List[Dict[str, Any]]:
+    global _cmlre_profile_dataset
+    if _cmlre_profile_dataset is not None:
+        return _cmlre_profile_dataset
+
+    import pandas as pd
+    profile_path = _profile_csv_path()
+    if not profile_path:
+        _cmlre_profile_dataset = []
+        return _cmlre_profile_dataset
+
+    df = pd.read_csv(profile_path, low_memory=False)
+
+    def optional_float_series(col: str) -> List[Optional[float]]:
+        if col not in df.columns:
+            return [None] * len(df)
+        return [
+            None if pd.isna(v) else float(v)
+            for v in pd.to_numeric(df[col], errors="coerce")
+        ]
+
+    def optional_str_series(col: str) -> List[Optional[str]]:
+        if col not in df.columns:
+            return [None] * len(df)
+        values = df[col].astype(str).replace({"nan": "", "None": ""}).str.strip()
+        return [v or None for v in values]
+
+    records = []
+    scientific = df.get("scientific_name", pd.Series([""] * len(df))).astype(str).str.strip()
+    species_ids = df.get("species_id", pd.Series([""] * len(df))).astype(str)
+    families = optional_str_series("family")
+    genera = optional_str_series("genus")
+    commons = optional_str_series("common_name")
+    habitats = optional_str_series("habitat_zone")
+    evidence = optional_str_series("evidence_source")
+    responses = optional_str_series("ecological_response")
+    aphia = optional_str_series("aphia_id_lsid")
+    depth_min = optional_float_series("depth_min_m")
+    depth_max = optional_float_series("depth_max_m")
+    temp_min = optional_float_series("temp_pref_min_c")
+    temp_max = optional_float_series("temp_pref_max_c")
+    sal_min = optional_float_series("salinity_min_psu")
+    sal_max = optional_float_series("salinity_max_psu")
+    hypoxia = optional_float_series("hypoxia_avoidance_threshold_umol_kg")
+
+    for i in range(len(df)):
+        name = scientific.iloc[i]
+        if not name or name.lower() == "nan":
+            continue
+        records.append({
+            "species_id": species_ids.iloc[i],
+            "scientific_name": name,
+            "aphia_id_lsid": aphia[i],
+            "family": families[i],
+            "genus": genera[i],
+            "common_name": commons[i],
+            "habitat_zone": habitats[i],
+            "depth_min_m": depth_min[i],
+            "depth_max_m": depth_max[i],
+            "ecological_response": responses[i],
+            "evidence_source": evidence[i],
+            "temp_pref_min_c": temp_min[i],
+            "temp_pref_max_c": temp_max[i],
+            "salinity_min_psu": sal_min[i],
+            "salinity_max_psu": sal_max[i],
+            "hypoxia_avoidance_threshold_umol_kg": hypoxia[i],
+        })
+
+    _cmlre_profile_dataset = records
+    log.info("Loaded %d ecological profiles from %s", len(records), profile_path)
+    return _cmlre_profile_dataset
+
 
 def get_cmlre_biodiversity_dataset() -> List[Dict[str, Any]]:
     global _cmlre_bio_dataset
@@ -655,177 +801,191 @@ def get_cmlre_biodiversity_dataset() -> List[Dict[str, Any]]:
         return _cmlre_bio_dataset
 
     try:
-        root_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", ".."))
-        csv_candidates = [
-            os.path.join(root_dir, "cmlre_occurrence_clean-dataset1.csv"),
-            os.path.join(root_dir, "cmlre_occurrence_clean.csv"),
-            os.path.join(root_dir, "dataset1_fixed.csv"),
-            "cmlre_occurrence_clean-dataset1.csv",
-        ]
-        json_candidates = [
-            os.path.join(root_dir, "species_ecological_profiles.json"),
-            os.path.join(root_dir, "ingestion", "species_ecological_profiles.json"),
-            "species_ecological_profiles.json",
-        ]
+        import numpy as np
+        import pandas as pd
 
-        csv_path = next((p for p in csv_candidates if os.path.exists(p)), None)
-        json_path = next((p for p in json_candidates if os.path.exists(p)), None)
-
-        if not csv_path:
-            log.warning("CMLRE CSV dataset not found; falling back to mock dataset")
-            _cmlre_bio_dataset = MOCK_BIODIVERSITY
+        occ = get_occurrence_frame().copy()
+        if occ.empty:
+            log.warning("CMLRE occurrence CSV not found; biodiversity catalog is empty")
+            _cmlre_bio_dataset = []
             return _cmlre_bio_dataset
 
-        import pandas as pd
-        df = pd.read_csv(csv_path)
+        occ = occ.dropna(subset=["decimal_latitude", "decimal_longitude"])
+        occ["scientific_name"] = occ["scientific_name"].astype(str).str.strip()
+        occ = occ[occ["scientific_name"].ne("") & occ["scientific_name"].str.lower().ne("nan")]
+        occ["_key"] = occ["scientific_name"].str.lower()
 
-        # Merge key commercial and ecological species from master dataset if present
-        master_csv = os.path.join(root_dir, "cmlre_occurrence_master_final--dataset1final.csv")
-        if os.path.exists(master_csv):
-            try:
-                df_master = pd.read_csv(master_csv, low_memory=False)
-                key_targets = {
-                    "sardinella longiceps", "rastrelliger kanagurta", "thunnus albacares",
-                    "acropora millepora", "epinephelus tauvina", "harpadon nehereus",
-                    "katsuwonus pelamis", "penaeus monodon", "portunus pelagicus"
-                }
-                existing_names = set(df["scientific_name"].dropna().astype(str).str.strip().str.lower())
-                missing_targets = key_targets - existing_names
-                if missing_targets:
-                    mask = df_master["scientific_name"].dropna().astype(str).str.strip().str.lower().isin(missing_targets)
-                    extra_rows = df_master[mask]
-                    if not extra_rows.empty:
-                        df = pd.concat([df, extra_rows], ignore_index=True)
-                        log.info("Appended %d key species occurrence records from master dataset", len(extra_rows))
-            except Exception as e_master:
-                log.warning("Could not merge master occurrences: %s", str(e_master))
+        profile_path = _profile_csv_path()
+        if profile_path:
+            prof = pd.read_csv(profile_path, low_memory=False)
+            prof["scientific_name"] = prof["scientific_name"].astype(str).str.strip()
+            prof["_key"] = prof["scientific_name"].str.lower()
+            prof = prof.drop_duplicates(subset=["_key"], keep="first")
+            keep_cols = [
+                "_key", "common_name", "family", "genus", "habitat_zone",
+                "depth_min_m", "depth_max_m", "temp_pref_min_c", "temp_pref_max_c",
+                "salinity_min_psu", "salinity_max_psu", "hypoxia_avoidance_threshold_umol_kg",
+                "aphia_id_lsid",
+            ]
+            keep_cols = [c for c in keep_cols if c in prof.columns]
+            occ = occ.merge(prof[keep_cols], on="_key", how="left", suffixes=("", "_profile"))
 
-        profiles_by_name: Dict[str, Dict[str, Any]] = {}
-        if json_path and os.path.exists(json_path):
-            with open(json_path, "r", encoding="utf-8") as f:
-                profiles = json.load(f)
-                profiles_by_name = {
-                    str(p.get("scientific_name", "")).strip().lower(): p
-                    for p in profiles
-                    if isinstance(p, dict) and p.get("scientific_name")
-                }
+        def coalesce(*cols: str) -> pd.Series:
+            result = pd.Series(np.nan, index=occ.index, dtype="float64")
+            for col in cols:
+                if col in occ.columns:
+                    result = result.fillna(pd.to_numeric(occ[col], errors="coerce"))
+            return result
 
-        # Also load master ecological profiles CSV if available to cover all 20k+ species
-        d2_master_csv = os.path.join(root_dir, "species_ecological_profiles_master----dataset2final.csv")
-        if os.path.exists(d2_master_csv):
-            try:
-                df_d2 = pd.read_csv(d2_master_csv, low_memory=False)
-                for _, p_row in df_d2.iterrows():
-                    p_name = str(p_row.get("scientific_name", "")).strip().lower()
-                    if p_name and p_name not in profiles_by_name:
-                        profiles_by_name[p_name] = {
-                            "scientific_name": p_row.get("scientific_name"),
-                            "common_name": p_row.get("common_name"),
-                            "family": p_row.get("family"),
-                            "phylum": p_row.get("phylum"),
-                            "temp_pref_min_c": p_row.get("temp_pref_min_c") or p_row.get("thermal_range_min_c"),
-                            "temp_pref_max_c": p_row.get("temp_pref_max_c") or p_row.get("thermal_range_max_c"),
-                            "salinity_min_psu": p_row.get("salinity_min_psu"),
-                            "salinity_max_psu": p_row.get("salinity_max_psu"),
-                            "hypoxia_avoidance_threshold_umol_kg": p_row.get("hypoxia_avoidance_threshold_umol_kg"),
-                            "depth_min_m": p_row.get("depth_min_m"),
-                            "depth_max_m": p_row.get("depth_max_m"),
-                            "aphia_id": p_row.get("aphia_id"),
-                        }
-            except Exception as e_d2:
-                log.warning("Could not merge master profiles: %s", str(e_d2))
+        def text_coalesce(*cols: str, default: str = "") -> pd.Series:
+            result = pd.Series([""] * len(occ), index=occ.index, dtype="object")
+            for col in cols:
+                if col in occ.columns:
+                    values = occ[col].astype(str).replace({"nan": "", "None": ""}).str.strip()
+                    result = result.where(result.ne(""), values)
+            result = result.replace("", default)
+            return result
 
-        import math
+        basis = occ["basis_of_record"].astype(str).str.lower() if "basis_of_record" in occ.columns else pd.Series("", index=occ.index)
+        class_name = occ["class"].astype(str).str.lower() if "class" in occ.columns else pd.Series("", index=occ.index)
+        dataset_type = np.where(basis.str.contains("dna|edna", regex=True), "edna",
+            np.where(class_name.str.contains("mammal"), "marine_mammal",
+            np.where(basis.str.contains("human|observation|catch|fishery"), "fishery", "voucher")))
 
-        def safe_float(v, default=0.0):
-            if v is None or pd.isna(v):
-                return default
-            try:
-                f = float(v)
-                return default if pd.isna(f) or not math.isfinite(f) else f
-            except Exception:
-                return default
+        event_dates = occ["event_date"].astype(str).str.split().str[0] if "event_date" in occ.columns else "2024-01-01"
+        event_dates = event_dates.replace({"nan": "2024-01-01", "NaT": "2024-01-01", "None": "2024-01-01"})
 
-        records = []
-        for idx, row in df.iterrows():
-            s_name = str(row.get("scientific_name", "")).strip()
-            if not s_name or pd.isna(row.get("decimal_latitude")) or pd.isna(row.get("decimal_longitude")):
-                continue
-            s_key = s_name.lower()
-            prof = profiles_by_name.get(s_key, {})
+        aphia_source = occ["scientific_name_id"] if "scientific_name_id" in occ.columns else occ.get("aphia_id_lsid", pd.Series([""] * len(occ)))
+        family = text_coalesce("family", "family_profile", default="Marine Taxa")
+        genus = text_coalesce("genus", "genus_profile", default="")
+        genus = genus.where(genus.ne(""), occ["scientific_name"].str.split().str[0])
+        common_name = text_coalesce("common_name", default="")
+        common_name = common_name.where(common_name.ne(""), occ["scientific_name"])
 
-            aphia_str = str(row.get("scientific_name_id", ""))
-            aphia_id = 0
-            if "taxname:" in aphia_str:
-                try:
-                    aphia_id = int(aphia_str.split("taxname:")[-1])
-                except Exception:
-                    pass
+        mapped = pd.DataFrame({
+            "id": np.arange(1, len(occ) + 1, dtype=int),
+            "occurrence_id": occ["occurrence_id"].astype(str) if "occurrence_id" in occ.columns else [f"CMLRE_{i}" for i in range(1, len(occ) + 1)],
+            "scientific_name": occ["scientific_name"],
+            "common_name": common_name,
+            "aphia_id": _safe_aphia_id(aphia_source),
+            "kingdom": text_coalesce("kingdom", default="Animalia"),
+            "phylum": text_coalesce("phylum", default="Chordata"),
+            "family": family,
+            "genus": genus,
+            "latitude": pd.to_numeric(occ["decimal_latitude"], errors="coerce").fillna(0.0),
+            "longitude": pd.to_numeric(occ["decimal_longitude"], errors="coerce").fillna(0.0),
+            "depth_m": coalesce("maximum_depth_m", "minimum_depth_m", "depth_max_m", "depth_min_m").fillna(15.0),
+            "event_date": event_dates,
+            "thermal_range_min_c": coalesce("temp_pref_min_c").fillna(22.0),
+            "thermal_range_max_c": coalesce("temp_pref_max_c").fillna(28.0),
+            "salinity_min_psu": coalesce("salinity_min_psu").fillna(34.0),
+            "salinity_max_psu": coalesce("salinity_max_psu").fillna(36.5),
+            "hypoxia_avoidance_threshold_umol_kg": coalesce("hypoxia_avoidance_threshold_umol_kg").fillna(45.0),
+            "dataset_type": dataset_type,
+            "institution_code": "CMLRE",
+        })
 
-            depth = row.get("maximum_depth_m")
-            if pd.isna(depth):
-                depth = row.get("minimum_depth_m")
-            if pd.isna(depth):
-                depth = prof.get("depth_min_m") or 15.0
-
-            event_dt = str(row.get("event_date", "2024-01-01"))
-            if pd.isna(row.get("event_date")) or event_dt.lower() == "nan":
-                event_dt = "2024-01-01"
-
-            records.append({
-                "id": int(idx + 1),
-                "occurrence_id": str(row.get("occurrence_id", f"CMLRE_{idx+1}")),
-                "scientific_name": s_name,
-                "common_name": str(prof.get("common_name") or s_name),
-                "aphia_id": aphia_id or int(prof.get("aphia_id", 0) or 0),
-                "kingdom": "Animalia",
-                "phylum": str(prof.get("phylum") or "Chordata"),
-                "family": str(row.get("family") or prof.get("family") or "Marine Taxa"),
-                "genus": str(row.get("genus") or prof.get("genus") or s_name.split()[0]),
-                "latitude": safe_float(row.get("decimal_latitude"), 10.0),
-                "longitude": safe_float(row.get("decimal_longitude"), 75.0),
-                "depth_m": safe_float(depth, 15.0),
-                "event_date": event_dt.split()[0],
-                "thermal_range_min_c": safe_float(prof.get("temp_pref_min_c"), 22.0),
-                "thermal_range_max_c": safe_float(prof.get("temp_pref_max_c"), 28.0),
-                "salinity_min_psu": safe_float(prof.get("salinity_min_psu"), 34.0),
-                "salinity_max_psu": safe_float(prof.get("salinity_max_psu"), 36.5),
-                "hypoxia_avoidance_threshold_umol_kg": safe_float(prof.get("hypoxia_avoidance_threshold_umol_kg"), 45.0),
-                "dataset_type": str(row.get("dataset_type", "voucher")),
-                "institution_code": "CMLRE",
-            })
-
-        _cmlre_bio_dataset = records
-        log.info("Loaded %d CMLRE biodiversity records into memory", len(_cmlre_bio_dataset))
+        _cmlre_bio_dataset = json.loads(mapped.to_json(orient="records"))
+        log.info("Loaded %d CMLRE biodiversity occurrence records into memory", len(_cmlre_bio_dataset))
         return _cmlre_bio_dataset
 
     except Exception as e:
-        log.error("Failed to load CMLRE dataset: %s", str(e))
-        _cmlre_bio_dataset = MOCK_BIODIVERSITY
+        log.exception("Failed to load CMLRE dataset: %s", str(e))
+        _cmlre_bio_dataset = []
         return _cmlre_bio_dataset
 
 
 @router.get(
     "/biodiversity",
-    response_model=List[BiodiversityRecord],
     tags=["🐟 CMLRE Marine Living Resources & Cross-Domain Fusion"],
     summary="Query CMLRE Marine Living Resource Catalog",
-    description="Queries 5,385 clean Indian Ocean marine species occurrences from CMLRE datasets 1 & 2.",
+    description="Queries Indian Ocean marine species occurrences from the CMLRE master occurrence catalog joined with ecological profiles.",
 )
 async def list_biodiversity(
     species: Optional[str] = Query(None, description="Filter by scientific name (e.g. Sardinella longiceps)", examples=["Sardinella longiceps"]),
     family: Optional[str] = Query(None, description="Filter by taxonomic family (e.g. Clupeidae)", examples=["Clupeidae"]),
     dataset_type: Optional[str] = Query(None, description="Filter by dataset type (voucher, edna, fishery, marine_mammal)", examples=["voucher"]),
-    limit: int = Query(10000, description="Max records to return", ge=1, le=100000)
+    limit: int = Query(100000, description="Max records to return", ge=1, le=200000)
 ):
     records = get_cmlre_biodiversity_dataset()
     if species:
-        records = [r for r in records if species.lower() in r["scientific_name"].lower() or species.lower() in r.get("common_name", "").lower()]
+        needle = species.lower()
+        records = [r for r in records if needle in r["scientific_name"].lower() or needle in r.get("common_name", "").lower()]
     if family:
-        records = [r for r in records if family.lower() in r["family"].lower()]
+        needle = family.lower()
+        records = [r for r in records if needle in r["family"].lower()]
     if dataset_type:
-        records = [r for r in records if dataset_type.lower() in r.get("dataset_type", "").lower()]
+        needle = dataset_type.lower()
+        records = [r for r in records if needle in r.get("dataset_type", "").lower()]
     return records[:limit]
+
+
+@router.get(
+    "/biodiversity/profiles",
+    tags=["🐟 CMLRE Marine Living Resources & Cross-Domain Fusion"],
+    summary="Query CMLRE ecological species profiles",
+)
+async def list_biodiversity_profiles(
+    species: Optional[str] = Query(None, description="Filter by scientific or common name"),
+    family: Optional[str] = Query(None, description="Filter by family"),
+    habitat_zone: Optional[str] = Query(None, description="Filter by habitat zone"),
+    limit: int = Query(30000, description="Max profiles to return", ge=1, le=100000),
+):
+    profiles = get_ecological_profile_dataset()
+    if species:
+        query = species.lower()
+        profiles = [
+            row for row in profiles
+            if query in (row.get("scientific_name") or "").lower() or query in (row.get("common_name") or "").lower()
+        ]
+    if family:
+        query = family.lower()
+        profiles = [row for row in profiles if query in (row.get("family") or "").lower()]
+    if habitat_zone:
+        query = habitat_zone.lower()
+        profiles = [row for row in profiles if query in (row.get("habitat_zone") or "").lower()]
+    return profiles[:limit]
+
+
+@router.get(
+    "/biodiversity/observations",
+    tags=["🐟 CMLRE Marine Living Resources & Cross-Domain Fusion"],
+    summary="Query raw CMLRE occurrence observations for plotting",
+)
+async def list_biodiversity_observations(
+    species: str = Query(..., description="Scientific name to query"),
+    limit: int = Query(5000, ge=1, le=20000),
+):
+    import pandas as pd
+    df = get_occurrence_frame()
+    if df.empty:
+        return []
+
+    query = species.strip().lower()
+    matched = df[df["scientific_name"].fillna("").str.lower() == query].head(limit).copy()
+
+    def optional_float(value: Any) -> Optional[float]:
+        try:
+            return float(value) if value != "" and not pd.isna(value) else None
+        except (TypeError, ValueError):
+            return None
+
+    rows = []
+    for _, row in matched.iterrows():
+        rows.append({
+            "occurrence_id": str(row.get("occurrence_id", "")),
+            "scientific_name": str(row.get("scientific_name", "")),
+            "latitude": optional_float(row.get("decimal_latitude")),
+            "longitude": optional_float(row.get("decimal_longitude")),
+            "event_date": str(row.get("event_date", "")),
+            "minimum_depth_m": optional_float(row.get("minimum_depth_m")),
+            "maximum_depth_m": optional_float(row.get("maximum_depth_m")),
+            "individual_count": optional_float(row.get("individual_count")),
+            "occurrence_status": str(row.get("occurrence_status", "")),
+            "basis_of_record": str(row.get("basis_of_record", "")),
+            "source_dataset_name": str(row.get("source_dataset_name", "")),
+        })
+    return rows
 
 
 @router.get(

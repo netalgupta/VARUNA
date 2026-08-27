@@ -18,6 +18,8 @@ export const ENDPOINTS = {
 
   // 🐟 CMLRE Marine Living Resources & Cross-Domain Fusion
   BIODIVERSITY: "/api/v1/biodiversity",
+  BIODIVERSITY_PROFILES: "/api/v1/biodiversity/profiles",
+  BIODIVERSITY_OBSERVATIONS: "/api/v1/biodiversity/observations",
   CORRELATE: "/api/v1/correlate",
 
   // 🛰️ INCOIS ARGO Float Fleet & Depth Profiles
