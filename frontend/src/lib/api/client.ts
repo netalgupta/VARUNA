@@ -26,7 +26,7 @@ export async function apiClient<T = any>(
   path: string,
   options: RequestOptions = {}
 ): Promise<T> {
-  const { params, timeout = 30000, headers, ...restOptions } = options;
+  const { params, timeout = 90000, headers, ...restOptions } = options;
 
   let url = path.startsWith("http") ? path : `${API_BASE_URL}${path}`;
 

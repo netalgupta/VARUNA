@@ -50,6 +50,9 @@ def _get_headers_for_key(api_key: str) -> Dict[str, str]:
     return headers
 
 
+_active_key_idx = 0
+
+
 async def chat_complete(
     messages: List[Dict[str, str]],
     model: Optional[str] = None,
@@ -61,6 +64,7 @@ async def chat_complete(
     """
     Executes chat completion via OpenRouter API with multi-key rotation and multi-model failover.
     """
+    global _active_key_idx
     chosen_model = model or DEFAULT_MODEL
     start_time = time.perf_counter()
     key_pool = _get_key_pool()
@@ -79,20 +83,26 @@ async def chat_complete(
     models_to_try = [chosen_model]
     for fallback_m in [
         "nvidia/nemotron-3-super-120b-a12b:free",
-        "google/gemini-2.5-flash",
+        "nvidia/nemotron-3-ultra-550b-a55b:free",
+        "google/gemma-4-31b-it:free",
         "nvidia/nemotron-3.5-lightning:free",
-        "openrouter/free",
+        "google/gemma-4-26b-a4b-it:free",
+        "minimax/minimax-m3:free",
     ]:
         if fallback_m not in models_to_try:
             models_to_try.append(fallback_m)
 
-    # Multi-Key x Multi-Model Resilient Cascade
-    for attempt_key in key_pool:
+    # Multi-Key x Multi-Model Resilient Cascade starting from last known healthy key
+    num_keys = len(key_pool)
+    for offset in range(num_keys):
+        current_idx = (_active_key_idx + offset) % num_keys
+        attempt_key = key_pool[current_idx]
         headers = _get_headers_for_key(attempt_key)
+
         for attempt_model in models_to_try:
             payload["model"] = attempt_model
             try:
-                async with httpx.AsyncClient(timeout=30.0) as client:
+                async with httpx.AsyncClient(timeout=15.0) as client:
                     resp = await client.post(
                         f"{OPENROUTER_URL}/chat/completions",
                         headers=headers,
@@ -103,6 +113,7 @@ async def chat_complete(
                         data = resp.json()
                         content = data["choices"][0]["message"]["content"]
                         elapsed_ms = (time.perf_counter() - start_time) * 1000.0
+                        _active_key_idx = current_idx  # Sticky success
 
                         usage = data.get("usage", {})
                         if trace:
@@ -114,9 +125,10 @@ async def chat_complete(
                             )
                         return content.strip()
 
-                    # If 402/429 occurs on this key, break to next key in pool
+                    # If 402/429 occurs on this key, rotate immediately
                     if resp.status_code in (402, 429):
                         log.warning("Key ...%s rate/credit limited (status %s) for %s. Rotating to next key in pool.", attempt_key[-6:], resp.status_code, attempt_model)
+                        _active_key_idx = (current_idx + 1) % num_keys
                         break
                     else:
                         log.warning("OpenRouter model %s returned status %s: %s", attempt_model, resp.status_code, resp.text[:100])
