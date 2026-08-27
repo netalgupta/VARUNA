@@ -76,8 +76,10 @@ async def chat_complete(
     payload = {
         "model": chosen_model,
         "messages": messages,
-        "temperature": temperature,
+        "temperature": max(0.1, temperature),
         "max_tokens": max_tokens,
+        "frequency_penalty": 0.3,
+        "presence_penalty": 0.1,
     }
 
     models_to_try = [chosen_model]

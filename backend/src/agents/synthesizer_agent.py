@@ -99,26 +99,40 @@ def _generate_grounded_answer(
             lines.append(f"- **{r.get('basin')}**: Mean Practical Salinity **`{r.get('avg_salinity', 0):.2f} PSU`** (Range: `{r.get('min_salinity', 0):.2f}` - `{r.get('max_salinity', 0):.2f}` PSU) across **`{r.get('obs_count', 0):,}`** observations.")
         lines.append("\n*Physical Context*: The high evaporation-to-precipitation ratio in the Arabian Sea sustains elevated salinity levels, contrasting with the freshwater monsoonal runoff plume into the Bay of Bengal.*")
 
-    elif "scientific_name" in first_row and ("dist_km" in first_row or "dissolved_oxygen_umol_kg" in first_row or "water_temp_c" in first_row):
-        lines.append(f"Identified **`{row_count}`** marine taxa co-located within 50 km and 7 days of active ARGO profiling casts:\n")
-        lines.append("| Scientific Name | Family | Depth Range (m) | ARGO Float WMO | Dissolved O₂ (µmol/kg) | Water Temp (°C) | Distance (km) |")
-        lines.append("| :--- | :--- | :--- | :--- | :--- | :--- | :--- |")
-        for r in all_rows[:12]:
+    elif "scientific_name" in first_row and ("dist_km" in first_row or "dissolved_oxygen_umol_kg" in first_row or "water_temp_c" in first_row or "doxy" in first_row):
+        sp_name = first_row.get("scientific_name", "marine taxa")
+        low_doxy_rows = [r for r in all_rows if (r.get("doxy") is not None and float(r.get("doxy")) < 50) or (r.get("dissolved_oxygen_umol_kg") is not None and float(r.get("dissolved_oxygen_umol_kg")) < 50)]
+        doxy_count = len(low_doxy_rows)
+        
+        lines.append(f"Physical profiling and environmental telemetry co-located with *{sp_name}* records:\n")
+        lines.append("| Scientific Name | ARGO Float WMO | Position (Lat, Lon) | Depth (dbar/m) | Temp (°C) | Dissolved O₂ (µmol/kg) | Distance (km) | Source |")
+        lines.append("| :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- |")
+        for idx, r in enumerate(all_rows[:12], 1):
             s_name = r.get("scientific_name", "Unknown")
-            fam = r.get("family", "Unknown")
-            d_min = r.get("minimum_depth_m")
-            d_max = r.get("maximum_depth_m")
-            if d_min is not None and d_max is not None and not (isnan(float(d_min)) or isnan(float(d_max))):
-                d_str = f"{float(d_min):.0f}–{float(d_max):.0f}m"
-            else:
-                d_str = "Pelagic / Shelf"
-            wmo = r.get("argo_float_id", "N/A")
-            do_val = r.get("dissolved_oxygen_umol_kg")
+            wmo = r.get("argo_float_id") or r.get("platform_number", "N/A")
+            lat_v = float(r.get("lat") or r.get("latitude") or 0.0)
+            lon_v = float(r.get("lon") or r.get("longitude") or 0.0)
+            pres_v = r.get("pres") or r.get("maximum_depth_m") or r.get("depth_m")
+            pres_str = f"{float(pres_v):.1f}m" if pres_v is not None and not isnan(float(pres_v)) else "Pelagic"
+            t_val = r.get("temp") if r.get("temp") is not None else r.get("water_temp_c")
+            t_str = f"**{float(t_val):.2f}**" if t_val is not None and not isnan(float(t_val)) else "N/A"
+            do_val = r.get("doxy") if r.get("doxy") is not None else r.get("dissolved_oxygen_umol_kg")
             do_str = f"**{float(do_val):.1f}**" if do_val is not None and not isnan(float(do_val)) else "N/A"
-            t_val = r.get("water_temp_c")
-            t_str = f"{float(t_val):.2f}" if t_val is not None and not isnan(float(t_val)) else "N/A"
             km = float(r.get("dist_km", 0.0))
-            lines.append(f"| *{s_name}* | {fam} | {d_str} | `{wmo}` | {do_str} | {t_str} | **{km:.1f} km** |")
+            lines.append(f"| *{s_name}* | `{wmo}` | `{lat_v:.2f}°N, {lon_v:.2f}°E` | {pres_str} | {t_str} | {do_str} | **{km:.1f} km** | [WMO: {wmo} | Row #{idx}] |")
+
+        lines.append("\n### 🐟 Biological Impact & Species Displacement (CMLRE Fusion)")
+        if doxy_count > 0:
+            min_do = min([float(r.get('doxy') or r.get('dissolved_oxygen_umol_kg')) for r in low_doxy_rows])
+            lines.append(f"- **Hypoxic Exposure**: Found **{doxy_count}** co-located observations with dissolved oxygen below **50 µmol/kg** (reaching critical minimums of **{min_do:.1f} µmol/kg**).")
+            lines.append(f"- **Physiological Stress**: *{sp_name}* individuals inhabiting mesopelagic strata (< 50 µmol/kg O₂) experience respiratory compression and upward vertical avoidance towards oxic epipelagic layers.")
+        else:
+            lines.append(f"- **Ecological Envelope**: Active observations indicate ambient oxygen and thermal levels remain within viable physiological tolerance limits for *{sp_name}*.")
+
+        lines.append("\n### 🚨 Early-Warning & Policy Implications")
+        lines.append("- **Oxygen Minimum Zone (OMZ) Monitoring**: Prioritize high-frequency BGC-Argo profiling along active upwelling corridors where hypoxia shoals within 100m of the photic zone.")
+        lines.append("- **Fisheries & Habitat Conservation**: Enforce seasonal trawling and spatial fishing advisories in hypoxic zones to mitigate bycatch and ecological displacement.")
+        return "\n".join(lines)
 
     elif "dist_km" in first_row:
         # Proximity — strict table format, NO generic policy section
@@ -307,9 +321,17 @@ async def synthesize_answer(
     except Exception as e:
         log.warning("LLM Synthesis failed, using dynamic grounded data synthesizer: %s", str(e))
 
-    # If LLM returned generic canned response, tool-call tokens, or empty, generate exact grounded synthesis from real rows
+    import re
+    has_loop = (
+        bool(re.search(r"(\b\w+\b(?:\s+\b\w+\b){0,3}\?)\s+(?:\1\s+){2,}", answer_md or ""))
+        or bool(re.search(r"(Row\?|Row\s*\d+\?)", answer_md or ""))
+        or (answer_md.count("Row?") > 2)
+    )
+
+    # If LLM returned generic canned response, tool-call tokens, loop, or empty, generate exact grounded synthesis from real rows
     if (
         not answer_md
+        or has_loop
         or "<|tool_call" in answer_md
         or "<|think" in answer_md
         or (all_rows and "no specific" in answer_md.lower())
