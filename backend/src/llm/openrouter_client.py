@@ -85,18 +85,20 @@ async def chat_complete(
     models_to_try = [chosen_model]
     for fallback_m in [
         "nvidia/nemotron-3-super-120b-a12b:free",
-        "nvidia/nemotron-3-ultra-550b-a55b:free",
         "google/gemma-4-31b-it:free",
         "nvidia/nemotron-3.5-lightning:free",
-        "google/gemma-4-26b-a4b-it:free",
-        "minimax/minimax-m3:free",
     ]:
         if fallback_m not in models_to_try:
             models_to_try.append(fallback_m)
 
-    # Multi-Key x Multi-Model Resilient Cascade starting from last known healthy key
+    # Multi-Key x Multi-Model Resilient Cascade (capped at 4 key rotations max for sub-15s response time)
     num_keys = len(key_pool)
-    for offset in range(num_keys):
+    max_offsets = min(num_keys, 4)
+    for offset in range(max_offsets):
+        if (time.perf_counter() - start_time) > 20.0:
+            log.warning("OpenRouter retry cascade exceeded 20s budget, failing over to deterministic grounded synthesizer.")
+            break
+
         current_idx = (_active_key_idx + offset) % num_keys
         attempt_key = key_pool[current_idx]
         headers = _get_headers_for_key(attempt_key)
@@ -104,7 +106,7 @@ async def chat_complete(
         for attempt_model in models_to_try:
             payload["model"] = attempt_model
             try:
-                async with httpx.AsyncClient(timeout=15.0) as client:
+                async with httpx.AsyncClient(timeout=8.0) as client:
                     resp = await client.post(
                         f"{OPENROUTER_URL}/chat/completions",
                         headers=headers,
