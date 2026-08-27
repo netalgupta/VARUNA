@@ -547,7 +547,7 @@ export function VarunaMap({ onHoverCoords, is3DMode }: VarunaMapProps) {
 
         <div className="px-2.5 py-1 rounded-lg bg-[#071324]/90 border border-sky-500/20 backdrop-blur-md flex items-center gap-1.5 text-emerald-300 shadow-lg">
           <Radio size={11} className="text-emerald-400" />
-          <span className="font-bold">{biodiversity.length ? biodiversity.length.toLocaleString() : "5,629"}</span>
+          <span className="font-bold">{biodiversity.length.toLocaleString()}</span>
           <span className="text-slate-400 text-[10px] font-sans">Bio Occurrences</span>
         </div>
       </div>
