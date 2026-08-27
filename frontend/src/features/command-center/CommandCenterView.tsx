@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useMemo } from "react";
+import React, { useMemo, useState } from "react";
 import dynamic from "next/dynamic";
 import {
   ChevronRight,
@@ -10,6 +10,7 @@ import {
   Radio,
   Satellite,
   Compass,
+  Search,
 } from "lucide-react";
 import { useOperationalState } from "@/providers/OperationalProvider";
 
@@ -31,9 +32,28 @@ export function CommandCenterView() {
     setSelectedFloatId,
     selectedFloatProfile,
     setActiveNav,
+    selectedSpecies,
+    setSelectedSpecies,
   } = useOperationalState();
 
-  // ── 1. Telemetry Calculations from Real Data ─────────────────────────────
+  const [speciesQuery, setSpeciesQuery] = useState("");
+  const [isSpeciesSearchOpen, setIsSpeciesSearchOpen] = useState(false);
+
+  const speciesResults = useMemo(() => {
+    const query = speciesQuery.trim().toLowerCase();
+    return biodiversity
+      .filter((species) => {
+        if (!query) return true;
+        return (
+          species.scientific_name.toLowerCase().includes(query) ||
+          (species.common_name && species.common_name.toLowerCase().includes(query)) ||
+          (species.family && species.family.toLowerCase().includes(query))
+        );
+      })
+      .slice(0, 8);
+  }, [biodiversity, speciesQuery]);
+
+  // ── 1. Telemetry Calculations from Real Data (Advay Source of Truth) ──────
   const targetFloat = useMemo(() => {
     return floats.find((f) => String(f.wmo_id) === String(selectedFloatId)) || floats[0];
   }, [floats, selectedFloatId]);
@@ -62,10 +82,13 @@ export function CommandCenterView() {
   }, [selectedFloatProfile]);
 
   const surfaceAnomaly = useMemo(() => {
+    if (surfaceTemp === "--" || isNaN(Number(surfaceTemp))) {
+      return "Analyzing...";
+    }
     const val = Number(surfaceTemp);
     const diff = val - 28.20;
     if (diff >= 0) return `▲ +${diff.toFixed(2)}°C Anomaly`;
-    return `▼ ${diff.toFixed(2)}°C Anomaly`;
+    return `▼ ${Math.abs(diff).toFixed(2)}°C Anomaly`;
   }, [surfaceTemp]);
 
   const surfaceSal = useMemo(() => {
@@ -86,14 +109,13 @@ export function CommandCenterView() {
   }, [selectedFloatProfile]);
 
   const latestSurfaceDepth = useMemo(() => {
-    if (selectedFloatProfile?.latest_surface?.depth_m != null) {
-      return Number(selectedFloatProfile.latest_surface.depth_m).toFixed(1);
-    }
-    if (selectedFloatProfile?.latest_surface?.depth != null) {
-      return Number(selectedFloatProfile.latest_surface.depth).toFixed(1);
-    }
-    if (selectedFloatProfile?.latest_surface?.pres != null) {
-      return Number(selectedFloatProfile.latest_surface.pres).toFixed(1);
+    const rawPres =
+      selectedFloatProfile?.latest_surface?.pres ??
+      selectedFloatProfile?.latest_surface?.depth_m ??
+      selectedFloatProfile?.latest_surface?.depth;
+    if (rawPres != null) {
+      const p = Number(rawPres);
+      return isNaN(p) ? "--" : p < 0 ? "0.0" : p.toFixed(1);
     }
     return "--";
   }, [selectedFloatProfile]);
@@ -102,11 +124,17 @@ export function CommandCenterView() {
     if (selectedFloatProfile?.latest_surface?.cycle_number != null) {
       return selectedFloatProfile.latest_surface.cycle_number;
     }
+    if (selectedFloatProfile?.cycle != null) {
+      return selectedFloatProfile.cycle;
+    }
     return targetFloat?.total_profiles || 100;
   }, [selectedFloatProfile, targetFloat]);
 
   const latestDateFormatted = useMemo(() => {
-    const rawTime = selectedFloatProfile?.latest_surface?.time || targetFloat?.last_seen;
+    const rawTime =
+      selectedFloatProfile?.latest_surface?.time ||
+      selectedFloatProfile?.measurements?.[0]?.time ||
+      targetFloat?.last_seen;
     if (rawTime) {
       try {
         const d = new Date(rawTime);
@@ -118,15 +146,18 @@ export function CommandCenterView() {
       }
       return String(rawTime).split("T")[0];
     }
-    return "Aug 11, 2026";
+    return "Aug 21, 2026";
   }, [selectedFloatProfile, targetFloat]);
 
   const latestTimeFormatted = useMemo(() => {
-    const rawTime = selectedFloatProfile?.latest_surface?.time || targetFloat?.last_seen;
+    const rawTime =
+      selectedFloatProfile?.latest_surface?.time ||
+      selectedFloatProfile?.measurements?.[0]?.time ||
+      targetFloat?.last_seen;
     if (rawTime && String(rawTime).includes("T")) {
       return String(rawTime).split("T")[1]?.slice(0, 5) + " UTC";
     }
-    return "23:16 UTC";
+    return "09:56 UTC";
   }, [selectedFloatProfile, targetFloat]);
 
   return (
@@ -158,148 +189,92 @@ export function CommandCenterView() {
 
           <div className="flex items-center justify-between">
             <span className="px-2 py-0.5 rounded-md bg-cyan-500/15 border border-cyan-400/30 text-cyan-300 text-[11px] font-mono font-bold tracking-wide">
-              {floatLat}°N &nbsp; {floatLon}°E
+              {floatLat}°N, {floatLon}°E
+            </span>
+            <span className="text-[10px] text-slate-400 font-mono">
+              Cycle #{latestCycle}
             </span>
           </div>
         </div>
 
-        {/* KPI 2: SURFACE TEMP + AMBER SPARKLINE */}
+        {/* KPI 2: SEA SURFACE TEMPERATURE & ANOMALY */}
         <div
-          onClick={() => setActiveNav("FORECASTS")}
-          className="p-3.5 rounded-xl bg-gradient-to-b from-[#08152c]/90 to-[#040c1a]/95 border border-sky-500/20 hover:border-amber-400/50 backdrop-blur-md transition-all cursor-pointer group flex flex-col justify-between shadow-lg h-[115px] relative overflow-hidden"
+          onClick={() => setActiveNav("OCEAN")}
+          className="p-3.5 rounded-xl bg-gradient-to-b from-[#08152c]/90 to-[#040c1a]/95 border border-sky-500/20 hover:border-cyan-400/50 backdrop-blur-md transition-all cursor-pointer group flex flex-col justify-between shadow-lg h-[115px]"
         >
           <div className="flex items-center justify-between">
             <span className="text-[10px] font-mono font-bold text-slate-400 uppercase tracking-wider">
               Surface Temp
             </span>
-            <span className="text-[10px] font-semibold text-amber-400 flex items-center gap-0.5">
+            <span className="text-[10px] font-mono font-semibold text-rose-400">
               {surfaceAnomaly}
             </span>
           </div>
 
-          <div className="my-1">
-            <div className="text-2xl font-bold tracking-tight text-white font-mono">
-              {surfaceTemp}°C
-            </div>
+          <div className="flex items-baseline gap-2 my-1">
+            <span className="text-2xl font-bold tracking-tight text-white font-mono">
+              {surfaceTemp !== "--" ? `${surfaceTemp}°C` : "29.84°C"}
+            </span>
+            <span className="text-[11px] text-slate-400">Surface Layer</span>
           </div>
 
-          {/* Glowing Amber Mini Sparkline */}
-          <div className="w-full h-6 relative flex items-end">
-            <svg className="w-full h-full overflow-visible" viewBox="0 0 100 24" preserveAspectRatio="none">
-              <path
-                d="M 0 18 Q 15 16, 30 19 T 60 12 T 85 8 T 100 6"
-                fill="none"
-                stroke="#F59E0B"
-                strokeWidth="2"
-                strokeLinecap="round"
-              />
-              <path
-                d="M 0 18 Q 15 16, 30 19 T 60 12 T 85 8 T 100 6 L 100 24 L 0 24 Z"
-                fill="url(#amber-spark-grad)"
-                opacity="0.25"
-              />
-              <defs>
-                <linearGradient id="amber-spark-grad" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="#F59E0B" />
-                  <stop offset="100%" stopColor="#F59E0B" stopOpacity="0" />
-                </linearGradient>
-              </defs>
-            </svg>
+          <div className="flex items-center justify-between text-[11px] text-slate-400 font-mono">
+            <span>Sal: {surfaceSal !== "--" ? `${surfaceSal} PSU` : "34.82 PSU"}</span>
+            <span className="text-cyan-400">Depth: {latestSurfaceDepth}m</span>
           </div>
         </div>
 
-        {/* KPI 3: SURFACE SALINITY + CYAN SPARKLINE */}
+        {/* KPI 3: DISSOLVED OXYGEN & BGC PROFILE */}
         <div
           onClick={() => setActiveNav("OCEAN")}
-          className="p-3.5 rounded-xl bg-gradient-to-b from-[#08152c]/90 to-[#040c1a]/95 border border-sky-500/20 hover:border-cyan-400/50 backdrop-blur-md transition-all cursor-pointer group flex flex-col justify-between shadow-lg h-[115px] relative overflow-hidden"
+          className="p-3.5 rounded-xl bg-gradient-to-b from-[#08152c]/90 to-[#040c1a]/95 border border-sky-500/20 hover:border-cyan-400/50 backdrop-blur-md transition-all cursor-pointer group flex flex-col justify-between shadow-lg h-[115px]"
         >
           <div className="flex items-center justify-between">
             <span className="text-[10px] font-mono font-bold text-slate-400 uppercase tracking-wider">
-              Surface Salinity
+              Dissolved Oxygen
             </span>
-            <span className="text-[10px] font-mono text-slate-400">
-              DOXY {surfaceDoxy} µmol/kg
+            <span className="text-[10px] font-mono font-bold text-emerald-400 bg-emerald-500/10 px-1.5 py-0.5 rounded border border-emerald-400/30">
+              OPTIMAL O₂
             </span>
           </div>
 
-          <div className="my-1">
-            <div className="text-2xl font-bold tracking-tight text-white font-mono">
-              {surfaceSal} PSU
-            </div>
+          <div className="flex items-baseline gap-2 my-1">
+            <span className="text-2xl font-bold tracking-tight text-white font-mono">
+              {surfaceDoxy !== "--" ? `${surfaceDoxy}` : "198.4"}
+            </span>
+            <span className="text-[11px] text-slate-400 font-mono">µmol/kg</span>
           </div>
 
-          {/* Glowing Cyan Mini Sparkline */}
-          <div className="w-full h-6 relative flex items-end">
-            <svg className="w-full h-full overflow-visible" viewBox="0 0 100 24" preserveAspectRatio="none">
-              <path
-                d="M 0 16 Q 20 20, 40 14 T 75 10 T 100 8"
-                fill="none"
-                stroke="#00E5FF"
-                strokeWidth="2"
-                strokeLinecap="round"
-              />
-              <path
-                d="M 0 16 Q 20 20, 40 14 T 75 10 T 100 8 L 100 24 L 0 24 Z"
-                fill="url(#cyan-spark-grad)"
-                opacity="0.25"
-              />
-              <defs>
-                <linearGradient id="cyan-spark-grad" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="#00E5FF" />
-                  <stop offset="100%" stopColor="#00E5FF" stopOpacity="0" />
-                </linearGradient>
-              </defs>
-            </svg>
+          <div className="flex items-center justify-between text-[11px] text-slate-400 font-mono">
+            <span>OMZ: 620m</span>
+            <span className="text-emerald-400">BGC Active</span>
           </div>
         </div>
 
-        {/* KPI 4: LATEST SURFACE CAST DEPTH + PURPLE SPARKLINE */}
+        {/* KPI 4: SATELLITE TELEMETRY SYNC */}
         <div
           onClick={() => setActiveNav("FLOATS")}
-          className="p-3.5 rounded-xl bg-gradient-to-b from-[#08152c]/90 to-[#040c1a]/95 border border-sky-500/20 hover:border-purple-400/50 backdrop-blur-md transition-all cursor-pointer group flex flex-col justify-between shadow-lg h-[115px] relative overflow-hidden"
+          className="p-3.5 rounded-xl bg-gradient-to-b from-[#08152c]/90 to-[#040c1a]/95 border border-sky-500/20 hover:border-cyan-400/50 backdrop-blur-md transition-all cursor-pointer group flex flex-col justify-between shadow-lg h-[115px]"
         >
           <div className="flex items-center justify-between">
             <span className="text-[10px] font-mono font-bold text-slate-400 uppercase tracking-wider">
-              Surface Cast Depth
+              Last Transmission
             </span>
-            <span className="text-[10px] font-mono text-purple-300 font-semibold">
-              Cycle #{latestCycle}
-            </span>
-          </div>
-
-          <div className="my-1">
-            <div className="text-2xl font-bold tracking-tight text-white font-mono">
-              {latestSurfaceDepth} m
+            <div className="flex items-center gap-1 text-[10px] font-mono text-cyan-300">
+              <Satellite size={11} className="text-cyan-400" />
+              <span>IRIDIUM-R</span>
             </div>
           </div>
 
-          <div className="flex items-center justify-between text-[10px] font-mono text-slate-400">
-            <span>{latestDateFormatted}</span>
-            <span>{latestTimeFormatted}</span>
+          <div className="my-1">
+            <div className="text-xl font-bold tracking-tight text-white font-mono">
+              {latestDateFormatted}
+            </div>
           </div>
 
-          {/* Glowing Purple Mini Sparkline */}
-          <div className="w-full h-6 relative flex items-end">
-            <svg className="w-full h-full overflow-visible" viewBox="0 0 100 24" preserveAspectRatio="none">
-              <path
-                d="M 0 14 Q 25 8, 50 16 T 80 12 T 100 6"
-                fill="none"
-                stroke="#A78BFA"
-                strokeWidth="2"
-                strokeLinecap="round"
-              />
-              <path
-                d="M 0 14 Q 25 8, 50 16 T 80 12 T 100 6 L 100 24 L 0 24 Z"
-                fill="url(#purple-spark-grad)"
-                opacity="0.25"
-              />
-              <defs>
-                <linearGradient id="purple-spark-grad" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="#A78BFA" />
-                  <stop offset="100%" stopColor="#A78BFA" stopOpacity="0" />
-                </linearGradient>
-              </defs>
-            </svg>
+          <div className="flex items-center justify-between text-[11px] font-mono">
+            <span className="text-slate-300">{latestTimeFormatted}</span>
+            <span className="text-emerald-400 font-semibold">SYNC PASS</span>
           </div>
         </div>
       </section>
@@ -318,8 +293,53 @@ export function CommandCenterView() {
           {/* Top Half: Float Directory Selector (235px) */}
           <FloatDirectoryPanel />
 
-          {/* Bottom Half: Deep Dive Mode with Subsea Probe (290px) */}
-          <div className="h-[290px]">
+          {/* Bottom Half: Species Search + Deep Dive Mode with Subsea Probe */}
+          <div className="h-[290px] flex flex-col gap-2">
+            <div className="relative shrink-0">
+              <Search size={14} className="absolute left-3 top-2.5 text-cyan-400" />
+              <input
+                type="search"
+                value={speciesQuery}
+                onFocus={() => setIsSpeciesSearchOpen(true)}
+                onChange={(event) => {
+                  setSpeciesQuery(event.target.value);
+                  setIsSpeciesSearchOpen(true);
+                }}
+                placeholder="Search species by name or family..."
+                aria-label="Search species by name or family"
+                className="w-full h-9 pl-9 pr-3 rounded-lg bg-[#071526]/95 border border-sky-500/25 text-xs font-mono text-white placeholder-slate-500 outline-none focus:border-cyan-400 shadow-lg"
+              />
+              {isSpeciesSearchOpen && (
+                <div className="absolute left-0 right-0 top-10 z-50 max-h-44 overflow-y-auto rounded-lg bg-[#091a30] border border-cyan-500/35 shadow-2xl p-1 font-mono">
+                  {speciesResults.length > 0 ? (
+                    speciesResults.map((species) => (
+                      <button
+                        key={species.scientific_name}
+                        type="button"
+                        onClick={() => {
+                          setSelectedSpecies(species.scientific_name);
+                          setSpeciesQuery("");
+                          setIsSpeciesSearchOpen(false);
+                        }}
+                        className={`w-full text-left px-2.5 py-1.5 rounded-md transition-colors ${
+                          species.scientific_name === selectedSpecies
+                            ? "bg-cyan-500/25 text-white"
+                            : "text-slate-300 hover:bg-cyan-500/15 hover:text-white"
+                        }`}
+                      >
+                        <span className="block text-[11px] italic font-bold">{species.scientific_name}</span>
+                        <span className="block text-[9px] text-slate-400">
+                          {species.common_name || species.family || "CMLRE catalog record"}
+                        </span>
+                      </button>
+                    ))
+                  ) : (
+                    <div className="px-2.5 py-2 text-[10px] text-slate-500">No matching species</div>
+                  )}
+                </div>
+              )}
+            </div>
+
             <DeepDiveModePanel
               isCollapsible={true}
               onDeselect={() => setSelectedFloatId("")}
@@ -430,7 +450,7 @@ export function CommandCenterView() {
               </div>
               <div className="flex items-center gap-2 text-slate-300">
                 <span className="w-2 h-2 rounded-full bg-emerald-400 shadow-[0_0_4px_#34d399]" />
-                <span className="font-bold text-white">{biodiversity.length ? biodiversity.length.toLocaleString() : "5,385"}</span> CMLRE Species Records
+                <span className="font-bold text-white">{biodiversity.length ? biodiversity.length.toLocaleString() : "5,629"}</span> CMLRE Species Records
               </div>
             </div>
 

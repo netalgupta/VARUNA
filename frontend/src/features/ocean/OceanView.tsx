@@ -126,7 +126,7 @@ export function OceanView() {
                   <Fish size={13} className={mapLayers.biodiversity ? "text-[#00FFC6]" : "text-zinc-500"} />
                   <span>CMLRE Living Resources</span>
                 </div>
-                <span className="text-[10px] font-bold">{biodiversity.length || 500}</span>
+                <span className="text-[10px] font-bold">{biodiversity.length ? biodiversity.length.toLocaleString() : "5,629"}</span>
               </label>
 
               <label

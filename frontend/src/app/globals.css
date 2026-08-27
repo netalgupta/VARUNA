@@ -133,6 +133,53 @@
   animation: dash-flow 1.5s linear infinite;
 }
 
+@keyframes deep-profile-drift {
+  0%, 100% { transform: translate3d(0, 0, 0) rotate(-1deg); }
+  50% { transform: translate3d(5px, -10px, 0) rotate(1deg); }
+}
+
+@keyframes deep-profile-rays {
+  0%, 100% { opacity: 0.18; transform: translateY(-3%) scaleX(0.96); }
+  50% { opacity: 0.42; transform: translateY(3%) scaleX(1.04); }
+}
+
+@keyframes deep-profile-snow {
+  0% { opacity: 0; transform: translate3d(0, 12px, 0) scale(0.7); }
+  35% { opacity: 0.55; }
+  100% { opacity: 0; transform: translate3d(14px, -42px, 0) scale(1); }
+}
+
+.deep-profile-probe {
+  animation: deep-profile-drift 8s ease-in-out infinite;
+  transform-origin: center center;
+}
+
+.deep-profile-rays {
+  position: absolute;
+  inset: -25% 15% 20%;
+  background: repeating-linear-gradient(105deg, transparent 0 18%, rgba(150, 234, 255, 0.18) 25%, transparent 34% 48%);
+  filter: blur(12px);
+  animation: deep-profile-rays 12s ease-in-out infinite;
+}
+
+.deep-profile-particles,
+.deep-profile-particles span {
+  position: absolute;
+  inset: 0;
+}
+
+.deep-profile-particles span {
+  inset: auto;
+  width: 2px;
+  height: 2px;
+  border-radius: 999px;
+  background: rgba(220, 249, 255, 0.8);
+  box-shadow: 0 0 6px rgba(92, 221, 255, 0.5);
+  animation-name: deep-profile-snow;
+  animation-timing-function: linear;
+  animation-iteration-count: infinite;
+}
+
 /* ─── Subtle Status Indicators ───────────────────────────────────────────── */
 .status-dot-live {
   width: 6px;

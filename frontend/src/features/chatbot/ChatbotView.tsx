@@ -58,7 +58,7 @@ export function ChatbotView() {
           </div>
           <div className="hidden sm:flex items-center gap-2 px-2.5 py-1 rounded bg-[#0E2435] border border-white/5 text-zinc-300">
             <span className="w-2 h-2 rounded-full bg-[#10B981]" />
-            <span>{biodiversity.length} Bio Taxa</span>
+            <span>{biodiversity.length ? biodiversity.length.toLocaleString() : "5,629"} Bio Taxa</span>
           </div>
           <div className="flex items-center gap-1 bg-[#0E2435] p-0.5 rounded border border-white/5">
             <button

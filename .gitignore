@@ -56,5 +56,8 @@ cmlre_dataset_1/
 Dataset1_CMLRE/
 dataset2_obis/
 dataset2_test/
+chrome-profile-temp-new/
+*chrome-profile*
 
 pyrightconfig.json
+

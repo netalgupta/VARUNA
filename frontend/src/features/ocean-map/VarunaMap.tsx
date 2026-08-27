@@ -77,30 +77,31 @@ export function VarunaMap({ onHoverCoords, is3DMode }: VarunaMapProps) {
 
     const zoom = map.getZoom();
     const coreRadius = zoom > 6 ? 4.5 : zoom > 4 ? 3.5 : 2.5;
+    const stride = zoom >= 6 ? 1 : zoom >= 4.5 ? 2 : zoom >= 3.5 ? 3 : 6;
 
-    // Pass 1: Outer Glowing Emerald Halo
     ctx.fillStyle = "rgba(16, 185, 129, 0.4)";
-    currentBio.forEach((b: any) => {
+    for (let i = 0; i < currentBio.length; i += stride) {
+      const b: any = currentBio[i];
       const lon = Number(b.longitude ?? b.lon ?? b.decimal_longitude);
       const lat = Number(b.latitude ?? b.lat ?? b.decimal_latitude);
-      if (isNaN(lon) || isNaN(lat)) return;
+      if (isNaN(lon) || isNaN(lat)) continue;
 
       const p = map.project([lon, lat]);
-      if (p.x < -20 || p.y < -20 || p.x > canvas.width + 20 || p.y > canvas.height + 20) return;
+      if (p.x < -20 || p.y < -20 || p.x > canvas.width + 20 || p.y > canvas.height + 20) continue;
 
       ctx.beginPath();
       ctx.arc(p.x, p.y, coreRadius + 3.5, 0, Math.PI * 2);
       ctx.fill();
-    });
+    }
 
-    // Pass 2: High-Contrast Crisp Specimen Core Dots
-    currentBio.forEach((b: any) => {
+    for (let i = 0; i < currentBio.length; i += stride) {
+      const b: any = currentBio[i];
       const lon = Number(b.longitude ?? b.lon ?? b.decimal_longitude);
       const lat = Number(b.latitude ?? b.lat ?? b.decimal_latitude);
-      if (isNaN(lon) || isNaN(lat)) return;
+      if (isNaN(lon) || isNaN(lat)) continue;
 
       const p = map.project([lon, lat]);
-      if (p.x < -20 || p.y < -20 || p.x > canvas.width + 20 || p.y > canvas.height + 20) return;
+      if (p.x < -20 || p.y < -20 || p.x > canvas.width + 20 || p.y > canvas.height + 20) continue;
 
       const dtype = String(b.dataset_type || "voucher").toLowerCase();
       ctx.fillStyle =
@@ -119,7 +120,7 @@ export function VarunaMap({ onHoverCoords, is3DMode }: VarunaMapProps) {
       ctx.strokeStyle = "#ffffff";
       ctx.lineWidth = 1;
       ctx.stroke();
-    });
+    }
   }, []);
 
   // ── Unified Map Sync (ARGO DOM Markers & Canvas Redraw) ─────────────────────
@@ -302,14 +303,17 @@ export function VarunaMap({ onHoverCoords, is3DMode }: VarunaMapProps) {
       if (!currentBio || currentBio.length === 0) return;
 
       const mousePt = e.point;
+      const mouseLngLat = e.lngLat;
+      const degTol = Math.max(0.08, 24 / Math.pow(2, map.getZoom()));
       let nearest: any = null;
-      let minD2 = 144; // 12px interaction radius
+      let minD2 = 144;
 
       for (let i = 0; i < currentBio.length; i++) {
         const b: any = currentBio[i];
         const lon = Number(b.longitude ?? b.lon ?? b.decimal_longitude);
         const lat = Number(b.latitude ?? b.lat ?? b.decimal_latitude);
         if (isNaN(lon) || isNaN(lat)) continue;
+        if (Math.abs(lat - mouseLngLat.lat) > degTol || Math.abs(lon - mouseLngLat.lng) > degTol) continue;
 
         const p = map.project([lon, lat]);
         const dx = p.x - mousePt.x;
@@ -543,7 +547,7 @@ export function VarunaMap({ onHoverCoords, is3DMode }: VarunaMapProps) {
 
         <div className="px-2.5 py-1 rounded-lg bg-[#071324]/90 border border-sky-500/20 backdrop-blur-md flex items-center gap-1.5 text-emerald-300 shadow-lg">
           <Radio size={11} className="text-emerald-400" />
-          <span className="font-bold">{biodiversity.length ? biodiversity.length.toLocaleString() : "5,385"}</span>
+          <span className="font-bold">{biodiversity.length.toLocaleString()}</span>
           <span className="text-slate-400 text-[10px] font-sans">Bio Occurrences</span>
         </div>
       </div>
