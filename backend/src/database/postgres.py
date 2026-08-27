@@ -75,7 +75,7 @@ def get_pool(db: str = "db2") -> Optional[Any]:
                     dsn,
                     min_size=1,
                     max_size=8,
-                    timeout=2.0,
+                    timeout=6.0,
                     kwargs=kwargs_dict,
                 )
             except Exception as e:
@@ -98,7 +98,7 @@ def get_pool(db: str = "db2") -> Optional[Any]:
                 dsn,
                 min_size=1,
                 max_size=8,
-                timeout=2.0,
+                timeout=6.0,
                 kwargs=kwargs_dict2,
             )
         except Exception as e:
@@ -390,9 +390,22 @@ def depth_profile(
     target_time: Optional[datetime] = None,
     radius_deg: float = 0.05,
 ) -> List[Dict[str, Any]]:
-    """Get full vertical depth profile (0-2000m) for a float observation."""
+    """Get full vertical depth profile (0-2000m) for a single ARGO float cycle cast."""
     conditions = [f"platform_number = {platform_number}"]
     params: dict = {}
+
+    # If cycle number is not specified, auto-resolve the float's latest cycle with observations
+    if cycle_number is None and lat is None and lon is None and target_time is None:
+        sql_latest_cycle = f"""
+        SELECT cycle_number
+        FROM public.marine_data
+        WHERE platform_number = {platform_number} AND temp IS NOT NULL
+        ORDER BY time DESC, cycle_number DESC
+        LIMIT 1;
+        """
+        cycle_res = _execute_single_db("db2", sql_latest_cycle) or _execute_single_db("db1", sql_latest_cycle)
+        if cycle_res and cycle_res[0].get("cycle_number") is not None:
+            cycle_number = cycle_res[0]["cycle_number"]
 
     if cycle_number is not None:
         conditions.append(f"cycle_number = {cycle_number}")
@@ -447,7 +460,7 @@ def get_float_deepest_cast(platform_number: int) -> Optional[Dict[str, Any]]:
 
 
 def get_float_latest_surface(platform_number: int) -> Optional[Dict[str, Any]]:
-    """Retrieve the latest surface measurement for a given float (1 dbar = 1 m)."""
+    """Retrieve the latest valid surface measurement for a given float (1 dbar = 1 m)."""
     sql = f"""
     SELECT platform_number, cycle_number, direction, time, latitude, longitude,
            pres, pres AS depth_m, pres AS depth, temp, psal, doxy, chla, nitrate, ph_in_situ_total
@@ -458,11 +471,25 @@ def get_float_latest_surface(platform_number: int) -> Optional[Dict[str, Any]]:
     LIMIT 1
     """
     rows = _execute_single_db("db2", sql)
+    if not rows:
+        rows = _execute_single_db("db1", sql)
+
     if rows:
-        return rows[0]
-    rows_db1 = _execute_single_db("db1", sql)
-    if rows_db1:
-        return rows_db1[0]
+        res = rows[0]
+        # Coalesce near-surface DOXY / CHLA from the same cycle cast if null at the very top millimeter
+        if res.get("doxy") is None and res.get("cycle_number") is not None:
+            sql_doxy = f"""
+            SELECT doxy, chla FROM public.marine_data
+            WHERE platform_number = {platform_number} AND cycle_number = {res['cycle_number']}
+              AND pres < 35 AND doxy IS NOT NULL
+            ORDER BY pres ASC LIMIT 1
+            """
+            doxy_row = _execute_single_db("db2", sql_doxy) or _execute_single_db("db1", sql_doxy)
+            if doxy_row:
+                res["doxy"] = doxy_row[0].get("doxy")
+                if res.get("chla") is None and doxy_row[0].get("chla") is not None:
+                    res["chla"] = doxy_row[0].get("chla")
+        return res
     return None
 
 

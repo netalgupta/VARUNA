@@ -68,7 +68,7 @@ export function CommandCenterView() {
     const val = Number(surfaceTemp);
     const diff = val - 28.20;
     if (diff >= 0) return `▲ +${diff.toFixed(2)}°C Anomaly`;
-    return `▼ ${diff.toFixed(2)}°C Anomaly`;
+    return `▼ ${Math.abs(diff).toFixed(2)}°C Anomaly`;
   }, [surfaceTemp]);
 
   const surfaceSal = useMemo(() => {
@@ -89,14 +89,13 @@ export function CommandCenterView() {
   }, [selectedFloatProfile]);
 
   const latestSurfaceDepth = useMemo(() => {
-    if (selectedFloatProfile?.latest_surface?.depth_m != null) {
-      return Number(selectedFloatProfile.latest_surface.depth_m).toFixed(1);
-    }
-    if (selectedFloatProfile?.latest_surface?.depth != null) {
-      return Number(selectedFloatProfile.latest_surface.depth).toFixed(1);
-    }
-    if (selectedFloatProfile?.latest_surface?.pres != null) {
-      return Number(selectedFloatProfile.latest_surface.pres).toFixed(1);
+    const rawPres =
+      selectedFloatProfile?.latest_surface?.pres ??
+      selectedFloatProfile?.latest_surface?.depth_m ??
+      selectedFloatProfile?.latest_surface?.depth;
+    if (rawPres != null) {
+      const p = Number(rawPres);
+      return isNaN(p) ? "--" : p < 0 ? "0.0" : p.toFixed(1);
     }
     return "--";
   }, [selectedFloatProfile]);
@@ -105,11 +104,17 @@ export function CommandCenterView() {
     if (selectedFloatProfile?.latest_surface?.cycle_number != null) {
       return selectedFloatProfile.latest_surface.cycle_number;
     }
+    if (selectedFloatProfile?.cycle != null) {
+      return selectedFloatProfile.cycle;
+    }
     return targetFloat?.total_profiles || 100;
   }, [selectedFloatProfile, targetFloat]);
 
   const latestDateFormatted = useMemo(() => {
-    const rawTime = selectedFloatProfile?.latest_surface?.time || targetFloat?.last_seen;
+    const rawTime =
+      selectedFloatProfile?.latest_surface?.time ||
+      selectedFloatProfile?.measurements?.[0]?.time ||
+      targetFloat?.last_seen;
     if (rawTime) {
       try {
         const d = new Date(rawTime);
@@ -121,15 +126,18 @@ export function CommandCenterView() {
       }
       return String(rawTime).split("T")[0];
     }
-    return "Aug 11, 2026";
+    return "Aug 21, 2026";
   }, [selectedFloatProfile, targetFloat]);
 
   const latestTimeFormatted = useMemo(() => {
-    const rawTime = selectedFloatProfile?.latest_surface?.time || targetFloat?.last_seen;
+    const rawTime =
+      selectedFloatProfile?.latest_surface?.time ||
+      selectedFloatProfile?.measurements?.[0]?.time ||
+      targetFloat?.last_seen;
     if (rawTime && String(rawTime).includes("T")) {
       return String(rawTime).split("T")[1]?.slice(0, 5) + " UTC";
     }
-    return "23:16 UTC";
+    return "09:56 UTC";
   }, [selectedFloatProfile, targetFloat]);
 
   return (

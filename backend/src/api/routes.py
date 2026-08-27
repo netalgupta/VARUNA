@@ -988,9 +988,11 @@ async def get_profile(
         [r for r in rows if float(r.get("depth_m") or r.get("pres") or 0) < 25][0] if [r for r in rows if float(r.get("depth_m") or r.get("pres") or 0) < 25] else (rows[0] if rows else None)
     )
 
+    resolved_cycle = cycle or (rows[0].get("cycle_number") if rows else None)
+
     result = {
         "platform_number": platform_number,
-        "cycle": cycle,
+        "cycle": resolved_cycle,
         "measurements": rows,
         "deepest_record": deepest,
         "latest_surface": latest_surface,
